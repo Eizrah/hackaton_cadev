@@ -16,12 +16,24 @@
 ----------------------------------------
 
 1. Cloner le projet :
-   git clone <url-du-repo>
+   git clone https://github.com/Eizrah/hackaton_cadev.git
    cd backend/Bcadev
 
 2. Créer le fichier .env :
    - Copier le fichier .env.example et le renommer en .env
    - Remplir les variables avec vos propres valeurs
+   - Exemple de contenu du fichier .env :
+
+     CLE_SECRET=generer-une-cle-secrete-django
+     DEBUG=True
+     DB_NAME=cadedb
+     DB_USER=Eizrah
+     DB_PASSWORD=votre-mot-de-passe
+     DB_HOST=localhost
+     DB_PORT=5432
+
+   - Pour générer une clé secrète Django, lancer dans un terminal Python :
+     python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 
 3. Lancer le backend (première fois) :
    docker-compose up --build
