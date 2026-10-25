@@ -1,0 +1,90 @@
+========================================
+  LISTE DES APIs - CADEV BACKEND
+========================================
+
+Base URL : http://localhost:8000
+
+----------------------------------------
+  AUTHENTIFICATION  (/api/auth/)
+----------------------------------------
+
+POST   /api/auth/inscription/
+  → Créer un nouveau compte développeur
+  → Body : {
+        "email": "dev@example.com",
+        "nom": "Rakoto",
+        "prenom": "Jean",
+        "pseudo": "rakoto_dev",
+        "age": 25,
+        "niveau": "I",
+        "pays": "Madagascar",
+        "sexe": "M",
+        "password": "motdepasse123",
+        "password_confirm": "motdepasse123"
+    }
+
+POST   /api/auth/connexion/
+  → Se connecter et récupérer les tokens JWT
+  → Body : {
+        "email": "dev@example.com",
+        "password": "motdepasse123"
+    }
+
+POST   /api/auth/deconnexion/
+  → Se déconnecter et invalider le refresh token
+  → Body : {
+        "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    }
+  → Requiert : token JWT dans le header Authorization
+
+GET    /api/auth/profil/
+  → Récupérer les infos du développeur connecté
+  → Requiert : token JWT dans le header Authorization
+
+PUT    /api/auth/profil/
+  → Modifier les infos du développeur connecté
+  → Body (tous les champs sont optionnels) : {
+        "nom": "Rakoto",
+        "pseudo": "nouveau_pseudo",
+        "pays": "France"
+    }
+  → Requiert : token JWT dans le header Authorization
+
+POST   /api/auth/mot-de-passe-oublie/
+  → Envoyer un email de réinitialisation de mot de passe
+  → Body : {
+        "email": "dev@example.com"
+    }
+
+POST   /api/auth/reinitialisation-mot-de-passe/<uidb64>/<token>/
+  → Réinitialiser le mot de passe via le lien reçu par email
+  → Exemple : /api/auth/reinitialisation-mot-de-passe/ZWl6cmFo/abc123token/
+  → Body : {
+        "password": "nouveaumotdepasse123"
+    }
+
+----------------------------------------
+  OAUTH (connexion sociale)
+----------------------------------------
+
+GET    /social-auth/login/google-oauth2/
+  → Rediriger vers Google pour connexion/inscription OAuth
+
+GET    /social-auth/login/github/
+  → Rediriger vers GitHub pour connexion/inscription OAuth
+
+----------------------------------------
+  NOTE
+----------------------------------------
+
+Pour les endpoints qui requièrent une authentification,
+ajouter dans le header de la requête :
+  Authorization: Bearer <access_token>
+
+Les tokens JWT ont une durée de vie de :
+  - Access token  : 30 minutes
+  - Refresh token : 7 jours
+
+Les autres APIs (Forum, Jobs, Groups, Learning,
+Messaging, Moderation) seront ajoutées ici
+au fur et à mesure de leur développement.
