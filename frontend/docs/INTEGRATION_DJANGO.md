@@ -49,3 +49,20 @@ Prévoir des états chargement/vide/erreur/succès, empêcher les doubles envois
 Pour les messages temps réel, convenir d’un WebSocket (par exemple via l’infrastructure choisie par le backend) ou d’un polling initial. Une interface de chat locale n’envoie actuellement rien à un autre utilisateur.
 
 Pour les fichiers : envoyer un `FormData` ; le client HTTP évite alors de fixer `Content-Type` afin que le navigateur génère la boundary multipart. Valider côté Django taille, type, droits et stockage. La limite locale de 5 Mo du prototype n’est pas une protection serveur.
+
+## Évolution des interfaces — 28 octobre 2026
+
+Les écrans ont changé ; voici les champs et règles à confirmer avant de les brancher.
+
+| Sujet | Contrat à convenir |
+| --- | --- |
+| Votes | Proposition `PUT /api/posts/{id}/rating/` avec `{ "score": 1..5 }`. Le serveur détermine l’utilisateur connecté, impose un seul vote par utilisateur/publication et renvoie `average`, `count`, `my_rating`. Une modification ne doit pas augmenter le nombre d’avis. |
+| Publications | `published_at` est défini par le serveur, non par le navigateur ; `title`, `category` et `collaboration_open` deviennent utiles. Définir les catégories Projet/Découverte/Question et les droits de modification. |
+| Pays | Préférer un code ISO alpha-2 stable (`MG`, `SN`, etc.) et un nom affichable, plutôt qu’un emoji. Les drapeaux du frontend sont locaux. |
+| Profil | `role`, `bio`, `level`, `portfolio_url` facultatif, photo et compétences. Une compétence peut porter un identifiant, un nom et une référence d’icône. Le serveur valide aussi URL et fichiers. |
+| Identité | Utiliser les identifiants d’utilisateurs, pas leur nom affiché, pour relier profils, publications et conversations. Les statistiques doivent être calculées pour cet identifiant. |
+| Apprentissage | Arborescence domaine/parcours/fiche. Les fiches locales sont une première base ; le backend doit stocker progression et tentatives si elles doivent suivre l’utilisateur entre appareils. |
+| Messagerie | Conversations typées privée/groupe, identifiants stables, participants et contrôle d’adhésion. La catégorie Groupes est intégrée à Messagerie dans le frontend, sans supprimer le modèle métier Groupe. |
+| OAuth | Seulement Google et GitHub dans l’interface. Confirmer les routes d’autorisation et de callback ; aucun échange OAuth n’est actuellement déclenché. |
+
+Ne pas utiliser la moyenne locale de la démo comme valeur fiable d’un vote réel. Les vérifications du navigateur ne remplacent pas l’unicité, les permissions et les contrôles de taille côté Django. Le portfolio ne doit pas être récupéré côté serveur sans une politique explicite ; son affichage est aujourd’hui un simple lien validé, ouvert par l’utilisateur.

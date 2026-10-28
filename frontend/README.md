@@ -1,91 +1,90 @@
 # DevAfrica Connect — frontend du hackathon
 
- Le point d’entrée est ce dossier `frontend`, celui qui contient `package.json`.
+Version des interfaces : 28 octobre 2026.
+
+Le projet reprend les maquettes bleu nuit/cyan de l’accueil et de l’authentification, avec un nouvel espace communautaire à menu bleu vertical, des profils translucides et un catalogue d’apprentissage à cartes colorées.
 
 ## Démarrer dans VS Code sous Windows
 
-2. Dans VS Code : **Fichier → Ouvrir le dossier**, sélectionner `frontend`.
-3. Ouvrir **Terminal → Nouveau terminal**. Vérifier que le terminal se trouve dans `frontend`.
-4. Vérifier Node : `node -v`. Le projet a été vérifié ici avec Node 24.22.1. Utiliser une version Node compatible avec les contraintes de Vite dans le lockfile (Node 22.12+ ou 24 LTS).
-5. Exécuter `npm ci`. Cela installe exactement les versions de `package-lock.json`.
-6. Exécuter `npm run dev` et laisser le terminal ouvert.
-7. Ouvrir **l’adresse affichée dans le terminal**, habituellement http://localhost:5173. Si le port est occupé, Vite peut afficher 5174.
+1. Conserver une copie de l’ancien projet.
+2. Extraire le ZIP et ouvrir dans VS Code le dossier `frontend` **qui contient `package.json`**.
+3. Ouvrir **Terminal → Nouveau terminal**.
+4. Installer les dépendances, puis lancer le serveur :
 
-Si PowerShell bloque `npm.ps1`, employer `npm.cmd ci`, puis `npm run dev`, ou choisir comme terminal dans VS Code. Il n’est pas nécessaire de modifier la politique de sécurité Windows.
-
-Ne pas ouvrir directement `index.html` par double-clic : les fichiers React doivent être servis par Vite.
-
-## Ce que font les outils
-
-| Outil | Son rôle dans notre projet |
-| --- | --- |
-| Node.js et npm | Node exécute les outils de développement ; npm installe les paquets et lance les commandes. |
-| React | Assemble l’interface avec des composants et actualise l’affichage quand les données changent. |
-| TypeScript | Ajoute les types à JavaScript pour détecter certaines erreurs avant l’exécution. Les composants portent l’extension `.tsx`. |
-| Vite | Lance le serveur local et construit le dossier final `dist`. |
-| Tailwind CSS | Fournit des classes CSS utilitaires. Le projet utilise Tailwind **4.3.3** avec le plugin Vite ; beaucoup de styles de la maquette sont écrits en CSS classique pour contrôler les formes. |
-| Git | Conserve l’historique du code et permet de travailler à plusieurs. Il n’est pas nécessaire pour simplement lancer cette archive. |
-| Django | Le serveur : comptes, validations, base de données, permissions et API. |
-
-`npm list tailwindcss` affiche la version installée. `package.json` contient une plage de versions (par exemple `^4.3.3`), `package-lock.json` fixe les versions installées par `npm ci`.
-
-## Première correction : l’écran blanc
-
-La compilation initiale échouait sur :
-
-```text
-Module 'lucide-react' has no exported member 'Github'.
+```bash
+npm ci
+npm run dev
 ```
 
-Le composant importait une icône absente de la version installée. L’import est remplacé par un petit composant SVG local `src/components/GithubIcon.tsx`. Un import de module invalide peut empêcher React de démarrer et laisser l’écran blanc. C’est une erreur confirmée dans l’archive ; d’autres problèmes propres à ton ordinateur doivent être vérifiés avec la console si nécessaire.
+Ouvrir l’adresse affichée dans le terminal, habituellement `http://localhost:5173`. Garder le terminal ouvert. Ne pas ouvrir `index.html` par double-clic.
 
- installer les dépendances avec `npm ci` sur chaque machine.
+Si PowerShell bloque `npm.ps1`, utiliser `npm.cmd ci` puis `npm.cmd run dev`, ou choisir **Command Prompt** comme terminal VS Code. Pas besoin de modifier la sécurité Windows.
 
-## Explorer l’application
+Le projet a été vérifié avec Node 24.22.1. `node -v` affiche ta version. `node_modules` est volontairement absent du ZIP ; `npm ci` installe les versions du lockfile sur chaque machine. Aucun nouveau package applicatif n’est nécessaire pour ces interfaces.
 
-- L’accueil conserve les images fournies, la palette bleu nuit/cyan, les cartes de modules et les grandes formes arrondies.
-- Les boutons Connexion et Inscription ouvrent les formulaires. « Mot de passe oublié » ouvre un formulaire dédié.
-- Les URL utilisent `#login`, `#signup`, `#workspace`, etc. Le bouton Retour du navigateur fonctionne entre ces pages. Les onglets internes de l’espace utilisent un état React local ; ils ne créent pas tous une entrée dans l’historique.
-- Sur mobile, ouvrir le menu de l’accueil. Dans l’espace communautaire, faire défiler horizontalement la barre des modules.
+## Comprendre les outils
 
-**Important : aucun vrai compte n’est créé. Les formulaires d’authentification valident l’interface, puis affichent un message.** La démo sans compte est volontaire et ne constitue pas une authentification.
+| Outil | Son rôle |
+| --- | --- |
+| VS Code | Éditeur des fichiers du projet. |
+| Node.js / npm | Exécution des outils, installation des paquets et commandes. |
+| React | Assemblage de composants, mise à jour de l’écran quand les données changent. |
+| TypeScript | Types ajoutés à JavaScript pour détecter des erreurs avant l’exécution ; composants en `.tsx`. |
+| Vite | Serveur local et construction du site final dans `dist/`. |
+| Tailwind CSS | Classes CSS utilitaires, version installée 4.3.3 ; les formes spécifiques des maquettes utilisent aussi du CSS classique. |
+| Git | Historique du code et travail en équipe ; indépendant du lancement local. |
+| Django | Backend de ton coéquipier : comptes, validations, permissions et base de données. |
 
-## État réel des modules
+Pour connaître Tailwind : `npm list tailwindcss`. Une plage dans `package.json` indique les versions autorisées ; `package-lock.json` fixe celles installées par `npm ci`.
 
-| Module | Fonctionne dans ce frontend | À connecter ou compléter avec Django |
+## Explorer les interfaces
+
+- Depuis l’accueil, ouvrir les cartes des modules ou « Explorer la démonstration des 7 modules ».
+- Dans l’espace, le menu bleu passe de la version avec texte à une version avec icônes. Sur mobile, le bouton en haut à gauche ouvre le tiroir.
+- **Messagerie** regroupe les conversations privées et les groupes.
+- **Mon profil** est une page de présentation. « Modifier mon profil » ouvre une autre page.
+- **Apprentissage** propose les cinq domaines, des sous-parcours et une recherche globale.
+- Les projets et découvertes de **Communauté** peuvent recevoir une note de 1 à 5 étoiles. Une seconde note remplace la précédente.
+
+Lire `docs/NOUVELLES_INTERFACES.md` pour le détail de toutes les nouvelles directives.
+
+## Ce qui fonctionne et ce qui reste à brancher
+
+| Module | Dans le frontend | À raccorder ou compléter avec Django |
 | --- | --- | --- |
-| Authentification | Connexion, inscription, validation visuelle, afficher/masquer le mot de passe, récupération en maquette | Création de compte, session, déconnexion réelle, validation serveur, envoi du lien de réinitialisation, OAuth. |
-| Profil | Édition du nom, pays, niveau, compétences, présentation et expériences | Profil partagé, photo, modèles structurés pour expériences, diplômes et certificats. |
-| Communauté | Publication texte/projet, filtre de catégorie, j’aime, commentaires, signalement local | Pagination, pièces jointes de projets, modération, permissions, signalements d’utilisateurs et groupes. |
-| Apprentissage | Trois exercices, correction et progression persistante locale | Cours/exercices du serveur, historique, compétences, véritable assistance IA. |
-| Offres | Recherche par texte/pays/compétence, filtre de mode de travail, création, candidature simulée | Contrat métier complet, durée CDD, date limite, CV, suivi et décisions des candidatures. |
-| Groupes et discussion | Recherche, création, rejoindre/quitter, discussion locale | Rôles, membres, capacité et règles de modération, messages partagés. |
-| Messagerie | Conversations locales, saisie et historique, sélection d’une pièce jointe ≤ 5 Mo | Envoi/réception réels, fichiers stockés côté serveur, audio, statut et notifications, temps réel. |
+| Authentification | Connexion/inscription/récupération en formulaire ; Google et GitHub visibles | Comptes, sessions, déconnexion, e-mails et OAuth. |
+| Profil | Vue séparée, édition, photo locale, compétences avec icônes et portfolio facultatif | Utilisateur identifié, photo distante, expériences et compétences structurées. |
+| Communauté | Publications, collaboration, commentaires, notes, drapeaux, dates, signalements locaux | Notes partagées, pagination, droits, modération et pièces jointes de projet. |
+| Apprentissage | 5 domaines, sous-parcours, 47 fiches introductives et progression locale | Véritables contenus longs, exercices serveur, synchronisation et IA. |
+| Offres | Recherche, filtre, création et candidature simulée | CV, état des candidatures, durée CDD, date limite et employeurs. |
+| Groupes | Dans Messagerie : recherche, création, rejoindre/quitter, discussion | Membres réels, rôles, droits et messages partagés. |
+| Messagerie | Conversations privées et groupes, historique, sélection de fichier | Transmission des messages, stockage de fichiers et temps réel. |
 
-La pièce jointe conserve **seulement son nom** : aucun fichier n’est envoyé, et aucun téléchargement n’est disponible. Les likes, offres, profils et messages sont des exemples locaux. Les réponses de l’assistant sont prédéfinies et annoncées comme telles.
+Aucun compte réel n’est créé. Les formulaires d’authentification affichent un message de démonstration. Les boutons Google/GitHub restent désactivés en attendant OAuth. L’option « Se souvenir de moi » est actuellement visuelle.
 
-## Comprendre le code, dans cet ordre
+Les pièces jointes de messagerie conservent uniquement leur **nom**, jamais leurs octets. Limite de sélection locale : 5 Mo. Les réponses de l’assistant sont prédéfinies. Les données locales ne sont visibles que sur ce navigateur.
 
-1. `index.html` fournit `<div id="root">`, le point où React s’affiche.
-2. `src/main.tsx` charge le CSS et monte l’application dans cette div.
-3. `src/App.tsx` contient l’accueil, la marque, les formulaires et la navigation principale.
-4. `src/components/Workspace.tsx` contient les premiers parcours des sept modules.
-5. `src/lib/storage.ts` conserve les exemples via `localStorage`, avec le préfixe `devafrica:`. Pas de mot de passe ni de jeton d’authentification enregistré.
-6. `src/index.css` définit les couleurs, les grilles, les vagues, les points de rupture et les animations. Chercher les commentaires numérotés.
-7. `src/lib/api.ts` est un client HTTP préparé mais **pas encore appelé par les écrans**.
-8. `vite.config.ts` charge React/Tailwind et prépare le proxy `/api` vers Django.
+## Lire le code dans cet ordre
 
-Exemple : dans React, `useState` conserve une valeur locale ; une fonction comme `setPostText` change cette valeur et React actualise le composant. `onSubmit` reçoit l’envoi d’un formulaire. `event.preventDefault()` empêche le rechargement HTML classique.
+1. `index.html` fournit `<div id="root">`, où React s’affiche.
+2. `src/main.tsx` charge le CSS, puis l’application.
+3. `src/App.tsx` contient l’accueil, les formulaires et la navigation par adresse `#...`.
+4. `src/components/Workspace.tsx` compose le menu et le module actif.
+5. `src/components/modules/` contient un fichier par module pour faciliter tes modifications.
+6. `src/data/learning.ts` décrit les catégories, parcours et fiches ; tu peux y ajouter du contenu.
+7. `src/workspace.css` définit les nouvelles interfaces. `src/index.css` garde l’accueil et l’authentification.
+8. `src/lib/storage.ts` conserve les exemples avec `localStorage`. Aucun mot de passe ni jeton n’y est enregistré.
+9. `src/lib/api.ts` est préparé pour l’API mais n’est pas encore appelé par les écrans de démo.
 
-Le CSS adapte les colonnes selon la largeur. `@media (prefers-reduced-motion: reduce)` désactive les animations pour les personnes qui ont réduit les mouvements sur leur appareil.
+`useState` conserve une valeur d’interface. Un appel comme `setQuery` la modifie et React actualise l’affichage. Un composant réutilisable comme `CountryFlag` évite de recopier la logique dans chaque module.
 
-## Réinitialiser les données de démo
+La navigation par hash, par exemple `#workspace/profil/modifier`, permet de recharger une page et d’utiliser Retour/Avancer sans ajouter de dépendance de routage.
 
-Dans les outils du navigateur (F12 → Application → Local Storage), supprimer uniquement les clés commençant par `devafrica:`. Cela efface tes publications et profils de démonstration sur cet appareil. Aucun serveur n’est concerné. Les exemples prédéfinis reviennent au rechargement.
+Les animations sont désactivées si l’appareil demande une réduction des mouvements. Les fenêtres de création et le menu mobile peuvent être fermés avec Échap et conservent le focus au clavier dans leur contenu.
 
-## Avec ton coéquipier Django
+## Origine de l’écran blanc initial
 
-Lire `docs/INTEGRATION_DJANGO.md` ensemble avant de remplacer le mode démo. Il faut convenir des routes, champs, erreurs et méthode d’authentification. Le frontend n’invente pas une API déjà disponible.
+Le code importait `Github` depuis `lucide-react`, alors que cet export n’existe pas dans la version installée. Cet échec de module empêchait React de démarrer. `src/components/GithubIcon.tsx` remplace cet import par un SVG local. La protection `ErrorBoundary` traite les erreurs React à l’exécution, mais ne peut pas réparer un import incorrect : compiler reste nécessaire.
 
 ## Commandes utiles
 
@@ -98,34 +97,34 @@ npm run preview
 npm list tailwindcss
 ```
 
-`npm run build` vérifie TypeScript et produit `dist/`. `npm run preview` sert cette version construite pour la vérifier ; ce n’est pas le serveur Django.
+`npm run build` vérifie TypeScript puis construit `dist/`. `npm run preview` sert la version construite pour contrôle. Le proxy local `/api` de Vite vise `http://127.0.0.1:8000` pour un futur backend Django.
 
-Si l’écran est encore blanc : contrôler le terminal Vite, puis F12 → Console et Network ; noter la première erreur rouge. Vérifier que le dossier ouvert est le bon, que `npm ci` a terminé sans erreur et que l’URL provient du terminal. En dernier recours, arrêter Vite avec Ctrl+C, supprimer seulement `node_modules/.vite`, puis relancer.
+Si l’écran reste blanc sur ton PC, lire la première erreur du terminal Vite puis celle de **F12 → Console**. Vérifier le dossier ouvert et l’adresse utilisée. Le port peut devenir 5174 si 5173 est occupé.
 
-## Git : premiers pas prudents
+## Tes anciennes données
 
-Commencer une fois le projet lancé. Ne pas créer un nouveau dépôt si le dossier fait déjà partie de celui de l’équipe.
+Les données locales de la première version sont reprises, avec des valeurs par défaut pour les nouveaux champs. Un ancien post sans date ne reçoit pas de date inventée. Les anciens cœurs ne deviennent pas artificiellement des notes. Les anciens groupes restent accessibles dans Messagerie.
+
+Pour remettre les exemples à zéro : F12 → Application → Local Storage, supprimer uniquement les clés commençant par `devafrica:`. Cela efface les données locales correspondantes, donc conserver ce que tu veux garder avant cette action.
+
+## Travailler avec ton coéquipier
+
+Lire `docs/INTEGRATION_DJANGO.md` ensemble, confirmer les URL et les champs puis brancher d’abord authentification/profil, ensuite les publications/notes, groupes/messages et offres.
+
+Si le dossier est déjà un dépôt de l’équipe, commencer par `git status`, puis travailler dans une branche :
 
 ```bash
-git status
+git switch -c frontend/nouvelles-interfaces
+git add src public docs README.md
+git commit -m "Adapte les profils, notes, messagerie et parcours d'apprentissage"
 ```
 
-Si Git répond que ce dossier n’est pas un dépôt, décider avec l’équipe s’il faut cloner son dépôt existant ou créer le dépôt partagé. Pour un dépôt déjà existant, créer une branche de travail :
+Un commit est un point d’historique local. `git push` demande un dépôt distant configuré et les droits correspondants. Ne pas créer un dépôt imbriqué si l’équipe en possède déjà un. Ne jamais versionner `node_modules`, un secret ou un `.env` sensible. Les variables `VITE_` sont publiques.
 
-```bash
-git switch -c frontend/devafrica-ui
-git add src public index.html vite.config.ts package.json package-lock.json .env.example README.md docs
-git commit -m "Corrige le démarrage et ajoute les parcours frontend"
-```
+## Documentation fournie
 
-Un commit est un point d’historique local. L’envoi vers GitHub se fait avec `git push` une fois le dépôt distant et les droits configurés. Ne jamais versionner `node_modules`, les mots de passe ou un fichier `.env` contenant des secrets. Les variables `VITE_` sont publiques dans le navigateur.
-
-## Prochaines étapes
-
-1. Vérifier ces interfaces sur vos appareils et comparer l’accueil et les formulaires aux maquettes.
-2. Confirmer le contrat API avec le backend, puis brancher inscription/connexion et profil.
-3. Brancher publications/commentaires, offres/candidatures, groupes et messagerie.
-4. Ajouter les fichiers réels, la modération et la progression côté serveur.
-5. Préparer un parcours de démonstration : créer un compte → compléter le profil → publier un projet → rejoindre un groupe → postuler.
-
-Cette livraison est une base frontend interactive. Les maquettes sont approchées avec les visuels disponibles ; une identité parfaite au pixel nécessite une validation de vos captures et des dimensions cibles.
+- `docs/NOUVELLES_INTERFACES.md` : nouvelles directives et fonctionnement.
+- `docs/CHANGEMENTS.md` : changements fichier par fichier.
+- `docs/INTEGRATION_DJANGO.md` : contrat proposé à confirmer avec le backend.
+- `docs/VERIFICATIONS.md` : tests effectués et limites.
+- `docs/ASSETS.md` : origine des icônes et drapeaux.

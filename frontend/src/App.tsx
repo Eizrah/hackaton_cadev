@@ -66,9 +66,10 @@ const features: Feature[] = [
       "Découvrez des opportunités et collaborez sur des projets à travers le continent.",
   },
   {
-    id: "groupes",
-    title: "Groupes",
-    description: "Rejoignez des groupes par technologie ou centres d’intérêt",
+    id: "messages",
+    title: "Messagerie",
+    description:
+      "Conversations privées et groupes par technologie ou centres d’intérêt",
     Icon: MessagesSquare,
     tint: "purple",
     details:
@@ -118,7 +119,7 @@ function Header({
     { label: "Communauté", action: () => onChooseFeature("communaute") },
     { label: "Apprentissage", action: () => onChooseFeature("apprentissage") },
     { label: "Offres", action: () => onChooseFeature("offres") },
-    { label: "Groupes", action: () => onChooseFeature("groupes") },
+    { label: "Messagerie", action: () => onChooseFeature("messages") },
     { label: "IA Assistant", action: () => onChooseFeature("ia") },
   ];
   return (
@@ -546,13 +547,6 @@ function Auth({
               >
                 <Github size={23} />
               </button>
-              <button
-                disabled
-                title="Connexion LinkedIn à configurer"
-                aria-label="LinkedIn, bientôt disponible"
-              >
-                <span className="linkedin-in">in</span>
-              </button>
             </div>
             <p className="auth-switch">
               {signup ? "Déjà un compte ?" : "Pas encore de compte ?"}{" "}
@@ -595,8 +589,10 @@ export default function App() {
   if (route === "workspace" || route.startsWith("workspace/"))
     return (
       <Workspace
-        key={route}
-        initialTab={route.split("/")[1] || "communaute"}
+        route={route.split("/").slice(1).join("/") || "communaute"}
+        onNavigate={(path) => {
+          window.location.hash = "workspace/" + path;
+        }}
         onHome={() => navigate("home")}
       />
     );
