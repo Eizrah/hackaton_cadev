@@ -4,24 +4,44 @@
 
 Base URL : http://localhost:8000
 
-----------------------------------------
+Pour les endpoints qui requièrent une authentification,
+ajouter dans le header de la requête :
+  Authorization: Bearer <access_token>
+
+Les tokens JWT ont une durée de vie de :
+  - Access token  : 30 minutes
+  - Refresh token : 7 jours
+
+========================================
   AUTHENTIFICATION  (/api/auth/)
-----------------------------------------
+========================================
 
 POST   /api/auth/inscription/
   → Créer un nouveau compte développeur
+  → Type : Multipart Form (si photo) ou JSON (sans photo)
   → Body : {
         "email": "dev@example.com",
         "nom": "Rakoto",
-        "prenom": "Jean",
+        "prenom": "Jean",           (optionnel)
         "pseudo": "rakoto_dev",
         "age": 25,
-        "niveau": "I",
+        "niveau": "D/I/A",
         "pays": "Madagascar",
-        "sexe": "M",
+        "sexe": "M/F",
         "password": "motdepasse123",
-        "password_confirm": "motdepasse123"
+        "password_confirm": "motdepasse123",
+        "photoprofil": [fichier],   (optionnel)
+        "experiences": [            (optionnel)
+            {
+                "nom_poste": "Développeur Frontend",
+                "description": "Développement React",
+                "nbr_annee_exp": 2,
+                "diplome": "Licence Informatique",  (optionnel)
+                "certificat": null                  (optionnel)
+            }
+        ]
     }
+  → Rate limit : 5 tentatives/heure par IP
 
 POST   /api/auth/connexion/
   → Se connecter et récupérer les tokens JWT
@@ -29,32 +49,47 @@ POST   /api/auth/connexion/
         "email": "dev@example.com",
         "password": "motdepasse123"
     }
+  → Rate limit : 10 tentatives/heure par IP
 
 POST   /api/auth/deconnexion/
   → Se déconnecter et invalider le refresh token
+  → Requiert : token JWT dans le header Authorization
   → Body : {
         "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
     }
-  → Requiert : token JWT dans le header Authorization
 
 GET    /api/auth/profil/
   → Récupérer les infos du développeur connecté
   → Requiert : token JWT dans le header Authorization
 
 PUT    /api/auth/profil/
-  → Modifier les infos du développeur connecté
-  → Body (tous les champs sont optionnels) : {
-        "nom": "Rakoto",
-        "pseudo": "nouveau_pseudo",
-        "pays": "France"
-    }
+  → Modifier les infos du développeur connecté (partiel)
   → Requiert : token JWT dans le header Authorization
+  → Type : Multipart Form (si photo) ou JSON
+  → Body (tous les champs sont optionnels) : {
+        "pseudo": "nouveau_pseudo",
+        "pays": "France",
+        "photoprofil": [fichier]
+    }
+
+DELETE /api/auth/supprimer-compte/
+  → Supprimer son compte et sa photo de profil
+  → Requiert : token JWT dans le header Authorization
+  → Body (optionnel) : {
+        "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    }
+
+GET    /api/auth/recherche/?q=<mot_cle>
+  → Rechercher un développeur par pseudo, nom ou prénom
+  → Requiert : token JWT dans le header Authorization
+  → Exemple : /api/auth/recherche/?q=rakoto
 
 POST   /api/auth/mot-de-passe-oublie/
   → Envoyer un email de réinitialisation de mot de passe
   → Body : {
         "email": "dev@example.com"
     }
+  → Rate limit : 3 tentatives/heure par IP
 
 POST   /api/auth/reinitialisation-mot-de-passe/<uidb64>/<token>/
   → Réinitialiser le mot de passe via le lien reçu par email
@@ -73,18 +108,152 @@ GET    /social-auth/login/google-oauth2/
 GET    /social-auth/login/github/
   → Rediriger vers GitHub pour connexion/inscription OAuth
 
-----------------------------------------
-  NOTE
-----------------------------------------
+========================================
+  FORUM  (/api/forum/)
+========================================
 
-Pour les endpoints qui requièrent une authentification,
-ajouter dans le header de la requête :
-  Authorization: Bearer <access_token>
+GET    /api/forum/posts/
+  → Liste des posts validés (feu_vert=True), du plus récent au plus ancien
+  → Requiert : token JWT
 
-Les tokens JWT ont une durée de vie de :
-  - Access token  : 30 minutes
-  - Refresh token : 7 jours
+POST   /api/forum/posts/creer/
+  → Créer un nouveau post (en attente de validation IA)
+  → Requiert : token JWT
+  → Type : Multipart Form (si fichier) ou JSON
+  → Body : {
+        "description": "Contenu du post...",
+        "fichier": [fichier],   (optionnel — PDF, ZIP, DOCX max 20Mo)
+        "lien": "https://..."   (optionnel)
+    }
 
-Les autres APIs (Forum, Jobs, Groups, Learning,
-Messaging, Moderation) seront ajoutées ici
-au fur et à mesure de leur développement.
+GET    /api/forum/posts/recherche/?q=<mot_cle>
+  → Rechercher un post par mots clés dans la description
+  → Requiert : token JWT
+  → Exemple : /api/forum/posts/recherche/?q=python
+
+GET    /api/forum/posts/<id>/
+  → Détail d'un post validé
+  → Requiert : token JWT
+
+PUT    /api/forum/posts/<id>/
+  → Modifier son post (repassera en attente de validation IA)
+  → Requiert : token JWT + être le créateur
+  → Body (partiel) : {
+        "description": "Nouveau contenu..."
+    }
+
+DELETE /api/forum/posts/<id>/supprimer/
+  → Supprimer son post
+  → Requiert : token JWT + être le créateur
+
+GET    /api/forum/posts/<id>/commentaires/
+  → Liste des commentaires d'un post
+  → Requiert : token JWT
+
+POST   /api/forum/posts/<id>/commentaires/
+  → Ajouter un commentaire à un post
+  → Requiert : token JWT
+  → Body : {
+        "commentaire": "Super post !"
+    }
+
+PUT    /api/forum/posts/<id>/commentaires/<id_commentaire>/
+  → Modifier son commentaire
+  → Requiert : token JWT + être le créateur
+  → Body : {
+        "commentaire": "Commentaire modifié"
+    }
+
+DELETE /api/forum/posts/<id>/commentaires/<id_commentaire>/
+  → Supprimer son commentaire
+  → Requiert : token JWT + être le créateur
+
+POST   /api/forum/posts/<id>/noter/
+  → Liker ou unliker un post (toggle automatique)
+  → Requiert : token JWT
+  → Pas de body nécessaire
+  → Retourne le nouveau nombre de notes
+
+========================================
+  JOBS  (/api/jobs/)
+========================================
+
+GET    /api/jobs/offres/
+  → Liste des offres validées, triées par deadline
+  → Requiert : token JWT
+
+POST   /api/jobs/offres/creer/
+  → Créer une offre d'emploi (en attente de validation IA)
+  → Requiert : token JWT
+  → Body : {
+        "description": "Description du poste...",
+        "nom_poste": "Développeur React",
+        "localisation": "Antananarivo",
+        "type_contrat": "CDI/CDD",
+        "duree": "P6M",             (obligatoire si CDD — format ISO 8601)
+        "competence_requise": "React, TypeScript",
+        "type_travail": "R/S/H",    (Remote/Sur site/Hybride)
+        "deadline": "2026-12-31",
+        "fichier": [fichier],       (optionnel)
+        "lien": "https://..."       (optionnel)
+    }
+
+GET    /api/jobs/offres/recherche/?q=<mot_cle>
+  → Rechercher une offre par nom_poste, localisation ou compétence
+  → Requiert : token JWT
+  → Exemple : /api/jobs/offres/recherche/?q=react
+
+GET    /api/jobs/offres/<id>/
+  → Détail d'une offre validée
+  → Requiert : token JWT
+
+PUT    /api/jobs/offres/<id>/
+  → Modifier son offre (repassera en attente de validation IA)
+  → Requiert : token JWT + être le créateur
+  → Body (partiel) : {
+        "nom_poste": "Nouveau titre"
+    }
+
+DELETE /api/jobs/offres/<id>/supprimer/
+  → Supprimer son offre
+  → Requiert : token JWT + être le créateur
+
+POST   /api/jobs/offres/<id>/postuler/
+  → Postuler à une offre d'emploi
+  → Requiert : token JWT
+  → Type : Multipart Form (si CV) ou JSON
+  → Body : {
+        "lettre_motivation": "Je suis motivé...",   (optionnel)
+        "pj": [fichier CV]                          (optionnel — PDF, DOCX max 20Mo)
+    }
+
+GET    /api/jobs/offres/<id>/candidatures/
+  → Voir les candidatures reçues pour son offre (recruteur)
+  → Requiert : token JWT + être le créateur de l'offre
+  → Filtre optionnel : ?etat=accepte / ?etat=refuse / ?etat=en_attente
+
+PUT    /api/jobs/offres/<id>/candidatures/<id_candidature>/
+  → Accepter ou refuser une candidature (envoie un email au candidat)
+  → Requiert : token JWT + être le créateur de l'offre
+  → Body : {
+        "etat": "accepte" ou "refuse"
+    }
+
+GET    /api/jobs/mes-candidatures/
+  → Voir toutes ses candidatures envoyées
+  → Requiert : token JWT
+  → Filtre optionnel : ?etat=accepte / ?etat=refuse / ?etat=en_attente
+  → Exemples :
+      /api/jobs/mes-candidatures/
+      /api/jobs/mes-candidatures/?etat=accepte
+      /api/jobs/mes-candidatures/?etat=en_attente
+
+========================================
+  À VENIR
+========================================
+
+  - Groups  : création et gestion des groupes de discussion
+  - Messaging : messages privés et de groupe
+  - Learning  : compétences et apprentissage
+  - Moderation : signalements
+

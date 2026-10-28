@@ -12,6 +12,7 @@ from django.utils.encoding import force_bytes, force_str
 from .serializers import InscriptionSerializer, ConnexionSerializer, DevelopperSerializer
 from .models import Developper
 import os
+from django.db.models import Q
 
 class InscriptionView(APIView):
     permission_classes = [AllowAny]
@@ -157,3 +158,26 @@ class SupprimerCompteView(APIView):
         # qui supprimera la photo de profil du disque
         dev.delete()
         return Response({'message': 'Compte supprimé avec succès.'}, status=status.HTTP_200_OK)
+
+class RechercheDeveloppeurView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = request.query_params.get('q', '')
+
+        if not query:
+            return Response(
+                {'erreur': 'Veuillez fournir un mot clé de recherche.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # cherche dans pseudo, nom et prenom
+        devs = Developper.objects.filter(
+            Q(pseudo__icontains=query) |
+            Q(nom__icontains=query) |
+            Q(prenom__icontains=query),
+            banne=False
+        )
+
+        serializer = DevelopperSerializer(devs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

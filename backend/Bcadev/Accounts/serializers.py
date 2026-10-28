@@ -1,17 +1,26 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from .models import Developper
+from .models import Developper,Experience
+
+class ExperienceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Experience
+        fields = ['nom_poste', 'description', 'nbr_annee_exp', 'diplome', 'certificat']
 
 class InscriptionSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
+    experiences = ExperienceSerializer(many=True, required=False)
 
     class Meta:
         model = Developper
         fields = [
             'email', 'nom', 'prenom', 'pseudo', 'age',
-            'niveau', 'pays', 'sexe', 'password', 'password_confirm','photoprofil'
+            'niveau', 'pays', 'sexe', 'password', 'password_confirm',
+            'photoprofil', 'experiences'
         ]
+       
+         
 
     def validate(self, data):
         if data['password'] != data['password_confirm']:
@@ -31,12 +40,17 @@ class InscriptionSerializer(serializers.ModelSerializer):
 
 
     def create(self, validated_data):
+        experiences_data = validated_data.pop('experiences', [])
         validated_data.pop('password_confirm')
         password = validated_data.pop('password')
         dev = Developper(**validated_data)
         dev.set_password(password)  # hashage du mot de passe
         dev.save()
+        # on crée chaque expérience et on la lie au dev
+        for experience in experiences_data:
+            Experience.objects.create(developper=dev, **experience)
         return dev
+
 
 class ConnexionSerializer(serializers.Serializer):
     email = serializers.EmailField()
