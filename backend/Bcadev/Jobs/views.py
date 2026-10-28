@@ -5,6 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Offre_Emploi, Candidature
 from .serializers import OffreEmploiSerializer, OffreEmploiListSerializer, CandidatureSerializer
 from django.db.models import Q
+# import de Blocage pour filtrer les offres des devs bloqués
+from Accounts.models import Blocage
 
 class CreerOffreEmploiView(APIView):
     permission_classes = [IsAuthenticated]
@@ -40,7 +42,16 @@ class ListeOffreEmploiView(APIView):
     def get(self, request):
         # ne retourne que les offres validées par l'IA
         # triées par deadline la plus proche en premier
-        offres = Offre_Emploi.objects.filter(feu_vert=True).order_by('deadline')
+        # exclut les offres des devs bloqués par le dev connecté
+        devs_bloques = Blocage.objects.filter(
+            bloqueur=request.user
+        ).values_list('bloque', flat=True)
+
+        offres = Offre_Emploi.objects.filter(
+            feu_vert=True
+        ).exclude(
+            developper__in=devs_bloques
+        ).order_by('deadline')
         serializer = OffreEmploiListSerializer(offres, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 

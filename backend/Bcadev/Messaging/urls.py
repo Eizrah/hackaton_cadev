@@ -1,0 +1,18 @@
+from django.urls import path
+from .views import (
+    EnvoyerMessageView,
+    EnvoyerAudioView,
+    EnvoyerFichierView,
+    ConversationView,
+    ListeConversationsView,
+    SupprimerMessageView,
+)
+
+urlpatterns = [
+    path('conversations/', ListeConversationsView.as_view(), name='liste-conversations'),
+    path('envoyer/', EnvoyerMessageView.as_view(), name='envoyer-message'),
+    path('envoyer-audio/', EnvoyerAudioView.as_view(), name='envoyer-audio'),
+    path('envoyer-fichier/', EnvoyerFichierView.as_view(), name='envoyer-fichier'),
+    path('conversation/<str:email>/', ConversationView.as_view(), name='conversation'),
+    path('<uuid:id_message>/supprimer/', SupprimerMessageView.as_view(), name='supprimer-message'),
+]

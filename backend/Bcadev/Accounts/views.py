@@ -10,7 +10,8 @@ from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from .serializers import InscriptionSerializer, ConnexionSerializer, DevelopperSerializer
-from .models import Developper
+from Groups.models import Group
+from .models import Developper,Blocage, Sourdine
 import os
 from django.db.models import Q
 
@@ -181,3 +182,100 @@ class RechercheDeveloppeurView(APIView):
 
         serializer = DevelopperSerializer(devs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class BlocageView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, email):
+        # bloquer un dev
+        try:
+            dev_a_bloquer = Developper.objects.get(email=email)
+        except Developper.DoesNotExist:
+            return Response({'erreur': 'Développeur introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if dev_a_bloquer == request.user:
+            return Response({'erreur': 'Vous ne pouvez pas vous bloquer vous-même.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if Blocage.objects.filter(bloqueur=request.user, bloque=dev_a_bloquer).exists():
+            return Response({'erreur': 'Ce développeur est déjà bloqué.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        Blocage.objects.create(bloqueur=request.user, bloque=dev_a_bloquer)
+        return Response({'message': f'{dev_a_bloquer.pseudo} est bloqué.'}, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, email):
+        # débloquer un dev
+        try:
+            dev_a_debloquer = Developper.objects.get(email=email)
+        except Developper.DoesNotExist:
+            return Response({'erreur': 'Développeur introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            blocage = Blocage.objects.get(bloqueur=request.user, bloque=dev_a_debloquer)
+            blocage.delete()
+            return Response({'message': f'{dev_a_debloquer.pseudo} est débloqué.'}, status=status.HTTP_200_OK)
+        except Blocage.DoesNotExist:
+            return Response({'erreur': 'Ce développeur n\'est pas bloqué.'}, status=status.HTTP_404_NOT_FOUND)
+
+class SourdineView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # mettre en sourdine une personne ou un groupe
+        email = request.data.get('email')
+        id_group = request.data.get('id_group')
+
+        if not email and not id_group:
+            return Response(
+                {'erreur': 'Fournissez un email ou un id_group.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if email:
+            try:
+                dev = Developper.objects.get(email=email)
+            except Developper.DoesNotExist:
+                return Response({'erreur': 'Développeur introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+            if Sourdine.objects.filter(dev=request.user, dev_sourdine=dev).exists():
+                return Response({'erreur': 'Ce développeur est déjà en sourdine.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            Sourdine.objects.create(dev=request.user, dev_sourdine=dev)
+            return Response({'message': f'{dev.pseudo} mis en sourdine.'}, status=status.HTTP_201_CREATED)
+
+        if id_group:
+            try:
+                groupe = Group.objects.get(id_group=id_group)
+            except Group.DoesNotExist:
+                return Response({'erreur': 'Groupe introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+            if Sourdine.objects.filter(dev=request.user, groupe_sourdine=groupe).exists():
+                return Response({'erreur': 'Ce groupe est déjà en sourdine.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            Sourdine.objects.create(dev=request.user, groupe_sourdine=groupe)
+            return Response({'message': f'Groupe {groupe.nom} mis en sourdine.'}, status=status.HTTP_201_CREATED)
+
+    def delete(self, request):
+        # désactiver la sourdine
+        email = request.data.get('email')
+        id_group = request.data.get('id_group')
+
+        if email:
+            try:
+                dev = Developper.objects.get(email=email)
+                sourdine = Sourdine.objects.get(dev=request.user, dev_sourdine=dev)
+                sourdine.delete()
+                return Response({'message': f'{dev.pseudo} retiré de la sourdine.'}, status=status.HTTP_200_OK)
+            except (Developper.DoesNotExist, Sourdine.DoesNotExist):
+                return Response({'erreur': 'Sourdine introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if id_group:
+            try:
+                groupe = Group.objects.get(id_group=id_group)
+                sourdine = Sourdine.objects.get(dev=request.user, groupe_sourdine=groupe)
+                sourdine.delete()
+                return Response({'message': f'Groupe {groupe.nom} retiré de la sourdine.'}, status=status.HTTP_200_OK)
+            except (Group.DoesNotExist, Sourdine.DoesNotExist):
+                return Response({'erreur': 'Sourdine introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response({'erreur': 'Fournissez un email ou un id_group.'}, status=status.HTTP_400_BAD_REQUEST)

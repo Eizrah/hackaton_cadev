@@ -15,7 +15,9 @@ class Message(models.Model):
     envoyeur=models.ForeignKey('Accounts.Developper', on_delete=models.CASCADE, related_name='messages_envoyes')
     destinataire = models.ForeignKey('Accounts.Developper', on_delete=models.SET_NULL, null=True, blank=True, related_name='messages_recus')
     groupe = models.ForeignKey('Groups.Group', on_delete=models.SET_NULL, null=True, blank=True, related_name='messages_groupe')
+    message_parent=models.ForeignKey('self',on_delete=models.SET_NULL,null=True,blank=True,related_name='reponses')
     etat=models.CharField(max_length=10,choices=ETAT,default='en_cours')
+    supprime = models.BooleanField(default=False)
 
     class Meta:
         db_table='message'

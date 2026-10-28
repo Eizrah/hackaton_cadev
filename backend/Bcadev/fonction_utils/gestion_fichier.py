@@ -19,13 +19,13 @@ def getFichierPub(instance, filename):
 
 def getFichierMessage(instance, filename):
     if instance.message.groupe_id:
-        return f'groupe_files/{filename}'
-    return f'message_files/{filename}'
+        return f'groupe_files/{filename}'  # → media/groupe_files/
+    return f'message_files/{filename}'     # → media/message_files/
 
 def getAudioMessage(instance, filename):
     if instance.groupe_id:
-        return f'audio_groupe/{filename}'
-    return f'audio/{filename}'
+        return f'audio_groupe/{filename}'  # → media/audio_groupe/
+    return f'audio/{filename}'             # → media/audio/
 
 # ─── Validations ───────────────────────────────────────────────────
 

@@ -5,6 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Forum_post,Commentaire, Note
 from .serializers import ForumPostSerializer, ForumPostListSerializer, CommentaireSerializer
 from django.db.models import Q
+# import de Blocage pour filtrer les posts des devs bloqués
+from Accounts.models import Blocage
 
 class CreerForumPostView(APIView):
     permission_classes = [IsAuthenticated]
@@ -40,7 +42,16 @@ class ListeForumPostView(APIView):
     def get(self, request):
         # ne retourne que les posts validés par l'IA (feu_vert=True)
         # triés du plus récent au plus ancien
-        posts = Forum_post.objects.filter(feu_vert=True).order_by('-date_publication')
+        # exclut les posts des devs bloqués par le dev connecté
+        devs_bloques = Blocage.objects.filter(
+            bloqueur=request.user
+        ).values_list('bloque', flat=True)
+
+        posts = Forum_post.objects.filter(
+            feu_vert=True
+        ).exclude(
+            developper__in=devs_bloques
+        ).order_by('-date_publication')
         serializer = ForumPostListSerializer(posts, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 

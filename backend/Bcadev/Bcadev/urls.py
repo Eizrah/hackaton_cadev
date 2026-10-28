@@ -8,5 +8,8 @@ urlpatterns = [
     path('api/auth/', include('Accounts.urls')),
     path('api/forum/', include('Forum.urls')),
     path('api/jobs/',include('Jobs.urls')),
+    path('api/messaging/', include('Messaging.urls')),
+    path('api/groups/', include('Groups.urls')),
+
     path('social-auth/', include('social_django.urls', namespace='social')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

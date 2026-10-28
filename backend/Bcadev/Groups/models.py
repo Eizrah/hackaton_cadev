@@ -20,10 +20,11 @@ class Membre(models.Model):
     TYPE=[
         ('A','Admin'),
         ('M','Membre'),
+        ('MB','Moderateur')
     ]
     id_groupe=models.ForeignKey(Group,on_delete=models.CASCADE)
     id_personne=models.ForeignKey('Accounts.Developper',on_delete=models.CASCADE)
-    type=models.CharField(max_length=1,choices=TYPE,default='M')
+    type=models.CharField(max_length=2,choices=TYPE,default='M')
     date_adhesion=models.DateField(auto_now_add=True)
     
     class Meta:

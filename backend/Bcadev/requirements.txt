@@ -6,3 +6,4 @@ djangorestframework-simplejwt
 social-auth-app-django
 django-ratelimit
 Pillow
+mutagen

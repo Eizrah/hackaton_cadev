@@ -47,5 +47,52 @@ class Experience(models.Model):
         db_table='experience'
         
 
+class Blocage(models.Model):
+    # dev qui bloque
+    bloqueur = models.ForeignKey(
+        Developper,
+        on_delete=models.CASCADE,
+        related_name='blocages_effectues'
+    )
+    # dev bloqué
+    bloque = models.ForeignKey(
+        Developper,
+        on_delete=models.CASCADE,
+        related_name='blocages_recus'
+    )
+    date_blocage = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'blocage'
+        # un dev ne peut pas bloquer deux fois le même dev
+        unique_together = ('bloqueur', 'bloque')
+
+class Sourdine(models.Model):
+    dev = models.ForeignKey(
+        Developper,
+        on_delete=models.CASCADE,
+        related_name='sourdines'
+    )
+    # sourdine sur une personne (message privé)
+    dev_sourdine = models.ForeignKey(
+        Developper,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='mis_en_sourdine'
+    )
+    # sourdine sur un groupe
+    groupe_sourdine = models.ForeignKey(
+        'Groups.Group',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='sourdines'
+    )
+    date_sourdine = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'sourdine'
+
 
 
