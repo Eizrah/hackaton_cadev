@@ -10,6 +10,12 @@ def getProfilDev(instance, filename):
 def getPhotoGroup(instance, filename):
     return f'group_pictures/{filename}'
 
+def getFichierDiplome(instance, filename):
+    return f'diplomes/{filename}'
+
+def getFichierCertificat(instance, filename):
+    return f'certificats/{filename}'
+
 def getFichierPub(instance, filename):
     # distingue forum et offre selon le type de publication
     from Forum.models import Forum_post
@@ -48,6 +54,26 @@ def valider_fichier(fichier):
     ]
     if fichier.content_type not in types_autorises:
         raise ValidationError('Format non autorisé. Utilisez PDF, ZIP ou DOCX.')
+
+def valider_diplome_certificat(fichier):
+    """
+    Validation spécifique pour les diplômes et certificats.
+    Accepte PDF, DOCX et images (scan de document).
+    """
+    if fichier.size > settings.MAX_UPLOAD_SIZE_FICHIER:
+        raise ValidationError(f'La taille maximale est 20 Mo. Votre fichier fait {round(fichier.size / 1024 / 1024, 2)} Mo.')
+    types_autorises = [
+        # documents
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        # images — pour les scans de diplômes
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+    ]
+    if fichier.content_type not in types_autorises:
+        raise ValidationError('Format non autorisé. Utilisez PDF, DOCX, JPEG ou PNG.')
 
 def valider_audio(fichier):
     if fichier.size > settings.MAX_UPLOAD_SIZE_FICHIER:

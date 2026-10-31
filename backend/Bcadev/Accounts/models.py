@@ -1,5 +1,5 @@
 from django.db import models
-from fonction_utils.gestion_fichier import getProfilDev
+from fonction_utils.gestion_fichier import getProfilDev, getFichierDiplome, getFichierCertificat
 from django.contrib.auth.models import AbstractUser
 
 
@@ -41,12 +41,12 @@ class Experience(models.Model):
     diplome=models.CharField(max_length=200, blank=True,null=True)
     certificat=models.CharField(max_length=100,blank=True,null=True)
     fichier_diplome = models.FileField(
-        upload_to='diplomes/',
+        upload_to=getFichierDiplome,
         blank=True,
         null=True
     )
     fichier_certificat = models.FileField(
-        upload_to='certificats/',
+        upload_to=getFichierCertificat,
         blank=True,
         null=True
     )

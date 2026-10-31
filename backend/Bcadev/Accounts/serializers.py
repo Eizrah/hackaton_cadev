@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from .models import Developper, Experience, Possession
-from fonction_utils.gestion_fichier import valider_image, valider_fichier
+from fonction_utils.gestion_fichier import valider_image, valider_fichier, valider_diplome_certificat
 
 
 class ExperienceSerializer(serializers.ModelSerializer):
@@ -16,12 +16,12 @@ class ExperienceSerializer(serializers.ModelSerializer):
 
     def validate_fichier_diplome(self, value):
         if value:
-            valider_fichier(value)
+            valider_diplome_certificat(value)
         return value
 
     def validate_fichier_certificat(self, value):
         if value:
-            valider_fichier(value)
+            valider_diplome_certificat(value)
         return value
 
 

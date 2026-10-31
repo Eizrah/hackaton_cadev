@@ -46,3 +46,44 @@ def supprimer_ancienne_photo(sender, instance, **kwargs):
         # Si elles sont différentes, supprime l'ancienne du disque
         if os.path.isfile(ancienne.photoprofil.path):
             os.remove(ancienne.photoprofil.path)
+
+from .models import Experience
+
+
+def supprimer_fichier(path):
+    """Supprime un fichier physique s'il existe."""
+    if path and os.path.isfile(path):
+        os.remove(path)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SIGNAL : Suppression des fichiers diplôme et certificat quand une
+# expérience est supprimée.
+# ─────────────────────────────────────────────────────────────────────────────
+@receiver(post_delete, sender=Experience)
+def supprimer_fichiers_experience(sender, instance, **kwargs):
+    if instance.fichier_diplome:
+        supprimer_fichier(instance.fichier_diplome.path)
+    if instance.fichier_certificat:
+        supprimer_fichier(instance.fichier_certificat.path)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SIGNAL : Suppression des anciens fichiers quand une expérience est modifiée.
+# ─────────────────────────────────────────────────────────────────────────────
+@receiver(pre_save, sender=Experience)
+def supprimer_anciens_fichiers_experience(sender, instance, **kwargs):
+    if not instance.pk:
+        return
+    try:
+        ancienne = Experience.objects.get(pk=instance.pk)
+    except Experience.DoesNotExist:
+        return
+
+    # supprime l'ancien diplôme si changé
+    if ancienne.fichier_diplome and ancienne.fichier_diplome != instance.fichier_diplome:
+        supprimer_fichier(ancienne.fichier_diplome.path)
+
+    # supprime l'ancien certificat si changé
+    if ancienne.fichier_certificat and ancienne.fichier_certificat != instance.fichier_certificat:
+        supprimer_fichier(ancienne.fichier_certificat.path)
