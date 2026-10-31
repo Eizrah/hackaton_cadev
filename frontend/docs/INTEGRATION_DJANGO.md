@@ -50,19 +50,68 @@ Pour les messages temps réel, convenir d’un WebSocket (par exemple via l’in
 
 Pour les fichiers : envoyer un `FormData` ; le client HTTP évite alors de fixer `Content-Type` afin que le navigateur génère la boundary multipart. Valider côté Django taille, type, droits et stockage. La limite locale de 5 Mo du prototype n’est pas une protection serveur.
 
-## Évolution des interfaces — 28 octobre 2026
+## Contrat à adapter aux interfaces du 31 octobre 2026
 
-Les écrans ont changé ; voici les champs et règles à confirmer avant de les brancher.
-
-| Sujet | Contrat à convenir |
+| Sujet | Proposition à confirmer |
 | --- | --- |
-| Votes | Proposition `PUT /api/posts/{id}/rating/` avec `{ "score": 1..5 }`. Le serveur détermine l’utilisateur connecté, impose un seul vote par utilisateur/publication et renvoie `average`, `count`, `my_rating`. Une modification ne doit pas augmenter le nombre d’avis. |
-| Publications | `published_at` est défini par le serveur, non par le navigateur ; `title`, `category` et `collaboration_open` deviennent utiles. Définir les catégories Projet/Découverte/Question et les droits de modification. |
-| Pays | Préférer un code ISO alpha-2 stable (`MG`, `SN`, etc.) et un nom affichable, plutôt qu’un emoji. Les drapeaux du frontend sont locaux. |
-| Profil | `role`, `bio`, `level`, `portfolio_url` facultatif, photo et compétences. Une compétence peut porter un identifiant, un nom et une référence d’icône. Le serveur valide aussi URL et fichiers. |
-| Identité | Utiliser les identifiants d’utilisateurs, pas leur nom affiché, pour relier profils, publications et conversations. Les statistiques doivent être calculées pour cet identifiant. |
-| Apprentissage | Arborescence domaine/parcours/fiche. Les fiches locales sont une première base ; le backend doit stocker progression et tentatives si elles doivent suivre l’utilisateur entre appareils. |
-| Messagerie | Conversations typées privée/groupe, identifiants stables, participants et contrôle d’adhésion. La catégorie Groupes est intégrée à Messagerie dans le frontend, sans supprimer le modèle métier Groupe. |
-| OAuth | Seulement Google et GitHub dans l’interface. Confirmer les routes d’autorisation et de callback ; aucun échange OAuth n’est actuellement déclenché. |
+| Appréciations | `PUT /api/posts/{id}/star/` avec `{ "starred": true/false }`, réponse `{ "star_count": 1000, "starred": true }`. Unicité utilisateur/publication côté serveur ; aucune moyenne 1–5. |
+| Publications | Deux catégories : `project`, `question_discovery` ; `title`, `body`, `collaboration_open`, `published_at`, état de modération. Seul l’auteur peut changer sa demande d’aide. |
+| Enregistrements | `PUT /api/posts/{id}/bookmark/` avec état actif/inactif, liste personnelle des enregistrements. |
+| Profils | Identifiant stable, nom affiché, code pays ISO, compétences, portfolio facultatif et photo. Consulter un membre ne doit pas ouvrir l’édition du profil connecté. |
+| Candidatures | `GET /api/applications/me/` : identifiant, offre, organisation, date et `pending/accepted/rejected`. Les anciens nombres seuls du prototype ne suffisent pas. |
+| Agent apprentissage | `POST /api/agents/learning/chat/` reçoit `{ messages: [{role,content}], language }` et renvoie `{ answer }`. Client préparé dans `lib/agents.ts` ; activer `VITE_AGENT_MODE=api` seulement avec un endpoint opérationnel. |
+| Agent modérateur | File des publications/offres/signalements, vérification et décision, accès protégé par rôle serveur. La file et les boutons actuels sont une simulation locale ; aucun endpoint réel de décision n’est encore appelé. |
+| Conversations | Identifiants de conversations privées/groupes, participants, messages, fichiers autorisés et pagination. Présence réelle et statut lu ne doivent pas être inférés des exemples visuels. |
+| Langues | Codes `fr/en` pour les commandes et réponses d’agent. La traduction des contenus publiés par les membres est une fonction séparée non implémentée. |
 
-Ne pas utiliser la moyenne locale de la démo comme valeur fiable d’un vote réel. Les vérifications du navigateur ne remplacent pas l’unicité, les permissions et les contrôles de taille côté Django. Le portfolio ne doit pas être récupéré côté serveur sans une politique explicite ; son affichage est aujourd’hui un simple lien validé, ouvert par l’utilisateur.
+La clé du fournisseur IA reste exclusivement côté serveur. Le backend contrôle les rôles et l’unicité des étoiles, définit les dates, décide des candidatures et valide les fichiers. Les vérifications locales du prototype ne remplacent pas ces décisions. Traiter un signalement doit être séparé d’une suppression de contenu ou d’une sanction.
+
+## Inscription en trois étapes et profil structuré
+
+Le nouveau composant `src/components/Authentication.tsx` prépare le profil local avec les types de `src/data/profile.ts`. Il n’envoie encore aucune requête d’authentification. L’e-mail et les mots de passe sont saisis en fin de troisième étape ; les mots de passe restent en mémoire uniquement. Le backend devra créer le compte, ses relations et la session selon la stratégie retenue.
+
+Exemple de corps JSON **proposé** pour `POST /api/auth/register/` — noms à confirmer avec les sérialiseurs Django :
+
+```json
+{
+  "first_name": "Diana",
+  "last_name": "Rakoto",
+  "age": 23,
+  "level": "Senior",
+  "country": "Madagascar",
+  "username": "Diana23",
+  "email": "diana@example.test",
+  "password": "<mot de passe saisi, transmis uniquement au serveur>",
+  "experiences": [
+    {
+      "position": "Développeuse React",
+      "description": "Création d’une interface communautaire.",
+      "year": 2025,
+      "diploma": "Master 1 informatique",
+      "certificate": "React Fundamentals"
+    }
+  ],
+  "skills": [
+    {
+      "name": "React",
+      "difficulty": "Intermédiaire",
+      "domain": "Web"
+    }
+  ]
+}
+```
+
+| Frontend local | Proposition API / diagramme |
+| --- | --- |
+| `firstName`, `lastName`, `pseudo` | `first_name`, `last_name`, `username` ; nom, prénom et pseudo du développeur. |
+| `age`, `year` en chaînes de saisie | Convertir en entiers après validation avant le POST. |
+| `level` | Seulement `Junior` ou `Senior` ; convenir des codes serveur si différents. |
+| `experiences[].position/description/year/diploma/certificate` | Nom_poste, Description, Année_Exp, Diplome, Certificat du diagramme. |
+| `skillDetails[].name/difficulty/domain` | Nom, Difficulté, Domaine de Compétence. Le champ local `skills` contient encore un résumé textuel pour compatibilité avec les anciens modules ; l’API devrait utiliser une liste structurée. |
+| `id` local d’une expérience/compétence | Identifiant temporaire d’interface ; laisser Django produire les identifiants persistants et renvoyer les relations. |
+| `country` | Libellé de pays actuel ; convenir d’un code ISO si le backend l’exige. |
+| `portfolio`, `photo`, `bio`, `role` | Champs du profil complétés depuis l’édition ; portfolio facultatif. |
+
+Expériences et compétences peuvent être des listes vides. Une expérience ajoutée exige poste, description et année ; diplôme et certificat sont facultatifs et textuels. Une compétence ajoutée exige nom, difficulté (`Facile`, `Intermédiaire`, `Avancée`) et domaine (`Web`, `Desktop`, `Mobile`, `Design`, `Langages de programmation`). Ces listes devront être partagées avec le backend. La difficulté d’une compétence est distincte du niveau Junior/Senior du développeur.
+
+Revalider côté Django : champs obligatoires, âge, pseudo, unicité e-mail/pseudo, mots de passe, domaines, difficultés et relations. Ne jamais renvoyer le mot de passe dans la réponse. L’API doit également distinguer les informations du profil privé de celles visibles publiquement. Les boutons Google/GitHub nécessitent chacun un flux OAuth serveur ; leurs logos seuls ne réalisent aucune connexion.

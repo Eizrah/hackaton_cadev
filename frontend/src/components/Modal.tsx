@@ -1,3 +1,4 @@
+import { useI18n } from "../i18n/context";
 import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 export default function Modal({
@@ -9,6 +10,8 @@ export default function Modal({
   children: ReactNode;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
+
   const ref = useRef<HTMLElement>(null);
   const close = useRef(onClose);
   useEffect(() => {
@@ -62,7 +65,7 @@ export default function Modal({
             type="button"
             className="quiet"
             onClick={onClose}
-            aria-label="Fermer la fenêtre"
+            aria-label={t("Fermer la fenêtre")}
           >
             <X size={21} />
           </button>

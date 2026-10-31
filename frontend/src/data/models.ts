@@ -1,35 +1,10 @@
-export type Profile = {
-  name: string;
-  country: string;
-  level: string;
-  skills: string;
-  bio: string;
-  experience: string;
-  role: string;
-  portfolio: string;
-  photo: string;
-};
-export const initialProfile: Profile = {
-  name: "Juliana",
-  country: "Madagascar",
-  level: "Débutant",
-  skills: "React, TypeScript, Figma, Blender",
-  role: "Développeuse frontend · UI/UX",
-  bio: "J’aime transformer des idées en interfaces utiles et partager ce que j’apprends avec la communauté.",
-  experience:
-    "Étudiante en informatique\nDesign UI/UX et développement d’interfaces React.",
-  portfolio: "",
-  photo: "",
-};
-export function migrateProfile(saved: unknown): Profile {
-  if (!saved || typeof saved !== "object") return initialProfile;
-  const profile = { ...initialProfile };
-  for (const key of Object.keys(profile) as (keyof Profile)[]) {
-    const value = (saved as Record<string, unknown>)[key];
-    if (typeof value === "string") profile[key] = value;
-  }
-  return profile;
-}
+export { initialProfile, migrateProfile } from "./profile";
+export type {
+  Profile,
+  PersonalInformation,
+  Experience,
+  DeveloperSkill,
+} from "./profile";
 export type Post = {
   id: number;
   author: string;
@@ -40,9 +15,10 @@ export type Post = {
   comments: string[];
   publishedAt: string | null;
   collaboration: boolean;
-  ratingTotal: number;
-  ratingCount: number;
-  myRating: number;
+  starCount: number;
+  saved: boolean;
+  owned?: boolean;
+  moderation?: "pending" | "approved" | "rejected";
   starred: boolean;
 };
 export const initialPosts: Post[] = [
@@ -56,39 +32,39 @@ export const initialPosts: Post[] = [
     comments: ["Très belle idée ! Vous cherchez aussi des designers ?"],
     publishedAt: "2026-10-26T09:20:00+03:00",
     collaboration: true,
-    ratingTotal: 47,
-    ratingCount: 10,
-    myRating: 0,
+    starCount: 10,
+    saved: false,
+    moderation: "approved",
     starred: false,
   },
   {
     id: 2,
     author: "Tiana Rakoto",
     country: "Madagascar",
-    tag: "Question",
+    tag: "Question & découverte",
     title: "Votre première interface responsive ?",
     text: "Quelle est votre méthode pour rendre une interface responsive ? Je partage bientôt mon premier portfolio !",
     comments: [],
     publishedAt: "2026-10-27T14:10:00+03:00",
     collaboration: false,
-    ratingTotal: 0,
-    ratingCount: 0,
-    myRating: 0,
+    starCount: 0,
+    saved: false,
+    moderation: "approved",
     starred: false,
   },
   {
     id: 3,
     author: "Koffi Mensah",
     country: "Côte d’Ivoire",
-    tag: "Découverte",
+    tag: "Question & découverte",
     title: "Une carte ouverte pour nos quartiers",
     text: "J’explore les données OpenStreetMap pour rendre les services de proximité plus faciles à trouver. Qui souhaite tester cette idée ou partager ses connaissances en cartographie ?",
     comments: [],
     publishedAt: "2026-10-28T08:30:00+03:00",
     collaboration: true,
-    ratingTotal: 23,
-    ratingCount: 5,
-    myRating: 0,
+    starCount: 5,
+    saved: false,
+    moderation: "approved",
     starred: false,
   },
 ];
@@ -101,7 +77,7 @@ export function migratePosts(saved: unknown): Post[] {
       id: p.id,
       author: typeof p.author === "string" ? p.author : "Membre",
       country: typeof p.country === "string" ? p.country : "",
-      tag: typeof p.tag === "string" ? p.tag : "Projet",
+      tag: p.tag === "Projet" ? "Projet" : "Question & découverte",
       title: typeof p.title === "string" ? p.title : "",
       text: p.text,
       comments: Array.isArray(p.comments)
@@ -109,17 +85,24 @@ export function migratePosts(saved: unknown): Post[] {
         : [],
       publishedAt: typeof p.publishedAt === "string" ? p.publishedAt : null,
       collaboration: p.collaboration === true,
-      ratingTotal: Number.isFinite(p.ratingTotal)
-        ? Math.max(0, p.ratingTotal)
-        : 0,
-      ratingCount: Number.isInteger(p.ratingCount)
-        ? Math.max(0, p.ratingCount)
-        : 0,
-      myRating:
-        Number.isInteger(p.myRating) && p.myRating >= 1 && p.myRating <= 5
-          ? p.myRating
-          : 0,
-      starred: p.starred === true,
+      starCount: Number.isFinite(p.starCount)
+        ? Math.max(0, Math.floor(p.starCount))
+        : Number.isFinite(p.ratingCount)
+          ? Math.max(0, Math.floor(p.ratingCount))
+          : Number.isFinite(p.likes)
+            ? Math.max(0, Math.floor(p.likes))
+            : 0,
+      starred:
+        (p.starred === true && (p.tag !== "Question" || "starCount" in p)) ||
+        (p.myRating ?? 0) > 0 ||
+        p.liked === true,
+      saved:
+        p.saved === true ||
+        (p.tag === "Question" && p.starred === true && !("starCount" in p)),
+      owned: p.owned === true,
+      moderation: ["pending", "approved", "rejected"].includes(p.moderation)
+        ? p.moderation
+        : "approved",
     }));
 }
 export type Group = {
@@ -143,6 +126,8 @@ export const initialGroups: Group[] = [
   },
 ];
 export type ChatMessage = {
+  author?: string;
+  mine?: boolean;
   id: number;
   conversation: string;
   text: string;
@@ -150,6 +135,7 @@ export type ChatMessage = {
   sentAt?: string;
 };
 export type Job = {
+  moderation?: "pending" | "approved" | "rejected";
   id: number;
   title: string;
   company: string;

@@ -30,12 +30,6 @@ export const domains: LearningDomain[] = [
         description:
           "La partie serveur : comptes, règles métier, bases de données et API. Découvre Python, Django, Node.js ou PHP.",
       },
-      {
-        id: "fullstack",
-        title: "Fullstack",
-        description:
-          "Relie frontend et backend. Construis une interface, une API et fais-les communiquer.",
-      },
     ],
   },
   {
@@ -183,8 +177,8 @@ function item(
     explanation,
   };
 }
-const frontend = ["frontend", "fullstack"],
-  backend = ["backend", "fullstack"];
+const frontend = ["frontend"],
+  backend = ["backend"];
 export const courses: Course[] = [
   item(
     "html-web",

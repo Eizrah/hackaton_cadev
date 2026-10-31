@@ -1,3 +1,5 @@
+import { useI18n } from "../../i18n/context";
+import ApplicationDashboard from "./ApplicationDashboard";
 import { useState, type FormEvent } from "react";
 import {
   ArrowLeft,
@@ -8,6 +10,7 @@ import {
   ExternalLink,
   Globe2,
   GraduationCap,
+  BadgeCheck,
   Pencil,
   Share2,
   Sparkles,
@@ -16,9 +19,19 @@ import {
 import { type Profile } from "../../data/models";
 import { useLocalData } from "../../lib/storage";
 import { CountryFlag } from "../CountryFlag";
-import { africanCountries } from "../../data/countries";
+import {
+  PersonalFields,
+  ExperienceFields,
+  SkillFields,
+} from "../ProfileFields";
+import {
+  migrateProfile,
+  experienceError,
+  skillError,
+  validPseudo,
+} from "../../data/profile";
 import { safePortfolio } from "../../lib/urls";
-import { SkillChip } from "../TechIcon";
+import TechIcon, { SkillChip } from "../TechIcon";
 function Avatar({
   profile,
   large = false,
@@ -47,11 +60,17 @@ export default function ProfileView({
   profile,
   onEdit,
   onNotice,
+  isOwn = true,
+  onMessage,
 }: {
   profile: Profile;
   onEdit: () => void;
   onNotice: (message: string) => void;
+  isOwn?: boolean;
+  onMessage?: () => void;
 }) {
+  const { t } = useI18n();
+
   const [posts] = useLocalData<{ author: string }[]>("posts", []);
   const [progress] = useLocalData<string[]>("progress", []);
   const skills = profile.skills
@@ -64,147 +83,262 @@ export default function ProfileView({
     try {
       await navigator.clipboard.writeText(window.location.href);
       onNotice(
-        "Lien du profil copié. Dans cette démo, les données du profil restent sur cet appareil.",
+        t(
+          "Lien du profil copié. Dans cette démo, les données du profil restent sur cet appareil.",
+        ),
       );
     } catch {
       onNotice(
-        "La copie automatique est indisponible. Tu peux copier l’adresse de cette page.",
+        t(
+          "La copie automatique est indisponible. Tu peux copier l’adresse de cette page.",
+        ),
       );
     }
   }
   return (
-    <div className="profile-layout">
-      <section className="glass-profile" aria-label="Carte de profil">
-        <div className="profile-card-top">
-          <span className="mini-label">DÉVELOPPEUR · DEVAfrica</span>
-          <button
-            className="glass-icon"
-            aria-label="Copier le lien du profil"
-            onClick={shareProfile}
-          >
-            <Share2 size={22} />
-          </button>
-        </div>
-        <Avatar profile={profile} large />
-        <h2>{profile.name}</h2>
-        <p className="profile-role">
-          {profile.role || "Développeur de la communauté"}
-        </p>
-        <CountryFlag country={profile.country} />
-        <div className="profile-skill-preview">
-          {skills.slice(0, 4).map((s) => (
-            <SkillChip key={s} name={s} />
-          ))}
-        </div>
-        <div className="profile-stats">
-          <div>
-            <strong>{skills.length}</strong>
-            <span>Compétences</span>
-          </div>
-          <div>
-            <strong>{progress.length}</strong>
-            <span>Fiches validées</span>
-          </div>
-          <div>
-            <strong>{contributions}</strong>
-            <span>Publications</span>
-          </div>
-        </div>
-        <div className="profile-card-bottom">
-          <button className="glass-edit" onClick={onEdit}>
-            Modifier mon profil
-            <Pencil size={18} />
-          </button>
-          {portfolio ? (
-            <a
-              className="glass-portfolio"
-              href={portfolio}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Ouvrir mon portfolio"
-            >
-              <ExternalLink size={23} />
-            </a>
-          ) : (
+    <>
+      <div className="profile-layout">
+        <section className="glass-profile" aria-label={t("Carte de profil")}>
+          <div className="profile-card-top">
+            <span className="mini-label">{t("DÉVELOPPEUR · DEVAfrica")}</span>
             <button
-              className="glass-portfolio"
-              onClick={onEdit}
-              aria-label="Ajouter mon portfolio"
+              className="glass-icon"
+              aria-label={t("Copier le lien du profil")}
+              onClick={shareProfile}
             >
-              <Globe2 size={23} />
+              <Share2 size={22} />
             </button>
-          )}
-        </div>
-      </section>
-      <div className="profile-details">
-        <section className="panel">
-          <div className="section-title">
-            <span className="round-icon">
-              <UserRound size={20} />
-            </span>
-            <h2>À propos de moi</h2>
-            <span className="level-pill">{profile.level}</span>
           </div>
-          <p className="preserve-lines">
-            {profile.bio ||
-              "Ajoute quelques mots sur ce que tu aimes construire."}
+          <Avatar profile={profile} large />
+          <h2>{profile.name}</h2>
+          <p className="profile-role">
+            {profile.role || "Développeur de la communauté"}
           </p>
-        </section>
-        <section className="panel">
-          <div className="section-title">
-            <span className="round-icon">
-              <Code2 size={20} />
-            </span>
-            <h2>Mes compétences</h2>
+          {profile.pseudo && (
+            <p className="profile-pseudo">@{profile.pseudo}</p>
+          )}
+          <CountryFlag country={profile.country} />
+          <div className="profile-skill-preview">
+            {skills.slice(0, 4).map((s) => (
+              <SkillChip key={s} name={s} />
+            ))}
           </div>
-          <div className="skills-wall">
-            {skills.length ? (
-              skills.map((s) => <SkillChip name={s} key={s} />)
+          <div className="profile-stats">
+            <div>
+              <strong>{skills.length}</strong>
+              <span>{t("Compétences")}</span>
+            </div>
+            <div>
+              <strong>{isOwn ? progress.length : "—"}</strong>
+              <span>{t("Fiches validées")}</span>
+            </div>
+            <div>
+              <strong>{contributions}</strong>
+              <span>{t("Publications")}</span>
+            </div>
+          </div>
+          <div className="profile-card-bottom">
+            <button className="glass-edit" onClick={isOwn ? onEdit : onMessage}>
+              {isOwn ? t("Modifier mon profil") : t("Contacter")}
+              <Pencil size={18} />
+            </button>
+            {portfolio ? (
+              <a
+                className="glass-portfolio"
+                href={portfolio}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t("Ouvrir mon portfolio")}
+              >
+                <ExternalLink size={23} />
+              </a>
             ) : (
-              <p>Aucune compétence renseignée pour le moment.</p>
+              <button
+                className="glass-portfolio"
+                onClick={isOwn ? onEdit : onMessage}
+                aria-label={t("Ajouter mon portfolio")}
+              >
+                <Globe2 size={23} />
+              </button>
             )}
           </div>
         </section>
-        <section className="panel">
-          <div className="section-title">
-            <span className="round-icon">
-              <GraduationCap size={20} />
-            </span>
-            <h2>Mon parcours</h2>
-          </div>
-          <p className="preserve-lines">
-            {profile.experience ||
-              "Ton parcours se construit. Ajoute une expérience, un diplôme ou un projet."}
-          </p>
-        </section>
-        <section className="panel portfolio-panel">
-          <div>
-            <h2>Mon portfolio</h2>
-            <p>
-              {portfolio
-                ? "Une autre façon de découvrir mon univers."
-                : "Un site, des projets, ton univers créatif. Le lien est facultatif."}
-            </p>
-          </div>
-          {portfolio ? (
-            <a
-              className="btn-primary"
-              href={portfolio}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Voir le portfolio
-              <ExternalLink size={17} />
-            </a>
-          ) : (
-            <button className="text-link" onClick={onEdit}>
-              Ajouter un lien
-              <ArrowRight size={17} />
-            </button>
+        <div className="profile-details">
+          {isOwn && (
+            <section className="panel">
+              <div className="section-title">
+                <span className="round-icon">
+                  <UserRound size={20} />
+                </span>
+                <h2>
+                  {t("Informations personnelles", "Personal information")}
+                </h2>
+              </div>
+              <dl className="profile-personal-list">
+                {[
+                  [t("Nom", "Last name"), profile.lastName],
+                  [t("Prénom", "First name"), profile.firstName],
+                  [
+                    t("Âge", "Age"),
+                    profile.age ? `${profile.age} ${t("ans", "years")}` : "",
+                  ],
+                  [t("Niveau", "Level"), profile.level],
+                  [t("Pays", "Country"), profile.country],
+                  [
+                    t("Pseudo", "Username"),
+                    profile.pseudo ? `@${profile.pseudo}` : "",
+                  ],
+                  [t("Adresse e-mail", "Email address"), profile.email],
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <dt>{label}</dt>
+                    <dd>{value || t("Non renseigné", "Not provided")}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
           )}
-        </section>
+          <section className="panel">
+            <div className="section-title">
+              <span className="round-icon">
+                <UserRound size={20} />
+              </span>
+              <h2>{t("À propos de moi")}</h2>
+              <span className="level-pill">{t(profile.level)}</span>
+            </div>
+            <p className="preserve-lines">
+              {profile.bio ||
+                "Ajoute quelques mots sur ce que tu aimes construire."}
+            </p>
+          </section>
+          <section className="panel">
+            <div className="section-title">
+              <span className="round-icon">
+                <Code2 size={20} />
+              </span>
+              <h2>{t("Mes compétences")}</h2>
+            </div>
+            {profile.skillDetails.length ? (
+              <div className="profile-skill-list">
+                {profile.skillDetails.map((skill) => (
+                  <article className="profile-skill-detail" key={skill.id}>
+                    <TechIcon name={skill.name} size={26} />
+                    <div>
+                      <strong>{skill.name}</strong>
+                      <small>
+                        {skill.domain
+                          ? t(skill.domain)
+                          : t("Domaine à préciser", "Field not specified")}{" "}
+                        ·{" "}
+                        {skill.difficulty
+                          ? t(
+                              skill.difficulty,
+                              skill.difficulty === "Facile"
+                                ? "Easy"
+                                : skill.difficulty === "Avancée"
+                                  ? "Advanced"
+                                  : "Intermediate",
+                            )
+                          : t(
+                              "Difficulté à préciser",
+                              "Difficulty not specified",
+                            )}
+                      </small>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="skills-wall">
+                {skills.length ? (
+                  skills.map((name) => <SkillChip key={name} name={name} />)
+                ) : (
+                  <p>{t("Aucune compétence renseignée pour le moment.")}</p>
+                )}
+              </div>
+            )}
+          </section>
+          <section className="panel">
+            <div className="section-title">
+              <span className="round-icon">
+                <GraduationCap size={20} />
+              </span>
+              <h2>{t("Mon parcours")}</h2>
+            </div>
+            {profile.experiences.length ? (
+              <div className="profile-experience-list">
+                {profile.experiences.map((entry) => (
+                  <article className="profile-experience-item" key={entry.id}>
+                    <span className="experience-year">
+                      {entry.year ||
+                        t("Année non renseignée", "Year unavailable")}
+                    </span>
+                    <h3>{entry.position}</h3>
+                    <p>{entry.description}</p>
+                    {entry.diploma && (
+                      <div className="profile-qualification">
+                        <GraduationCap size={16} />
+                        <span>
+                          {t("Diplôme", "Qualification")} : {entry.diploma}
+                        </span>
+                      </div>
+                    )}
+                    {entry.certificate && (
+                      <div className="profile-qualification">
+                        <BadgeCheck size={16} />
+                        <span>
+                          {t("Certificat", "Certificate")} : {entry.certificate}
+                        </span>
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="preserve-lines">
+                {profile.experience ||
+                  t(
+                    "Votre parcours commence ici. Ajoutez une expérience quand vous le souhaitez.",
+                    "Your journey starts here. Add experience whenever you like.",
+                  )}
+              </p>
+            )}
+          </section>
+          <section className="panel portfolio-panel">
+            <div>
+              <h2>{t("Mon portfolio")}</h2>
+              <p>
+                {portfolio
+                  ? t("Une autre façon de découvrir mon univers.")
+                  : t(
+                      "Un site, des projets, ton univers créatif. Le lien est facultatif.",
+                    )}
+              </p>
+            </div>
+            {portfolio ? (
+              <a
+                className="btn-primary"
+                href={portfolio}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t("Voir le portfolio")}
+                <ExternalLink size={17} />
+              </a>
+            ) : (
+              <button
+                className="text-link"
+                onClick={isOwn ? onEdit : onMessage}
+              >
+                {isOwn ? t("Ajouter un lien") : t("Contacter")}
+                <ArrowRight size={17} />
+              </button>
+            )}
+          </section>
+        </div>
       </div>
-    </div>
+      {isOwn && <ApplicationDashboard />}
+    </>
   );
 }
 export function ProfileEditor({
@@ -218,30 +352,57 @@ export function ProfileEditor({
   onCancel: () => void;
   onNotice: (text: string) => void;
 }) {
-  const [draft, setDraft] = useState(profile);
+  const { t } = useI18n();
+  const [draft, setDraft] = useState(() =>
+    migrateProfile({
+      ...profile,
+      skillDetails: profile.skillDetails.length
+        ? profile.skillDetails
+        : undefined,
+    }),
+  );
   const [error, setError] = useState("");
-  const skills = draft.skills
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  function submit(e: FormEvent) {
-    e.preventDefault();
+  function submit(event: FormEvent) {
+    event.preventDefault();
     setError("");
-    if (!draft.name.trim() || !draft.country.trim()) {
-      setError("Le nom et le pays sont obligatoires.");
+    if (!draft.firstName.trim() || !draft.lastName.trim() || !draft.country) {
+      setError(
+        t(
+          "Renseignez votre nom, votre prénom et votre pays.",
+          "Enter your last name, first name and country.",
+        ),
+      );
+      return;
+    }
+    if (!validPseudo(draft.pseudo)) {
+      setError(
+        t(
+          "Le pseudo doit contenir 3 à 30 caractères : lettres et chiffres uniquement.",
+          "Your username must have 3–30 characters: letters and numbers only.",
+        ),
+      );
       return;
     }
     if (draft.portfolio.trim() && !safePortfolio(draft.portfolio.trim())) {
       setError(
-        "Le portfolio doit être une adresse http:// ou https:// valide.",
+        t("Le portfolio doit être une adresse http:// ou https:// valide."),
       );
+      return;
+    }
+    const invalid =
+      experienceError(draft.experiences) || skillError(draft.skillDetails);
+    if (invalid) {
+      setError(t(invalid));
       return;
     }
     onSave({
       ...draft,
-      name: draft.name.trim(),
-      country: draft.country.trim(),
-      skills: [...new Set(skills)].join(", "),
+      name: `${draft.firstName.trim()} ${draft.lastName.trim()}`.trim(),
+      firstName: draft.firstName.trim(),
+      lastName: draft.lastName.trim(),
+      pseudo: draft.pseudo.trim(),
+      email: draft.email.trim(),
+      skills: draft.skillDetails.map((s) => s.name.trim()).join(", "),
       portfolio: draft.portfolio.trim(),
     });
   }
@@ -251,7 +412,7 @@ export function ProfileEditor({
       !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
       file.size > 2 * 1024 * 1024
     ) {
-      setError("Choisis une image JPG, PNG ou WebP de 2 Mo maximum.");
+      setError(t("Choisis une image JPG, PNG ou WebP de 2 Mo maximum."));
       return;
     }
     const reader = new FileReader();
@@ -264,7 +425,7 @@ export function ProfileEditor({
         canvas.height = 240;
         const ctx = canvas.getContext("2d");
         if (!ctx) {
-          setError("Impossible de préparer cette image.");
+          setError(t("Impossible de préparer cette image."));
           return;
         }
         const side = Math.min(image.width, image.height);
@@ -283,19 +444,20 @@ export function ProfileEditor({
           ...current,
           photo: canvas.toDataURL("image/jpeg", 0.85),
         }));
-        setError("");
+        setError(t(""));
       };
-      image.onerror = () => setError("Cette image ne peut pas être lue.");
+      image.onerror = () => setError(t("Cette image ne peut pas être lue."));
       image.src = data;
     };
-    reader.onerror = () => setError("Impossible de lire cette image.");
+    reader.onerror = () => setError(t("Impossible de lire cette image."));
     reader.readAsDataURL(file);
   }
+
   return (
     <section className="profile-edit-page">
       <button className="back-link" onClick={onCancel}>
         <ArrowLeft size={17} />
-        Revenir à mon profil
+        {t("Revenir à mon profil")}
       </button>
       <div className="profile-editor-layout">
         <form className="panel edit-profile-form" onSubmit={submit}>
@@ -304,8 +466,13 @@ export function ProfileEditor({
               <Pencil size={20} />
             </span>
             <div>
-              <h2>Un profil qui te ressemble</h2>
-              <p>Présente tes compétences et ce que tu souhaites créer.</p>
+              <h2>{t("Un profil qui te ressemble")}</h2>
+              <p>
+                {t(
+                  "Vos informations, votre parcours et vos compétences.",
+                  "Your details, experience and skills.",
+                )}
+              </p>
             </div>
           </div>
           <div className="photo-editor">
@@ -313,109 +480,86 @@ export function ProfileEditor({
             <div>
               <label className="upload-photo">
                 <Camera size={17} />
-                Choisir une photo
+                {t("Choisir une photo")}
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   onChange={(e) => uploadPhoto(e.target.files?.[0])}
                 />
               </label>
-              <small>Facultatif · JPG, PNG ou WebP · 2 Mo max.</small>
+              <small>{t("Facultatif · JPG, PNG ou WebP · 2 Mo max.")}</small>
               {draft.photo && (
                 <button
-                  type="button"
                   className="text-link"
+                  type="button"
                   onClick={() => setDraft({ ...draft, photo: "" })}
                 >
-                  Retirer la photo
+                  {t("Retirer la photo")}
                 </button>
               )}
             </div>
           </div>
+          <PersonalFields
+            value={draft}
+            onChange={(next) => setDraft({ ...draft, ...next })}
+          />
           <div className="form-grid">
             <label>
-              Nom complet
+              {t("Adresse e-mail")}
               <input
-                required
-                value={draft.name}
-                maxLength={80}
-                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                type="email"
+                value={draft.email}
+                onChange={(e) => setDraft({ ...draft, email: e.target.value })}
+                autoComplete="email"
               />
             </label>
             <label>
-              Pays
-              <input
-                required
-                list="african-countries"
-                value={draft.country}
-                maxLength={80}
-                onChange={(e) =>
-                  setDraft({ ...draft, country: e.target.value })
-                }
-              />
-              <datalist id="african-countries">
-                {africanCountries.map((c) => (
-                  <option key={c} value={c} />
-                ))}
-              </datalist>
-            </label>
-            <label>
-              Intitulé du profil
+              {t("Intitulé du profil")}
               <input
                 value={draft.role}
-                placeholder="Développeuse frontend · UI/UX"
                 maxLength={100}
                 onChange={(e) => setDraft({ ...draft, role: e.target.value })}
               />
             </label>
-            <label>
-              Niveau
-              <select
-                value={draft.level}
-                onChange={(e) => setDraft({ ...draft, level: e.target.value })}
-              >
-                {["Débutant", "Intermédiaire", "Avancé", "Expert"].map((l) => (
-                  <option key={l}>{l}</option>
-                ))}
-              </select>
-            </label>
           </div>
           <label>
-            Présentation
+            {t("Présentation")}
             <textarea
               value={draft.bio}
-              maxLength={1000}
               onChange={(e) => setDraft({ ...draft, bio: e.target.value })}
+              maxLength={1000}
             />
           </label>
-          <label>
-            Compétences
-            <span className="field-help">
-              Sépare les noms par des virgules. Exemple : React, Python, Figma.
-            </span>
-            <input
-              value={draft.skills}
-              maxLength={500}
-              onChange={(e) => setDraft({ ...draft, skills: e.target.value })}
+          <section className="structured-editor-section">
+            <ExperienceFields
+              value={draft.experiences}
+              onChange={(experiences) => setDraft({ ...draft, experiences })}
             />
-          </label>
-          <div className="skills-wall">
-            {skills.map((s, i) => (
-              <SkillChip key={`${s}-${i}`} name={s} />
-            ))}
-          </div>
-          <label>
-            Expériences, diplômes et projets
-            <textarea
-              value={draft.experience}
-              maxLength={2000}
-              onChange={(e) =>
-                setDraft({ ...draft, experience: e.target.value })
-              }
+            {draft.experience && (
+              <details className="profile-legacy-note">
+                <summary>
+                  {t("Texte du profil précédent", "Previous profile text")}
+                </summary>
+                <textarea
+                  aria-label={t("Ancien parcours", "Previous experience")}
+                  value={draft.experience}
+                  onChange={(e) =>
+                    setDraft({ ...draft, experience: e.target.value })
+                  }
+                  maxLength={2000}
+                />
+              </details>
+            )}
+          </section>
+          <section className="structured-editor-section">
+            <SkillFields
+              value={draft.skillDetails}
+              onChange={(skillDetails) => setDraft({ ...draft, skillDetails })}
             />
-          </label>
+          </section>
           <label>
-            Portfolio <span className="field-optional">facultatif</span>
+            {t("Portfolio")}{" "}
+            <span className="field-optional">{t("facultatif")}</span>
             <input
               type="url"
               value={draft.portfolio}
@@ -425,7 +569,6 @@ export function ProfileEditor({
                 setDraft({ ...draft, portfolio: e.target.value })
               }
             />
-            <span className="field-help">Tu peux laisser ce champ vide.</span>
           </label>
           {error && (
             <p className="form-error" role="alert">
@@ -434,35 +577,34 @@ export function ProfileEditor({
           )}
           <div className="editor-actions">
             <button type="button" className="btn-secondary" onClick={onCancel}>
-              Annuler
+              {t("Annuler")}
             </button>
-            <button type="submit" className="btn-primary">
+            <button className="btn-primary">
               <Check size={18} />
-              Enregistrer mon profil
+              {t("Enregistrer mon profil")}
             </button>
           </div>
         </form>
         <aside className="panel editor-tips">
           <Sparkles size={28} />
-          <h2>Fais découvrir ton potentiel.</h2>
+          <h2>{t("Fais découvrir ton potentiel.")}</h2>
           <p>
-            Pas besoin d’être expert pour avoir sa place ici. Tes idées, ton
-            envie d’apprendre et tes projets comptent.
+            {t(
+              "Racontez votre parcours, même s’il débute. Chaque compétence peut ouvrir une nouvelle collaboration.",
+              "Share your journey, even if it is just beginning. Every skill can open up a collaboration.",
+            )}
           </p>
-          <ul>
-            <li>Utilise un intitulé simple.</li>
-            <li>Ajoute tes outils et langages.</li>
-            <li>Présente ce que tu aimerais construire.</li>
-          </ul>
           <button
             className="text-link"
             onClick={() =>
               onNotice(
-                "Toutes les modifications restent sur cet appareil tant que Django n’est pas connecté.",
+                t(
+                  "Toutes les modifications restent sur cet appareil tant que Django n’est pas connecté.",
+                ),
               )
             }
           >
-            Où sont enregistrées mes données ?
+            {t("Où sont enregistrées mes données ?")}
           </button>
         </aside>
       </div>

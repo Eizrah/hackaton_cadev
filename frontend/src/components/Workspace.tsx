@@ -1,8 +1,10 @@
+import { useI18n } from "../i18n/context";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { initialPosts, migratePosts } from "../data/models";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeftToLine,
   ArrowRightToLine,
-  ArrowUpRight,
   BookOpen,
   Bot,
   BriefcaseBusiness,
@@ -75,6 +77,8 @@ export default function Workspace({
   onNavigate: (path: string) => void;
   onHome: () => void;
 }) {
+  const { t } = useI18n();
+
   const parts = route.split("/").filter(Boolean);
   const active = modules.find((m) => m.id === parts[0]) || modules[0];
   const [profile, setProfile] = useLocalData(
@@ -82,6 +86,7 @@ export default function Workspace({
     initialProfile,
     migrateProfile,
   );
+  const [posts] = useLocalData("posts", initialPosts, migratePosts);
   const [collapsed, setCollapsed] = useLocalData("sidebar-collapsed", false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(
@@ -151,8 +156,37 @@ export default function Workspace({
   }, [mobileOpen]);
   function navigate(path: string) {
     setMobileOpen(false);
+    setNotice("");
     onNavigate(path);
   }
+  let memberName = "";
+  try {
+    memberName =
+      parts[1] === "membre" ? decodeURIComponent(parts.slice(2).join("/")) : "";
+  } catch {
+    /* Adresse invalide. */
+  }
+  const memberPost = posts.find((p) => p.author === memberName);
+  const viewedProfile = memberName
+    ? {
+        ...initialProfile,
+        name: memberName,
+        firstName: memberName.split(" ")[0],
+        lastName: memberName.split(" ").slice(1).join(" "),
+        age: "",
+        email: "",
+        pseudo: "",
+        skillDetails: [],
+        experiences: [],
+        country: memberPost?.country || "",
+        role: "Membre DevAfrica",
+        bio: "Profil communautaire de démonstration.",
+        skills: "",
+        experience: "Parcours non renseigné.",
+        portfolio: "",
+        photo: "",
+      }
+    : profile;
   const editing = active.id === "profil" && parts[1] === "modifier";
   return (
     <div
@@ -161,7 +195,7 @@ export default function Workspace({
       {mobileOpen && (
         <button
           className="sidebar-scrim"
-          aria-label="Fermer le menu latéral"
+          aria-label={t("Fermer le menu latéral")}
           onClick={() => {
             setMobileOpen(false);
             menuButton.current?.focus();
@@ -173,13 +207,13 @@ export default function Workspace({
         inert={isMobile && !mobileOpen}
         aria-hidden={isMobile && !mobileOpen}
         ref={sidebar}
-        aria-label="Menu latéral"
+        aria-label={t("Menu latéral")}
       >
         <div className="sidebar-brand">
           <button
             className="sidebar-home"
             onClick={onHome}
-            aria-label="DevAfrica Connect, retour à l’accueil"
+            aria-label={t("DevAfrica Connect, retour à l’accueil")}
           >
             <img src="/images/africa-mark.png" alt="" />
             <span className="sidebar-wordmark">
@@ -195,64 +229,69 @@ export default function Workspace({
               setMobileOpen(false);
               menuButton.current?.focus();
             }}
-            aria-label="Fermer la navigation"
+            aria-label={t("Fermer la navigation")}
           >
             <X size={19} />
           </button>
         </div>
         <div className="sidebar-content">
-          <div className="sidebar-section-label">TON ESPACE CRÉATIF</div>
-          <nav className="sidebar-nav" aria-label="Modules">
+          <div className="sidebar-section-label">{t("TON ESPACE CRÉATIF")}</div>
+          <nav className="sidebar-nav" aria-label={t("Modules")}>
             {modules.map(({ id, label, Icon }) => (
               <button
                 key={id}
                 className={`sidebar-link ${active.id === id ? "active" : ""}`}
                 aria-current={active.id === id ? "page" : undefined}
-                aria-label={label}
-                title={label}
+                aria-label={t(label)}
+                title={t(label)}
                 onClick={() => navigate(id)}
               >
                 <Icon size={19} />
-                <span>{label}</span>
+                <span>{t(label)}</span>
                 {active.id === id && <i />}
               </button>
             ))}
           </nav>
           <section className="sidebar-invitation">
-            <span className="sidebar-invitation-icon">
-              <ArrowUpRight size={22} />
-            </span>
-            <strong>Ensemble, on va plus loin.</strong>
-            <p>Trouve ton groupe, partage ton prochain projet.</p>
-            <button onClick={() => navigate("messages/groupes")}>
-              Explorer les groupes
-              <ChevronRight size={15} />
+            <button
+              className="sidebar-invitation-icon"
+              aria-label={t("Réduire le menu")}
+              onClick={() => setCollapsed(true)}
+            >
+              <ArrowLeftToLine size={22} />
+            </button>
+            <strong>{t("Ensemble, on va plus loin.")}</strong>
+            <button className="sidebar-quit" onClick={onHome}>
+              <LogOut size={16} />
+              {t("Quitter")}
             </button>
           </section>
           <div className="sidebar-bottom">
             <button
               className="sidebar-link"
-              title="Retour à l’accueil"
-              aria-label="Retour à l’accueil"
+              title={t("Retour à l’accueil")}
+              aria-label={t("Retour à l’accueil")}
               onClick={onHome}
             >
               <LogOut size={19} />
-              <span>Retour à l’accueil</span>
+              <span>{t("Retour à l’accueil")}</span>
             </button>
             <button
               className="sidebar-collapse-button"
               onClick={() => setCollapsed(!collapsed)}
-              title={collapsed ? "Développer le menu" : "Réduire le menu"}
-              aria-label={collapsed ? "Développer le menu" : "Réduire le menu"}
+              title={collapsed ? t("Développer le menu") : t("Réduire le menu")}
+              aria-label={
+                collapsed ? t("Développer le menu") : t("Réduire le menu")
+              }
             >
               {collapsed ? (
                 <ArrowRightToLine size={18} />
               ) : (
                 <ArrowLeftToLine size={18} />
               )}
-              <span>Réduire le menu</span>
+              <span>{t("Réduire le menu")}</span>
             </button>
-            <small>FAIT POUR CRÉER DES LIENS.</small>
+            <small>{t("FAIT POUR CRÉER DES LIENS.")}</small>
           </div>
         </div>
       </aside>
@@ -266,7 +305,7 @@ export default function Workspace({
             <button
               ref={menuButton}
               className="workspace-menu-button"
-              aria-label="Ouvrir le menu latéral"
+              aria-label={t("Ouvrir le menu latéral")}
               aria-expanded={mobileOpen}
               onClick={() => setMobileOpen(true)}
             >
@@ -277,16 +316,17 @@ export default function Workspace({
             </span>
             <span className="workspace-divider" />
             <span className="workspace-breadcrumb">
-              Ton espace
+              {t("Ton espace")}
               <ChevronRight size={13} />
-              {active.label}
+              {t(active.label)}
             </span>
           </div>
           <div className="workspace-top-actions">
+            <LanguageSwitcher />
             <button
               className="header-help"
-              title="Aide à l’apprentissage"
-              aria-label="Ouvrir l’aide"
+              title={t("Aide à l’apprentissage")}
+              aria-label={t("Ouvrir l’aide")}
               onClick={() => navigate("ia")}
             >
               <CircleHelp size={19} />
@@ -294,7 +334,7 @@ export default function Workspace({
             <button
               className="header-profile"
               onClick={() => navigate("profil")}
-              aria-label="Ouvrir mon profil"
+              aria-label={t("Ouvrir mon profil")}
             >
               <span className="avatar">
                 {profile.photo.startsWith("data:image/") ? (
@@ -311,11 +351,11 @@ export default function Workspace({
         <div className="workspace-page">
           <div className="module-heading">
             <div>
-              <p className="eyebrow">PAR LES DEVS, POUR LES DEVS</p>
+              <p className="eyebrow">{t("PAR LES DEVS, POUR LES DEVS")}</p>
               <h1 ref={mainTitle} tabIndex={-1}>
-                {editing ? "Modifier mon profil" : active.label}
+                {editing ? t("Modifier mon profil") : t(active.label)}
               </h1>
-              <p>{active.description}</p>
+              <p>{t(active.description)}</p>
             </div>
             <span className="location-pill">
               <CountryFlag country={profile.country} />
@@ -324,14 +364,16 @@ export default function Workspace({
           <div className="demo-banner">
             <span className="status-dot" />
             <span>
-              Espace de démonstration · tes données restent sur cet appareil.
+              {t(
+                "Espace de démonstration · tes données restent sur cet appareil.",
+              )}
             </span>
           </div>
           {notice && (
             <div className="notice" role="status">
               <span>{notice}</span>
               <button
-                aria-label="Fermer la notification"
+                aria-label={t("Fermer la notification")}
                 onClick={() => setNotice("")}
               >
                 <X size={17} />
@@ -359,7 +401,11 @@ export default function Workspace({
               />
             ) : (
               <ProfileView
-                profile={profile}
+                profile={viewedProfile}
+                isOwn={!memberName}
+                onMessage={() =>
+                  navigate(`messages/prive/${encodeURIComponent(memberName)}`)
+                }
                 onEdit={() => navigate("profil/modifier")}
                 onNotice={setNotice}
               />
@@ -374,15 +420,18 @@ export default function Workspace({
           {active.id === "offres" && <Offers onNotice={setNotice} />}
           {active.id === "messages" && (
             <Messages
+              profile={profile}
               route={parts.slice(1)}
               onNavigate={navigate}
               onNotice={setNotice}
             />
           )}
-          {active.id === "ia" && <Assistant />}
+          {active.id === "ia" && (
+            <Assistant route={parts.slice(1)} onNavigate={navigate} />
+          )}
           <footer className="workspace-footer">
-            <span>DevAfrica Connect</span> · Apprendre, partager et construire
-            ensemble.
+            <span>DevAfrica Connect</span>
+            {t("· Apprendre, partager et construire ensemble.")}
           </footer>
         </div>
       </main>

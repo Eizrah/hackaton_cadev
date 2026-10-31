@@ -1,56 +1,517 @@
+import { createLocalId } from "../../lib/format";
 import { useState } from "react";
-import { ArrowRight, Bot } from "lucide-react";
-export default function Assistant() {
-  const [question, setQuestion] = useState(""),
-    [response, setResponse] = useState("");
+import {
+  ArrowRight,
+  BookOpen,
+  Bot,
+  Check,
+  CheckCheck,
+  FileText,
+  Flag,
+  LoaderCircle,
+  MessageSquare,
+  Plus,
+  Search,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useI18n } from "../../i18n/context";
+import { useLocalData } from "../../lib/storage";
+import { askTutor, type TutorMessage } from "../../lib/agents";
+import { checkContent, useReviews, type Review } from "../../data/workflow";
+import { initialPosts, migratePosts, initialJobs } from "../../data/models";
+type TutorThread = {
+  id: number;
+  title: string;
+  messages: TutorMessage[];
+  createdAt: string;
+};
+function Reply({ content }: { content: string }) {
+  const parts = content.split(/```(?:[a-zA-Z0-9]+)?\n?/);
   return (
-    <section className="panel ai-panel">
-      <span className="feature-icon cyan">
-        <Bot size={30} />
-      </span>
-      <h2>Un coup de pouce pour apprendre</h2>
-      <p>
-        Ce prototype utilise des réponses prédéfinies. Aucun modèle IA n’est
-        connecté.
-      </p>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const q = question.toLowerCase();
-          setResponse(
-            q.includes("react")
-              ? "React compose l’interface avec des composants. useState conserve une valeur locale et permet d’actualiser l’affichage. Découvre la fiche React dans Web → Frontend."
-              : q.includes("django") || q.includes("api")
-                ? "Django reçoit les requêtes, valide les données et applique les règles métier. Le frontend peut interroger une API qui renvoie du JSON. Consulte Web → Backend pour les premières notions."
-                : q.includes("python")
-                  ? "Python peut servir au backend avec Django, Flask ou FastAPI, et aux applications desktop avec Tkinter ou PySide6. Cherche Python dans le catalogue pour comparer ses usages."
-                  : q.includes("css") || q.includes("responsive")
-                    ? "Pour une interface responsive, commence avec une seule colonne, utilise Grid ou Flexbox puis adapte la mise en page avec des media queries. Vérifie le résultat à 320 px et au clavier."
-                    : "Pour cette démonstration, pose une question contenant React, Django, API, Python, CSS ou responsive. Les réponses sont prédéfinies.",
-          );
-        }}
+    <>
+      {parts.map((part, i) =>
+        i % 2 ? (
+          <pre key={i}>
+            <code>{part.trim()}</code>
+          </pre>
+        ) : (
+          <p key={i}>{part}</p>
+        ),
+      )}
+    </>
+  );
+}
+export default function Assistant({
+  route,
+  onNavigate,
+}: {
+  route: string[];
+  onNavigate: (path: string) => void;
+}) {
+  const { t } = useI18n();
+  const moderation = route[0] === "moderation";
+  return (
+    <div className="agents-page">
+      <div
+        className="agent-tabs"
+        role="group"
+        aria-label={t("Choisir un agent", "Choose an agent")}
       >
-        <label>
-          Ta question
-          <textarea
-            aria-label="Question à l’assistant"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            required
-            maxLength={2000}
-            placeholder="Quelle différence entre frontend et backend ?"
+        <button
+          className={!moderation ? "active" : ""}
+          onClick={() => onNavigate("ia")}
+        >
+          <BookOpen size={18} />
+          {t("Agent apprentissage", "Learning agent")}
+        </button>
+        <button
+          className={moderation ? "active" : ""}
+          onClick={() => onNavigate("ia/moderation")}
+        >
+          <ShieldCheck size={18} />
+          {t("Agent modérateur", "Moderation agent")}
+        </button>
+      </div>
+      {moderation ? <ModerationAgent /> : <LearningAgent />}
+    </div>
+  );
+}
+function LearningAgent() {
+  const { t, language } = useI18n();
+  const [threads, setThreads] = useLocalData<TutorThread[]>(
+    "tutor-threads",
+    [],
+  );
+  const [selected, setSelected] = useState<number | null>(null);
+  const [question, setQuestion] = useState(""),
+    [search, setSearch] = useState(""),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const thread = threads.find((h) => h.id === selected);
+  async function send(override?: string) {
+    const content = (override ?? question).trim();
+    if (!content || busy) return;
+    const id = selected ?? createLocalId();
+    const previous = threads.find((h) => h.id === id);
+    const messages: TutorMessage[] = [
+      ...(previous?.messages || []),
+      { role: "user", content },
+    ];
+    setThreads((current) =>
+      previous
+        ? current.map((h) => (h.id === id ? { ...h, messages } : h))
+        : [
+            {
+              id,
+              title: content.slice(0, 48),
+              messages,
+              createdAt: new Date().toISOString(),
+            },
+            ...current,
+          ],
+    );
+    setSelected(id);
+    setQuestion("");
+    setBusy(true);
+    setError("");
+    try {
+      const answer = await askTutor(messages, language);
+      setThreads((current) =>
+        current.map((h) =>
+          h.id === id
+            ? {
+                ...h,
+                messages: [
+                  ...h.messages,
+                  { role: "assistant", content: answer },
+                ],
+              }
+            : h,
+        ),
+      );
+    } catch {
+      setError(
+        t(
+          "L’agent est indisponible. Vérifie le serveur Django ou repasse en mode démo.",
+          "The agent is unavailable. Check Django or switch back to demo mode.",
+        ),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="assistant-shell">
+      <aside className="assistant-history">
+        <button
+          className="new-discussion"
+          onClick={() => {
+            setSelected(null);
+            setQuestion("");
+            setError("");
+          }}
+          disabled={busy}
+        >
+          <Plus size={19} />
+          {t("Nouvelle discussion", "New chat")}
+        </button>
+        <label className="history-search">
+          <Search size={16} />
+          <input
+            aria-label={t("Rechercher un historique", "Search chat history")}
+            placeholder={t("Rechercher…", "Search…")}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </label>
-        <button className="btn-primary">
-          Demander de l’aide
-          <ArrowRight size={17} />
-        </button>
-      </form>
-      {response && (
-        <div className="ai-response" role="status">
-          {response}
+        <span className="history-label">
+          {t("TES CONVERSATIONS", "YOUR CONVERSATIONS")}
+        </span>
+        <div className="history-list">
+          {threads
+            .filter((h) => h.title.toLowerCase().includes(search.toLowerCase()))
+            .map((h) => (
+              <div key={h.id} className={selected === h.id ? "selected" : ""}>
+                <button
+                  disabled={busy}
+                  onClick={() => {
+                    setSelected(h.id);
+                    setError("");
+                  }}
+                >
+                  <MessageSquare size={15} />
+                  <span>{h.title}</span>
+                </button>
+                <button
+                  disabled={busy}
+                  className="delete-thread"
+                  aria-label={`${t("Supprimer", "Delete")} ${h.title}`}
+                  onClick={() => {
+                    setThreads((current) =>
+                      current.filter((x) => x.id !== h.id),
+                    );
+                    if (selected === h.id) setSelected(null);
+                  }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          {!threads.length && (
+            <p>
+              {t(
+                "Tes discussions apparaîtront ici.",
+                "Your chats will appear here.",
+              )}
+            </p>
+          )}
         </div>
-      )}
+        <div className="assistant-history-foot">
+          <Bot size={19} />
+          <span>
+            {t(
+              "Un compagnon pour comprendre et construire.",
+              "A companion for understanding and building.",
+            )}
+          </span>
+        </div>
+      </aside>
+      <section className="assistant-conversation">
+        <header>
+          <span>
+            <Sparkles size={17} />
+            {t("Agent apprentissage", "Learning agent")}
+          </span>
+          <small>
+            {import.meta.env.VITE_AGENT_MODE === "api"
+              ? t("Mode API Django", "Django API mode")
+              : t("Mode démo · réponses locales", "Demo mode · local replies")}
+          </small>
+        </header>
+        {!thread ? (
+          <div className="assistant-welcome">
+            <span className="tutor-symbol">
+              <Sparkles size={35} />
+            </span>
+            <h2>
+              {t(
+                "Par quoi veux-tu commencer ?",
+                "Where would you like to start?",
+              )}
+            </h2>
+            <p>
+              {t(
+                "Une notion, un langage, un morceau de code. On avance ensemble.",
+                "A concept, a language, a piece of code. Let’s work through it.",
+              )}
+            </p>
+            <div className="prompt-cards">
+              {[
+                t(
+                  "Explique-moi frontend et backend",
+                  "Explain frontend and backend",
+                ),
+                t(
+                  "Comment fonctionne useState dans React ?",
+                  "How does useState work in React?",
+                ),
+                t("Montre-moi une boucle Python", "Show me a Python loop"),
+              ].map((q) => (
+                <button key={q} disabled={busy} onClick={() => send(q)}>
+                  <BookOpen size={18} />
+                  <span>{q}</span>
+                  <ArrowRight size={15} />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div
+            className="tutor-messages"
+            role="log"
+            aria-label={t("Discussion avec l’agent", "Agent conversation")}
+          >
+            {thread.messages.map((m, i) => (
+              <article className={`tutor-message ${m.role}`} key={i}>
+                {m.role === "assistant" && (
+                  <span className="tutor-avatar">
+                    <Bot size={20} />
+                  </span>
+                )}
+                <div>
+                  <small>
+                    {m.role === "assistant"
+                      ? t("Agent apprentissage · démo", "Learning agent · demo")
+                      : t("Toi", "You")}
+                  </small>
+                  <Reply content={m.content} />
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+        {error && (
+          <p className="tutor-error" role="alert">
+            {error}
+          </p>
+        )}
+        <form
+          className="tutor-composer"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send();
+          }}
+        >
+          <textarea
+            aria-label={t(
+              "Question à l’assistant",
+              "Question for the assistant",
+            )}
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            maxLength={6000}
+            placeholder={t(
+              "Pose une question ou colle ton code…",
+              "Ask a question or paste your code…",
+            )}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void send();
+              }
+            }}
+          />
+          <button
+            className="btn-primary"
+            disabled={!question.trim() || busy}
+            aria-label={t("Envoyer à l’agent", "Send to the agent")}
+          >
+            {busy ? (
+              <LoaderCircle size={20} className="spinning" />
+            ) : (
+              <Send size={20} />
+            )}
+          </button>
+        </form>
+        <p className="tutor-footnote">
+          {t(
+            "Entrée pour envoyer · Maj + Entrée pour une nouvelle ligne. Les exemples ne sont pas exécutés.",
+            "Enter to send · Shift + Enter for a new line. Examples are not executed.",
+          )}
+        </p>
+      </section>
+    </div>
+  );
+}
+function ModerationAgent() {
+  const { t } = useI18n();
+  const [reviews, setReviews] = useReviews();
+  const [, setPosts] = useLocalData("posts", initialPosts, migratePosts);
+  const [, setJobs] = useLocalData("jobs", initialJobs);
+  const [filter, setFilter] = useState("pending");
+  function decide(
+    review: Review,
+    status: "approved" | "rejected",
+    reason: string,
+  ) {
+    setReviews((current) =>
+      current.map((r) =>
+        r.id === review.id ? { ...r, status, decision: reason } : r,
+      ),
+    );
+    if (review.kind === "post")
+      setPosts((current) =>
+        current.map((p) =>
+          p.id === review.resourceId ? { ...p, moderation: status } : p,
+        ),
+      );
+    if (review.kind === "offer")
+      setJobs((current) =>
+        current.map((j) =>
+          j.id === review.resourceId ? { ...j, moderation: status } : j,
+        ),
+      );
+  }
+  const filtered = reviews.filter(
+    (r) => filter === "all" || r.status === filter,
+  );
+  return (
+    <section className="moderation-space">
+      <div className="moderation-intro">
+        <span className="round-icon">
+          <ShieldCheck size={28} />
+        </span>
+        <div>
+          <h2>
+            {t(
+              "Un espace pour veiller sur la communauté.",
+              "A space to look after the community.",
+            )}
+          </h2>
+          <p>
+            {t(
+              "Publications, offres et signalements. Cette interface simule la file de travail de l’agent modérateur ; les droits et décisions réels seront gérés par Django.",
+              "Posts, jobs and reports. This interface simulates the moderation queue; real permissions and decisions will be handled by Django.",
+            )}
+          </p>
+        </div>
+      </div>
+      <div className="moderation-tabs">
+        {[
+          ["pending", t("À vérifier", "To review")],
+          ["approved", t("Validés", "Approved")],
+          ["rejected", t("Refusés", "Rejected")],
+          ["all", t("Tous", "All")],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            className={filter === key ? "active" : ""}
+            onClick={() => setFilter(key)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="moderation-list">
+        {filtered.map((r) => (
+          <article className="panel review-card" key={r.id}>
+            <div className="review-heading">
+              <span className="round-icon">
+                {r.kind === "report" ? (
+                  <Flag size={19} />
+                ) : (
+                  <FileText size={19} />
+                )}
+              </span>
+              <div>
+                <small>
+                  {r.kind === "post"
+                    ? t("Publication", "Post")
+                    : r.kind === "offer"
+                      ? t("Offre", "Job")
+                      : t("Signalement", "Report")}
+                </small>
+                <h3>{r.title}</h3>
+              </div>
+              <span className={`review-status ${r.status}`}>
+                {r.status === "pending"
+                  ? t("En attente", "Pending")
+                  : r.status === "approved"
+                    ? t("Validé", "Approved")
+                    : t("Refusé", "Rejected")}
+              </span>
+            </div>
+            <p className="review-content">{r.content}</p>
+            {r.decision && <p className="review-decision">{t(r.decision)}</p>}
+            {r.status === "pending" && (
+              <div className="review-actions">
+                {r.kind !== "report" && (
+                  <button
+                    className="btn-primary"
+                    onClick={() => {
+                      const result = checkContent(r.content);
+                      decide(r, result.status, result.reason);
+                    }}
+                  >
+                    <Sparkles size={16} />
+                    {t("Vérification locale · démo", "Local check · demo")}
+                  </button>
+                )}
+                <button
+                  className="btn-secondary"
+                  onClick={() =>
+                    decide(
+                      r,
+                      "approved",
+                      t(
+                        "Décision manuelle de démonstration.",
+                        "Manual demonstration decision.",
+                      ),
+                    )
+                  }
+                >
+                  <Check size={16} />
+                  {r.kind === "report"
+                    ? t("Marquer traité", "Mark reviewed")
+                    : t("Valider", "Approve")}
+                </button>
+                <button
+                  className="btn-secondary danger"
+                  onClick={() =>
+                    decide(
+                      r,
+                      "rejected",
+                      t(
+                        "Refus manuel de démonstration.",
+                        "Manual demonstration rejection.",
+                      ),
+                    )
+                  }
+                >
+                  <X size={16} />
+                  {t("Refuser", "Reject")}
+                </button>
+              </div>
+            )}
+          </article>
+        ))}
+        {!filtered.length && (
+          <div className="panel empty-state">
+            <CheckCheck size={36} />
+            <h2>{t("La file est à jour.", "The queue is up to date.")}</h2>
+            <p>
+              {t(
+                "Les nouvelles publications, offres et signalements apparaîtront ici.",
+                "New posts, jobs and reports will appear here.",
+              )}
+            </p>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

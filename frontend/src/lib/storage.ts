@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 export type UpdateData<T> = (next: T | ((current: T) => T)) => void;
 
 // Les données locales servent uniquement à la démo. Aucun mot de passe ni jeton ici.
@@ -19,6 +19,17 @@ export function useLocalData<T>(
     }
   });
   const current = useRef(value);
+  useEffect(() => {
+    const sync = (event: Event) => {
+      const detail = (event as CustomEvent<{ key: string; value: T }>).detail;
+      if (detail.key === key && detail.value !== current.current) {
+        current.current = detail.value;
+        setValue(detail.value);
+      }
+    };
+    window.addEventListener("devafrica:store", sync);
+    return () => window.removeEventListener("devafrica:store", sync);
+  }, [key]);
   const update: UpdateData<T> = (next) => {
     const result =
       typeof next === "function"
@@ -26,6 +37,9 @@ export function useLocalData<T>(
         : next;
     current.current = result;
     setValue(result);
+    window.dispatchEvent(
+      new CustomEvent("devafrica:store", { detail: { key, value: result } }),
+    );
     try {
       localStorage.setItem(`devafrica:${key}`, JSON.stringify(result));
     } catch {

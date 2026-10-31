@@ -1,3 +1,4 @@
+import { useI18n } from "../../i18n/context";
 import { useState, type CSSProperties } from "react";
 import {
   ArrowLeft,
@@ -47,6 +48,8 @@ function CourseCard({
   done: boolean;
   onOpen: () => void;
 }) {
+  const { t } = useI18n();
+
   const domain = domains.find((d) => d.id === course.domain)!;
   return (
     <button className="learning-course" onClick={onOpen}>
@@ -58,7 +61,7 @@ function CourseCard({
           {done ? (
             <>
               <CheckCircle2 size={13} />
-              Validé
+              {t("Validé")}
             </>
           ) : (
             "Découverte"
@@ -66,7 +69,7 @@ function CourseCard({
         </span>
       </div>
       <span className="course-location">
-        {domain.title}
+        {t(domain.title)}
         {course.paths[0]
           ? ` / ${domain.paths.find((p) => p.id === course.paths[0])?.title || ""}`
           : ""}
@@ -75,7 +78,7 @@ function CourseCard({
       <p>{course.description}</p>
       <span className="course-role">{course.role}</span>
       <div className="course-card-bottom">
-        <span>{done ? "Revoir la fiche" : "Découvrir la fiche"}</span>
+        <span>{done ? t("Revoir la fiche") : t("Découvrir la fiche")}</span>
         <ArrowRight size={17} />
       </div>
     </button>
@@ -88,6 +91,8 @@ export default function Learning({
   route: string[];
   onNavigate: (path: string) => void;
 }) {
+  const { t, language } = useI18n();
+
   const [query, setQuery] = useState("");
   const [progress, setProgress] = useLocalData<string[]>("progress", []);
 
@@ -116,12 +121,15 @@ export default function Learning({
     return (
       <div className="panel empty-state">
         <BookOpen />
-        <h2>Ce parcours n’est pas disponible.</h2>
+        <h2>{t("Ce parcours n’est pas disponible.")}</h2>
         <button
           className="btn-primary"
-          onClick={() => onNavigate("apprentissage")}
+          onClick={() => {
+            setQuery("");
+            onNavigate("apprentissage");
+          }}
         >
-          Revenir au catalogue
+          {t("Revenir au catalogue")}
         </button>
       </div>
     );
@@ -151,20 +159,32 @@ export default function Learning({
   const visibleCourses = selectedDomain || tokens.length ? filtered : [];
   return (
     <div className="learning-page">
+      {language === "en" && (
+        <p className="catalog-language-note">
+          The interface is in English. Detailed learning notes currently remain
+          in French.
+        </p>
+      )}
       <div className="learning-banner">
         <div>
-          <span className="mini-label">UN CHEMIN POUR CHAQUE CURIOSITÉ</span>
+          <span className="mini-label">
+            {t("UN CHEMIN POUR CHAQUE CURIOSITÉ")}
+          </span>
           <h2>
             {selectedDomain
               ? selectedDomain.id === "langages"
-                ? "Explore les langages de programmation"
-                : `Explore le ${selectedDomain.title.toLowerCase()}`
-              : "Ton prochain « je sais faire » commence ici."}
+                ? t("Explore les langages de programmation")
+                : language === "en"
+                  ? `Explore ${t(selectedDomain.title)}`
+                  : `Explore le ${selectedDomain.title.toLowerCase()}`
+              : t("Ton prochain « je sais faire » commence ici.")}
           </h2>
           <p>
             {selectedDomain
-              ? selectedDomain.description
-              : "Web, mobile, desktop, design ou langages : avance à ton rythme, une notion à la fois."}
+              ? t(selectedDomain.description)
+              : t(
+                  "Web, mobile, desktop, design ou langages : avance à ton rythme, une notion à la fois.",
+                )}
           </p>
         </div>
         <div className="learning-progress">
@@ -175,11 +195,11 @@ export default function Learning({
             {doneCount}
             <small> / {courses.length}</small>
           </strong>
-          <span>fiches validées</span>
+          <span>{t("fiches validées")}</span>
           <progress
             value={doneCount}
             max={courses.length}
-            aria-label="Progression globale"
+            aria-label={t("Progression globale")}
           />
         </div>
       </div>
@@ -187,15 +207,15 @@ export default function Learning({
         <Search size={21} />
         <input
           type="search"
-          aria-label="Rechercher un apprentissage"
-          placeholder="Que veux-tu apprendre ? Python, React, mobile…"
+          aria-label={t("Rechercher un apprentissage")}
+          placeholder={t("Que veux-tu apprendre ? Python, React, mobile…")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
         {query && (
           <button
             className="quiet"
-            aria-label="Effacer la recherche"
+            aria-label={t("Effacer la recherche")}
             onClick={() => setQuery("")}
           >
             <X size={18} />
@@ -204,10 +224,15 @@ export default function Learning({
       </div>
       <nav
         className="learning-breadcrumb"
-        aria-label="Fil d’Ariane apprentissage"
+        aria-label={t("Fil d’Ariane apprentissage")}
       >
-        <button onClick={() => onNavigate("apprentissage")}>
-          Tous les domaines
+        <button
+          onClick={() => {
+            setQuery("");
+            onNavigate("apprentissage");
+          }}
+        >
+          {t("Tous les domaines")}
         </button>
         {selectedDomain && (
           <>
@@ -216,14 +241,14 @@ export default function Learning({
               aria-current={selectedPath ? undefined : "page"}
               onClick={() => onNavigate(`apprentissage/${selectedDomain.id}`)}
             >
-              {selectedDomain.title}
+              {t(selectedDomain.title)}
             </button>
           </>
         )}
         {selectedPath && (
           <>
             <ChevronRight size={14} />
-            <span aria-current="page">{selectedPath.title}</span>
+            <span aria-current="page">{t(selectedPath.title)}</span>
           </>
         )}
       </nav>
@@ -231,10 +256,12 @@ export default function Learning({
         <>
           <div className="catalog-section-title">
             <div>
-              <h2>Choisis ton terrain de jeu</h2>
-              <p>Aucune expérience nécessaire pour commencer à découvrir.</p>
+              <h2>{t("Choisis ton terrain de jeu")}</h2>
+              <p>
+                {t("Aucune expérience nécessaire pour commencer à découvrir.")}
+              </p>
             </div>
-            <span>05 domaines</span>
+            <span>{t("05 domaines")}</span>
           </div>
           <div className="domain-grid">
             {domains.map((d, i) => {
@@ -249,22 +276,22 @@ export default function Learning({
                   <span className="domain-card-icon">
                     <Icon size={31} strokeWidth={1.4} />
                   </span>
-                  <span className="domain-subtitle">{d.subtitle}</span>
+                  <span className="domain-subtitle">{t(d.subtitle)}</span>
                   <h3>
                     {d.id === "langages" ? (
                       <>
-                        Langages
+                        {t("Langages")}
                         <span className="domain-title-sub">
-                          de programmation
+                          {t("de programmation")}
                         </span>
                       </>
                     ) : (
-                      d.title
+                      t(d.title)
                     )}
                   </h3>
-                  <p>{d.description}</p>
+                  <p>{t(d.description)}</p>
                   <span className="domain-card-link">
-                    Explorer
+                    {t("Explorer")}
                     <ArrowRight size={17} />
                   </span>
                   <span className="domain-ribbon">
@@ -277,13 +304,14 @@ export default function Learning({
               <span className="helper-icon">
                 <Sparkles size={28} />
               </span>
-              <h3>Tu ne sais pas par où commencer ?</h3>
+              <h3>{t("Tu ne sais pas par où commencer ?")}</h3>
               <p>
-                Pour une interface visible dans le navigateur, essaie Web →
-                Frontend : HTML, CSS, puis JavaScript.
+                {t(
+                  "Pour une interface visible dans le navigateur, essaie Web → Frontend : HTML, CSS, puis JavaScript.",
+                )}
               </p>
-              <button onClick={() => onNavigate("apprentissage/web/frontend")}>
-                Découvrir le frontend
+              <button onClick={() => onNavigate("ia")}>
+                {t("Demander à l’agent apprentissage")}
                 <ArrowRight size={17} />
               </button>
             </div>
@@ -291,19 +319,19 @@ export default function Learning({
           <section className="beginner-callout">
             <Layers3 size={24} />
             <div>
-              <h3>Langage, framework… quelle différence ?</h3>
+              <h3>{t("Langage, framework… quelle différence ?")}</h3>
               <p>
-                Un <strong>langage</strong> sert à exprimer la logique. Un{" "}
-                <strong>framework</strong> fournit une structure et des outils.
-                React est une bibliothèque d’interface ; HTML structure la page
-                et CSS définit son apparence.
+                {t(
+                  "Un langage sert à exprimer la logique. Un framework fournit une structure et des outils. React est une bibliothèque d’interface ; HTML structure la page et CSS définit son apparence.",
+                  "A language expresses logic. A framework provides structure and tools. React is a UI library; HTML structures a page and CSS defines its appearance.",
+                )}
               </p>
             </div>
           </section>
           <div className="catalog-section-title">
             <div>
-              <h2>Les premières briques</h2>
-              <p>Quelques fiches pour commencer sans te perdre.</p>
+              <h2>{t("Les premières briques")}</h2>
+              <p>{t("Quelques fiches pour commencer sans te perdre.")}</p>
             </div>
           </div>
           <div className="courses-grid">
@@ -327,7 +355,7 @@ export default function Learning({
           <div
             className="domain-tabs"
             role="group"
-            aria-label="Choisir un autre domaine"
+            aria-label={t("Choisir un autre domaine")}
           >
             {domains.map((d) => (
               <button
@@ -336,7 +364,7 @@ export default function Learning({
                 className={d.id === selectedDomain.id ? "active" : ""}
                 onClick={() => onNavigate(`apprentissage/${d.id}`)}
               >
-                {d.title}
+                {t(d.title)}
               </button>
             ))}
           </div>
@@ -352,10 +380,10 @@ export default function Learning({
                   aria-pressed={selectedPath?.id === p.id}
                 >
                   <span className="path-step">0{i + 1}</span>
-                  <h3>{p.title}</h3>
-                  <p>{p.description}</p>
+                  <h3>{t(p.title)}</h3>
+                  <p>{t(p.description)}</p>
                   <span className="path-link">
-                    Choisir ce parcours
+                    {t("Choisir ce parcours")}
                     <ArrowRight size={17} />
                   </span>
                 </button>
@@ -366,10 +394,10 @@ export default function Learning({
             <div>
               <h2>
                 {selectedPath
-                  ? selectedPath.title
+                  ? t(selectedPath.title)
                   : selectedDomain.id === "langages"
-                    ? "Les principaux langages"
-                    : "Les technologies à découvrir"}
+                    ? t("Les principaux langages")
+                    : t("Les technologies à découvrir")}
               </h2>
               <p>
                 {selectedPath?.description ||
@@ -378,7 +406,10 @@ export default function Learning({
                     : "Choisis un parcours ou explore les fiches ci-dessous.")}
               </p>
             </div>
-            <span>{filtered.length} fiches</span>
+            <span>
+              {filtered.length}
+              {t("fiches")}
+            </span>
           </div>
         </>
       )}
@@ -386,12 +417,15 @@ export default function Learning({
         <div className="catalog-section-title">
           <div>
             <h2>
-              {filtered.length} résultat{filtered.length > 1 ? "s" : ""} pour «{" "}
-              {query.trim()} »
+              {filtered.length}
+              {t("résultat")}
+              {filtered.length > 1 ? t("s") : ""}
+              {t("pour «")} {query.trim()} »
             </h2>
             <p>
-              Recherche dans tous les domaines, les titres et les technologies
-              associées.
+              {t(
+                "Recherche dans tous les domaines, les titres et les technologies associées.",
+              )}
             </p>
           </div>
         </div>
@@ -411,10 +445,10 @@ export default function Learning({
       {(selectedDomain || tokens.length > 0) && !visibleCourses.length && (
         <div className="panel empty-state">
           <Search size={32} />
-          <h2>Aucune fiche trouvée.</h2>
-          <p>Essaie un mot plus simple, comme Python, web ou design.</p>
+          <h2>{t("Aucune fiche trouvée.")}</h2>
+          <p>{t("Essaie un mot plus simple, comme Python, web ou design.")}</p>
           <button className="text-link" onClick={() => setQuery("")}>
-            Effacer ma recherche
+            {t("Effacer ma recherche")}
           </button>
         </div>
       )}
@@ -435,6 +469,8 @@ function CourseDetail({
   onComplete: () => void;
   onNavigate: (path: string) => void;
 }) {
+  const { t } = useI18n();
+
   const [answer, setAnswer] = useState<number | null>(null);
   const [checked, setChecked] = useState(false);
   const domain = domains.find((d) => d.id === course.domain)!;
@@ -450,7 +486,8 @@ function CourseDetail({
         }
       >
         <ArrowLeft size={17} />
-        Retour au parcours {domain.title}
+        {t("Retour au parcours")}
+        {t(domain.title)}
       </button>
       <div className="course-detail-grid">
         <aside>
@@ -458,27 +495,30 @@ function CourseDetail({
             <span className="tech-icon-box large">
               <TechIcon name={course.tech} size={45} />
             </span>
-            <span className="course-badge">Fiche découverte</span>
+            <span className="course-badge">{t("Fiche découverte")}</span>
             <h2>{course.title}</h2>
             <p>{course.role}</p>
             <div className="course-outline">
               <span>
-                <span>01</span>Comprendre le rôle
+                <span>01</span>
+                {t("Comprendre le rôle")}
               </span>
               <span>
-                <span>02</span>Voir un exemple
+                <span>02</span>
+                {t("Voir un exemple")}
               </span>
               <span>
-                <span>03</span>Vérifier sa compréhension
+                <span>03</span>
+                {t("Vérifier sa compréhension")}
               </span>
             </div>
             <div className="course-completion">
               <CheckCircle2 size={17} />
-              {done || valid ? "Fiche validée" : "À ton rythme"}
+              {done || valid ? t("Fiche validée") : t("À ton rythme")}
             </div>
           </section>
           <section className="panel">
-            <h2>Les outils associés</h2>
+            <h2>{t("Les outils associés")}</h2>
             <div className="skills-wall">
               {course.frameworks.length ? (
                 course.frameworks.map((f) => (
@@ -489,13 +529,14 @@ function CourseDetail({
                 ))
               ) : (
                 <span className="muted">
-                  Les bases d’abord, sans framework.
+                  {t("Les bases d’abord, sans framework.")}
                 </span>
               )}
             </div>
             <p>
-              Un outil accompagne le langage ; il ne remplace pas les notions de
-              base.
+              {t(
+                "Un outil accompagne le langage ; il ne remplace pas les notions de base.",
+              )}
             </p>
           </section>
         </aside>
@@ -505,23 +546,25 @@ function CourseDetail({
               <span className="round-icon">
                 <BookOpen size={20} />
               </span>
-              <h2>Comprendre avant de commencer</h2>
+              <h2>{t("Comprendre avant de commencer")}</h2>
             </div>
             <p>{course.lesson}</p>
             <div className="lesson-key">
               <Sparkles size={19} />
               <p>
-                <strong>À retenir</strong>
+                <strong>{t("À retenir")}</strong>
                 <br />
                 {course.description}
               </p>
             </div>
-            <h3>Un premier aperçu</h3>
+            <h3>{t("Un premier aperçu")}</h3>
             <pre>
               <code>{course.example}</code>
             </pre>
             <small className="muted">
-              Exemple de lecture ; aucun code n’est exécuté dans cette fiche.
+              {t(
+                "Exemple de lecture ; aucun code n’est exécuté dans cette fiche.",
+              )}
             </small>
           </article>
           <form
@@ -533,10 +576,12 @@ function CourseDetail({
               if (answer === course.answer) onComplete();
             }}
           >
-            <span className="mini-label">UNE QUESTION POUR VÉRIFIER</span>
+            <span className="mini-label">
+              {t("UNE QUESTION POUR VÉRIFIER")}
+            </span>
             <h2>{course.question}</h2>
             <fieldset>
-              <legend className="sr-only">Choisis une réponse</legend>
+              <legend className="sr-only">{t("Choisis une réponse")}</legend>
               {course.options.map((o, i) => (
                 <label
                   className={`quiz-option ${answer === i ? "selected" : ""}`}
@@ -561,7 +606,7 @@ function CourseDetail({
               disabled={answer === null}
               type="submit"
             >
-              Vérifier ma réponse
+              {t("Vérifier ma réponse")}
               <ArrowRight size={17} />
             </button>
             {checked && (
@@ -571,13 +616,13 @@ function CourseDetail({
               >
                 <strong>
                   {valid
-                    ? "Bravo, tu as compris !"
-                    : "Pas tout à fait. Réessaie."}
+                    ? t("Bravo, tu as compris !")
+                    : t("Pas tout à fait. Réessaie.")}
                 </strong>
                 <p>{course.explanation}</p>
                 {valid && (
                   <small>
-                    Ta progression est enregistrée sur cet appareil.
+                    {t("Ta progression est enregistrée sur cet appareil.")}
                   </small>
                 )}
               </div>

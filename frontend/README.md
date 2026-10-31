@@ -1,8 +1,8 @@
 # DevAfrica Connect — frontend du hackathon
 
-Version des interfaces : 28 octobre 2026.
+Version des interfaces : 31 octobre 2026.
 
-Le projet reprend les maquettes bleu nuit/cyan de l’accueil et de l’authentification, avec un nouvel espace communautaire à menu bleu vertical, des profils translucides et un catalogue d’apprentissage à cartes colorées.
+L’accueil garde son dégradé bleu/cyan. L’authentification reprend désormais la maquette claire fournie : carte blanche, fond bleu pâle, boutons bleus et illustration du développeur à droite sur ordinateur. L’espace communautaire conserve son menu bleu vertical, ses profils translucides et son catalogue d’apprentissage à cartes colorées. La messagerie suit une disposition à trois colonnes.
 
 ## Démarrer dans VS Code sous Windows
 
@@ -40,41 +40,45 @@ Pour connaître Tailwind : `npm list tailwindcss`. Une plage dans `package.json`
 ## Explorer les interfaces
 
 - Depuis l’accueil, ouvrir les cartes des modules ou « Explorer la démonstration des 7 modules ».
+- **S’inscrire** ouvre trois étapes : informations personnelles, expériences et compétences. Le niveau propose uniquement Junior ou Senior. L’e-mail et les mots de passe se saisissent à la fin ; le profil local reprend ensuite les informations renseignées. Google et GitHub sont les deux seules options sociales visibles, avec le logo Google multicolore.
 - Dans l’espace, le menu bleu passe de la version avec texte à une version avec icônes. Sur mobile, le bouton en haut à gauche ouvre le tiroir.
-- **Messagerie** regroupe les conversations privées et les groupes.
-- **Mon profil** est une page de présentation. « Modifier mon profil » ouvre une autre page.
-- **Apprentissage** propose les cinq domaines, des sous-parcours et une recherche globale.
-- Les projets et découvertes de **Communauté** peuvent recevoir une note de 1 à 5 étoiles. Une seconde note remplace la précédente.
+- **Messagerie** propose Toutes les conversations, Messages privés et Groupes, avec informations et fichiers récents.
+- **Mon profil** présente ton parcours et tes candidatures (en cours, validées, non retenues). « Modifier mon profil » ouvre une autre page.
+- **Apprentissage** propose cinq domaines, une recherche globale et les parcours frontend/backend du web. Fullstack est retiré. Le défilement est conservé entre les choix et restauré par Retour/Avancer.
+- **Assistant IA** contient l’agent apprentissage avec historique et l’agent modérateur avec une file locale de publications/offres/signalements.
+- Le sélecteur en haut à droite passe les commandes de l’interface en français ou anglais, avec drapeau. Les contenus des membres gardent leur langue ; les fiches pédagogiques détaillées restent en français.
+- Les projets et découvertes de **Communauté** peuvent recevoir une étoile d’appréciation. Le compteur indique le nombre de personnes ; 1 000 devient `1k`.
 
-Lire `docs/NOUVELLES_INTERFACES.md` pour le détail de toutes les nouvelles directives.
+Lire `docs/DIRECTIVES_31_OCTOBRE.md` pour le détail des directives et des limites.
 
 ## Ce qui fonctionne et ce qui reste à brancher
 
 | Module | Dans le frontend | À raccorder ou compléter avec Django |
 | --- | --- | --- |
-| Authentification | Connexion/inscription/récupération en formulaire ; Google et GitHub visibles | Comptes, sessions, déconnexion, e-mails et OAuth. |
-| Profil | Vue séparée, édition, photo locale, compétences avec icônes et portfolio facultatif | Utilisateur identifié, photo distante, expériences et compétences structurées. |
-| Communauté | Publications, collaboration, commentaires, notes, drapeaux, dates, signalements locaux | Notes partagées, pagination, droits, modération et pièces jointes de projet. |
+| Authentification | Nouveau design responsive, inscription en trois étapes et profil local ; Google et GitHub visibles | Comptes, sessions, déconnexion, e-mails et OAuth. |
+| Profil | Informations personnelles, expériences et compétences structurées, édition, photo locale, portfolio et candidatures | Utilisateur identifié et synchronisation de ces données avec le serveur. |
+| Communauté | Publications, collaboration, commentaires, étoiles, drapeaux, dates, signalements locaux | Compteurs partagés, pagination, droits, modération et pièces jointes de projet. |
 | Apprentissage | 5 domaines, sous-parcours, 47 fiches introductives et progression locale | Véritables contenus longs, exercices serveur, synchronisation et IA. |
 | Offres | Recherche, filtre, création et candidature simulée | CV, état des candidatures, durée CDD, date limite et employeurs. |
 | Groupes | Dans Messagerie : recherche, création, rejoindre/quitter, discussion | Membres réels, rôles, droits et messages partagés. |
 | Messagerie | Conversations privées et groupes, historique, sélection de fichier | Transmission des messages, stockage de fichiers et temps réel. |
 
-Aucun compte réel n’est créé. Les formulaires d’authentification affichent un message de démonstration. Les boutons Google/GitHub restent désactivés en attendant OAuth. L’option « Se souvenir de moi » est actuellement visuelle.
+Aucun compte réel n’est créé. L’inscription construit un profil local puis propose de l’afficher ; la connexion et la récupération affichent un message de démonstration. Les boutons Google/GitHub restent désactivés en attendant OAuth. L’option « Se souvenir de moi » est actuellement visuelle.
 
-Les pièces jointes de messagerie conservent uniquement leur **nom**, jamais leurs octets. Limite de sélection locale : 5 Mo. Les réponses de l’assistant sont prédéfinies. Les données locales ne sont visibles que sur ce navigateur.
+Les pièces jointes de messagerie conservent uniquement leur **nom**, jamais leurs octets. Limite de sélection locale : 5 Mo. L’agent apprentissage fonctionne avec des exemples/règles locales par défaut. Sa connexion à l’API Django est préparée via `VITE_AGENT_MODE=api`, mais nécessite un endpoint fonctionnel côté backend. Le modérateur simule une file et des vérifications locales ; il n’est pas une IA de modération réelle. Les données locales ne sont visibles que sur ce navigateur.
 
 ## Lire le code dans cet ordre
 
 1. `index.html` fournit `<div id="root">`, où React s’affiche.
 2. `src/main.tsx` charge le CSS, puis l’application.
-3. `src/App.tsx` contient l’accueil, les formulaires et la navigation par adresse `#...`.
+3. `src/App.tsx` contient l’accueil et la navigation par adresse `#...`. `src/components/Authentication.tsx` contient les nouveaux formulaires ; `ProfileFields.tsx` partage les champs avec l’édition du profil.
 4. `src/components/Workspace.tsx` compose le menu et le module actif.
 5. `src/components/modules/` contient un fichier par module pour faciliter tes modifications.
 6. `src/data/learning.ts` décrit les catégories, parcours et fiches ; tu peux y ajouter du contenu.
-7. `src/workspace.css` définit les nouvelles interfaces. `src/index.css` garde l’accueil et l’authentification.
+7. `src/workspace.css` définit l’espace communautaire. `src/index.css` garde l’accueil ; `src/authentication.css` définit la nouvelle authentification et `src/components/profile-fields.css` ses champs partagés.
 8. `src/lib/storage.ts` conserve les exemples avec `localStorage`. Aucun mot de passe ni jeton n’y est enregistré.
 9. `src/lib/api.ts` est préparé pour l’API mais n’est pas encore appelé par les écrans de démo.
+10. `src/data/profile.ts` décrit les informations personnelles, expériences et compétences, leurs validations et la reprise des anciens profils.
 
 `useState` conserve une valeur d’interface. Un appel comme `setQuery` la modifie et React actualise l’affichage. Un composant réutilisable comme `CountryFlag` évite de recopier la logique dans chaque module.
 
@@ -103,27 +107,30 @@ Si l’écran reste blanc sur ton PC, lire la première erreur du terminal Vite 
 
 ## Tes anciennes données
 
-Les données locales de la première version sont reprises, avec des valeurs par défaut pour les nouveaux champs. Un ancien post sans date ne reçoit pas de date inventée. Les anciens cœurs ne deviennent pas artificiellement des notes. Les anciens groupes restent accessibles dans Messagerie.
+Les données locales de la première version sont reprises, avec des valeurs par défaut pour les nouveaux champs. Un ancien post sans date ne reçoit pas de date inventée. Les anciens compteurs et avis sont repris comme appréciations, sans utiliser la somme des notes comme nombre de personnes. Les anciens groupes restent accessibles dans Messagerie.
 
 Pour remettre les exemples à zéro : F12 → Application → Local Storage, supprimer uniquement les clés commençant par `devafrica:`. Cela efface les données locales correspondantes, donc conserver ce que tu veux garder avant cette action.
 
 ## Travailler avec ton coéquipier
 
-Lire `docs/INTEGRATION_DJANGO.md` ensemble, confirmer les URL et les champs puis brancher d’abord authentification/profil, ensuite les publications/notes, groupes/messages et offres.
+Lire `docs/INTEGRATION_DJANGO.md` ensemble, confirmer les URL et les champs puis brancher d’abord authentification/profil, ensuite les publications/étoiles, groupes/messages et offres.
 
 Si le dossier est déjà un dépôt de l’équipe, commencer par `git status`, puis travailler dans une branche :
 
 ```bash
 git switch -c frontend/nouvelles-interfaces
 git add src public docs README.md
-git commit -m "Adapte les profils, notes, messagerie et parcours d'apprentissage"
+git commit -m "Adapte les profils, étoiles, messagerie et parcours d'apprentissage"
 ```
 
 Un commit est un point d’historique local. `git push` demande un dépôt distant configuré et les droits correspondants. Ne pas créer un dépôt imbriqué si l’équipe en possède déjà un. Ne jamais versionner `node_modules`, un secret ou un `.env` sensible. Les variables `VITE_` sont publiques.
 
 ## Documentation fournie
 
-- `docs/NOUVELLES_INTERFACES.md` : nouvelles directives et fonctionnement.
+- `docs/AUTHENTIFICATION.md` : nouvelle maquette, inscription pas à pas, données et fichiers à modifier.
+
+- `docs/DIRECTIVES_31_OCTOBRE.md` : directives actuelles et fonctionnement.
+- `docs/NOUVELLES_INTERFACES.md` : point d’entrée vers la documentation actuelle.
 - `docs/CHANGEMENTS.md` : changements fichier par fichier.
 - `docs/INTEGRATION_DJANGO.md` : contrat proposé à confirmer avec le backend.
 - `docs/VERIFICATIONS.md` : tests effectués et limites.

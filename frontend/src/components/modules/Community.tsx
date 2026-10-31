@@ -1,12 +1,18 @@
-import { useState, type FormEvent } from "react";
+import { compactStars } from "../../lib/format";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ArrowRight,
+  Bookmark,
+  Check,
   Flag,
   MessageCircle,
+  MoreHorizontal,
   Plus,
   Send,
+  ShieldCheck,
   Sparkles,
   Star,
+  UserRound,
   UsersRound,
 } from "lucide-react";
 import { useLocalData } from "../../lib/storage";
@@ -16,64 +22,126 @@ import {
   type Post,
   type Profile,
 } from "../../data/models";
+import { makeReview, useReviews } from "../../data/workflow";
+import { useI18n } from "../../i18n/context";
 import { CountryFlag } from "../CountryFlag";
 import Modal from "../Modal";
-
-function publishedDate(value: string | null) {
-  if (!value || Number.isNaN(new Date(value).getTime()))
-    return "Date de publication non renseignée";
-  return new Intl.DateTimeFormat("fr-FR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Indian/Antananarivo",
-  }).format(new Date(value));
-}
-function ProjectRating({
+function PostMenu({
   post,
-  onRate,
+  owner,
+  onCollaboration,
+  onProfile,
+  onSave,
+  onReport,
 }: {
   post: Post;
-  onRate: (note: number) => void;
+  owner: boolean;
+  onCollaboration: () => void;
+  onProfile: () => void;
+  onSave: () => void;
+  onReport: () => void;
 }) {
-  const [hovered, setHovered] = useState(0);
-  const average = post.ratingCount ? post.ratingTotal / post.ratingCount : 0;
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null),
+    trigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const click = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        trigger.current?.focus();
+      }
+    };
+    document.addEventListener("mousedown", click);
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("mousedown", click);
+      document.removeEventListener("keydown", key);
+    };
+  }, [open]);
   return (
-    <div className="project-rating">
-      <div className="rating-summary">
-        <Star size={19} fill="currentColor" />
-        <strong>
-          {post.ratingCount ? average.toFixed(1).replace(".", ",") : "—"}
-        </strong>
-        <span>/ 5</span>
-        <span>· {post.ratingCount} avis</span>
-      </div>
-      <div className="rating-picker">
-        <span>{post.myRating ? "Ta note" : "Donne ton avis"}</span>
+    <div className="post-menu" ref={ref}>
+      <button
+        className="quiet"
+        ref={trigger}
+        aria-label={t("Options de la publication", "Post options")}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onClick={() => setOpen(!open)}
+      >
+        <MoreHorizontal size={22} />
+      </button>
+      {open && (
         <div
-          role="group"
-          aria-label={`Noter ${post.title || "cette publication"} sur 5`}
-          onMouseLeave={() => setHovered(0)}
+          className="post-dropdown"
+          role="menu"
+          aria-label={t("Actions de la publication", "Post actions")}
         >
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button
-              type="button"
-              key={n}
-              onMouseEnter={() => setHovered(n)}
-              onFocus={() => setHovered(n)}
-              onBlur={() => setHovered(0)}
-              className={n <= (hovered || post.myRating) ? "rated" : ""}
-              aria-label={`${n} étoile${n > 1 ? "s" : ""}`}
-              aria-pressed={post.myRating === n}
-              onClick={() => onRate(n)}
+          <button
+            role="menuitemcheckbox"
+            aria-checked={post.collaboration}
+            disabled={!owner}
+            title={
+              !owner
+                ? t(
+                    "Seul l’auteur peut modifier sa demande d’aide.",
+                    "Only the author can change this request.",
+                  )
+                : undefined
+            }
+            onClick={onCollaboration}
+          >
+            <span
+              className={`menu-check ${post.collaboration ? "checked" : ""}`}
             >
-              <Star
-                size={22}
-                fill={n <= (hovered || post.myRating) ? "currentColor" : "none"}
-              />
-            </button>
-          ))}
+              {post.collaboration && <Check size={13} />}
+            </span>
+            <span>
+              {t(
+                "Demande d’aide / collaboration",
+                "Help / collaboration request",
+              )}
+            </span>
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => {
+              onProfile();
+              setOpen(false);
+            }}
+          >
+            <UserRound size={17} />
+            {t("Voir le profil", "View profile")}
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => {
+              onSave();
+              setOpen(false);
+            }}
+          >
+            <Bookmark size={17} fill={post.saved ? "currentColor" : "none"} />
+            {post.saved
+              ? t("Annonce enregistrée", "Saved post")
+              : t("Enregistrer l’annonce", "Save post")}
+          </button>
+          <button
+            role="menuitem"
+            className="danger"
+            onClick={() => {
+              onReport();
+              setOpen(false);
+            }}
+          >
+            <Flag size={17} />
+            {t("Signaler", "Report")}
+          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -83,60 +151,59 @@ export default function Community({
   onNotice,
 }: {
   profile: Profile;
-  onNavigate: (route: string) => void;
+  onNavigate: (path: string) => void;
   onNotice: (text: string) => void;
 }) {
+  const { t, locale } = useI18n();
   const [posts, setPosts] = useLocalData("posts", initialPosts, migratePosts);
+  const [, setReviews] = useReviews();
   const [filter, setFilter] = useState("Tous");
-  const [text, setText] = useState("");
-  const [title, setTitle] = useState("");
-  const [tag, setTag] = useState("Projet");
-  const [collaboration, setCollaboration] = useState(true);
-  const [commentPost, setCommentPost] = useState<number | null>(null);
-  const [comment, setComment] = useState("");
-  const [report, setReport] = useState<Post | null>(null);
+  const [text, setText] = useState(""),
+    [title, setTitle] = useState(""),
+    [tag, setTag] = useState("Projet"),
+    [collaboration, setCollaboration] = useState(false);
+  const [commentPost, setCommentPost] = useState<number | null>(null),
+    [comment, setComment] = useState(""),
+    [report, setReport] = useState<Post | null>(null);
   function publish(e: FormEvent) {
     e.preventDefault();
     if (!text.trim()) return;
-    setPosts((current) => [
-      {
-        id: Date.now(),
-        author: profile.name,
-        country: profile.country,
-        title: title.trim(),
-        tag,
-        text: text.trim(),
-        comments: [],
-        publishedAt: new Date().toISOString(),
-        collaboration: tag !== "Question" && collaboration,
-        ratingTotal: 0,
-        ratingCount: 0,
-        myRating: 0,
-        starred: false,
-      },
+    const id = Date.now();
+    const post: Post = {
+      id,
+      author: profile.name,
+      country: profile.country,
+      tag,
+      title: title.trim(),
+      text: text.trim(),
+      comments: [],
+      publishedAt: new Date().toISOString(),
+      collaboration,
+      starCount: 0,
+      starred: false,
+      saved: false,
+      owned: true,
+      moderation: "pending",
+    };
+    setPosts((current) => [post, ...current]);
+    setReviews((current) => [
+      makeReview("post", id, post.title || post.text.slice(0, 70), post.text),
       ...current,
     ]);
     setText("");
     setTitle("");
-    onNotice("Publication ajoutée à ta communauté de démonstration.");
-  }
-  function rate(post: Post, note: number) {
-    setPosts((current) =>
-      current.map((p) =>
-        p.id === post.id
-          ? {
-              ...p,
-              ratingTotal: p.ratingTotal - p.myRating + note,
-              ratingCount: p.ratingCount + (p.myRating ? 0 : 1),
-              myRating: note,
-            }
-          : p,
+    onNotice(
+      t(
+        "Publication envoyée à la file de modération de démonstration.",
+        "Post sent to the demo moderation queue.",
       ),
     );
-    onNotice(
-      "Ta note est enregistrée. Tu peux la modifier sans ajouter un second avis.",
-    );
   }
+  const visible = posts.filter(
+    (p) =>
+      p.moderation !== "rejected" &&
+      (filter === "Tous" || (filter === "saved" ? p.saved : p.tag === filter)),
+  );
   return (
     <div className="feed-layout">
       <section className="feed-column">
@@ -147,24 +214,38 @@ export default function Community({
                 {profile.name.slice(0, 2).toUpperCase()}
               </span>
               <div>
-                <strong>Qu’est-ce qu’on construit aujourd’hui ?</strong>
-                <small>Une idée peut devenir un projet commun.</small>
+                <strong>
+                  {t(
+                    "Qu’est-ce qu’on construit aujourd’hui ?",
+                    "What are we building today?",
+                  )}
+                </strong>
+                <small>
+                  {t(
+                    "Une idée peut devenir un projet commun.",
+                    "An idea can become a shared project.",
+                  )}
+                </small>
               </div>
             </div>
-            <span className="composer-spark">
-              <Sparkles size={20} />
-            </span>
+            <Sparkles size={20} className="composer-spark" />
           </div>
           <input
-            aria-label="Titre de la publication"
-            placeholder="Un titre pour ton projet, ta découverte ou ta question"
+            aria-label={t("Titre de la publication", "Post title")}
+            placeholder={t(
+              "Un titre pour ton projet ou ta question",
+              "A title for your project or question",
+            )}
+            maxLength={120}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            maxLength={120}
           />
           <textarea
-            aria-label="Votre publication"
-            placeholder="Partage ton idée, ce que tu as découvert ou le défi que tu veux relever…"
+            aria-label={t("Votre publication", "Your post")}
+            placeholder={t(
+              "Partage ton idée, une question ou une découverte…",
+              "Share an idea, a question or a discovery…",
+            )}
             value={text}
             onChange={(e) => setText(e.target.value)}
             required
@@ -172,65 +253,69 @@ export default function Community({
           />
           <div className="composer-options">
             <label>
-              Type de publication
+              {t("Type de publication", "Post type")}
               <select value={tag} onChange={(e) => setTag(e.target.value)}>
-                <option>Projet</option>
-                <option>Découverte</option>
-                <option>Question</option>
+                <option value="Projet">{t("Projet", "Project")}</option>
+                <option value="Question & découverte">
+                  {t("Question & découverte", "Question & discovery")}
+                </option>
               </select>
             </label>
-            {tag !== "Question" && (
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={collaboration}
-                  onChange={(e) => setCollaboration(e.target.checked)}
-                />
-                Je cherche des collaborateurs
-              </label>
-            )}
-            <button className="btn-primary" type="submit">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={collaboration}
+                onChange={(e) => setCollaboration(e.target.checked)}
+              />
+              {t(
+                "Demander de l’aide / collaborer",
+                "Ask for help / collaborate",
+              )}
+            </label>
+            <button className="btn-primary">
               <Plus size={18} />
-              Publier
+              {t("Publier", "Publish")}
             </button>
           </div>
         </form>
         <div
           className="filter-tabs"
           role="group"
-          aria-label="Filtrer les publications"
+          aria-label={t("Filtrer les publications", "Filter posts")}
         >
-          {["Tous", "Projet", "Découverte", "Question"].map((t) => (
+          {[
+            ["Tous", t("Tout le fil", "All posts")],
+            ["Projet", t("Projets", "Projects")],
+            [
+              "Question & découverte",
+              t("Questions & découvertes", "Questions & discoveries"),
+            ],
+            ["saved", t("Enregistrées", "Saved")],
+          ].map(([id, label]) => (
             <button
-              key={t}
-              aria-pressed={filter === t}
-              className={filter === t ? "active" : ""}
-              onClick={() => setFilter(t)}
+              key={id}
+              className={filter === id ? "active" : ""}
+              aria-pressed={filter === id}
+              onClick={() => setFilter(id)}
             >
-              {t === "Tous"
-                ? "Tout le fil"
-                : t === "Projet"
-                  ? "Projets"
-                  : t === "Question"
-                    ? "Questions"
-                    : "Découvertes"}
+              {label}
             </button>
           ))}
         </div>
-        {posts
-          .filter((p) => filter === "Tous" || p.tag === filter)
-          .map((post) => (
+        {visible.map((post) => {
+          const owner = post.owned || post.author === profile.name;
+          return (
             <article
               className="panel post"
               key={post.id}
-              aria-label={post.title || `Publication de ${post.author}`}
+              aria-label={post.title || post.author}
             >
               <header className="row">
                 <div className="person">
                   <span className={`avatar avatar-${post.id % 3}`}>
                     {post.author
                       .split(" ")
-                      .map((s) => s[0])
+                      .map((n) => n[0])
                       .slice(0, 2)
                       .join("")}
                   </span>
@@ -238,65 +323,123 @@ export default function Community({
                     <strong>{post.author}</strong>
                     <div className="post-meta">
                       <CountryFlag country={post.country} />
-                      <span className="meta-dot">·</span>
-                      <span>{post.tag}</span>
+                      <span>·</span>
+                      <span>
+                        {t(
+                          post.tag,
+                          post.tag === "Projet"
+                            ? "Project"
+                            : "Question & discovery",
+                        )}
+                      </span>
                     </div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="quiet"
-                  aria-label={`Signaler la publication de ${post.author}`}
-                  onClick={() => setReport(post)}
-                >
-                  <Flag size={17} />
-                </button>
+                <PostMenu
+                  post={post}
+                  owner={owner}
+                  onCollaboration={() =>
+                    setPosts((current) =>
+                      current.map((p) =>
+                        p.id === post.id
+                          ? { ...p, collaboration: !p.collaboration }
+                          : p,
+                      ),
+                    )
+                  }
+                  onProfile={() =>
+                    onNavigate(
+                      owner
+                        ? "profil"
+                        : `profil/membre/${encodeURIComponent(post.author)}`,
+                    )
+                  }
+                  onSave={() => {
+                    setPosts((current) =>
+                      current.map((p) =>
+                        p.id === post.id ? { ...p, saved: !p.saved } : p,
+                      ),
+                    );
+                    onNotice(
+                      post.saved
+                        ? t(
+                            "Annonce retirée des enregistrements.",
+                            "Post removed from saved items.",
+                          )
+                        : t("Annonce enregistrée.", "Post saved."),
+                    );
+                  }}
+                  onReport={() => setReport(post)}
+                />
               </header>
               <div className="post-badges">
                 {post.collaboration && (
                   <span className="collab-badge">
                     <UsersRound size={13} />
-                    Collaboration ouverte
+                    {t("Collaboration ouverte", "Open collaboration")}
                   </span>
+                )}
+                {post.moderation === "pending" && (
+                  <button
+                    className="pending-review"
+                    onClick={() => onNavigate("ia/moderation")}
+                  >
+                    <ShieldCheck size={13} />
+                    {t(
+                      "En attente de modération · démo",
+                      "Awaiting moderation · demo",
+                    )}
+                  </button>
                 )}
                 <span className="post-date">
                   {post.publishedAt ? (
                     <time dateTime={post.publishedAt}>
-                      Publié le {publishedDate(post.publishedAt)}
+                      {t("Publié le", "Published")}{" "}
+                      {new Intl.DateTimeFormat(locale, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                        timeZone: "Indian/Antananarivo",
+                      }).format(new Date(post.publishedAt))}
                     </time>
                   ) : (
-                    publishedDate(null)
+                    t(
+                      "Date de publication non renseignée",
+                      "Publication date unavailable",
+                    )
                   )}
                 </span>
               </div>
               {post.title && <h2 className="post-title">{post.title}</h2>}
               <p className="post-content">{post.text}</p>
-              {post.tag !== "Question" ? (
-                <ProjectRating post={post} onRate={(n) => rate(post, n)} />
-              ) : (
-                <div className="question-star">
-                  <button
-                    className={post.starred ? "rated" : ""}
-                    aria-pressed={post.starred}
-                    onClick={() =>
-                      setPosts((current) =>
-                        current.map((p) =>
-                          p.id === post.id ? { ...p, starred: !p.starred } : p,
-                        ),
-                      )
-                    }
-                  >
-                    <Star
-                      size={19}
-                      fill={post.starred ? "currentColor" : "none"}
-                    />
-                    {post.starred
-                      ? "Question enregistrée"
-                      : "Garder cette question"}
-                  </button>
-                </div>
-              )}
               <div className="post-actions">
+                <button
+                  className={`star-like ${post.starred ? "is-starred" : ""}`}
+                  aria-label={`${t("Étoile", "Star")} : ${post.starCount}`}
+                  aria-pressed={post.starred}
+                  onClick={() =>
+                    setPosts((current) =>
+                      current.map((p) =>
+                        p.id === post.id
+                          ? {
+                              ...p,
+                              starred: !p.starred,
+                              starCount: Math.max(
+                                0,
+                                p.starCount + (p.starred ? -1 : 1),
+                              ),
+                            }
+                          : p,
+                      ),
+                    )
+                  }
+                >
+                  <Star
+                    size={21}
+                    fill={post.starred ? "currentColor" : "none"}
+                  />
+                  <strong>{compactStars(post.starCount)}</strong>
+                  <span>{t("Étoiles", "Stars")}</span>
+                </button>
                 <button
                   onClick={() => {
                     setCommentPost(commentPost === post.id ? null : post.id);
@@ -304,8 +447,7 @@ export default function Community({
                   }}
                 >
                   <MessageCircle size={18} />
-                  {post.comments.length} commentaire
-                  {post.comments.length > 1 ? "s" : ""}
+                  {post.comments.length} {t("commentaires", "comments")}
                 </button>
                 {post.collaboration && (
                   <button
@@ -317,7 +459,7 @@ export default function Community({
                     }
                   >
                     <UsersRound size={17} />
-                    Proposer mon aide
+                    {t("Proposer mon aide", "Offer help")}
                     <ArrowRight size={16} />
                   </button>
                 )}
@@ -346,16 +488,19 @@ export default function Community({
                     }}
                   >
                     <input
-                      aria-label="Ajouter un commentaire"
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
                       required
                       maxLength={1500}
-                      placeholder="Une réponse, un encouragement…"
+                      aria-label={t("Ajouter un commentaire", "Add a comment")}
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder={t(
+                        "Une réponse, un encouragement…",
+                        "An answer, an encouraging word…",
+                      )}
                     />
                     <button
                       className="btn-primary"
-                      aria-label="Envoyer le commentaire"
+                      aria-label={t("Envoyer le commentaire", "Send comment")}
                     >
                       <Send size={18} />
                     </button>
@@ -363,60 +508,74 @@ export default function Community({
                 </div>
               )}
             </article>
-          ))}
-        {!posts.some((p) => filter === "Tous" || p.tag === filter) && (
+          );
+        })}
+        {!visible.length && (
           <div className="panel empty-state">
-            <Sparkles />
-            <h2>La première publication sera peut-être la tienne.</h2>
-            <p>Partage un {filter.toLowerCase()} avec la communauté.</p>
+            <Bookmark />
+            <h2>
+              {t(
+                "Aucune publication ici pour le moment.",
+                "No posts here yet.",
+              )}
+            </h2>
           </div>
         )}
       </section>
       <aside className="community-aside">
         <section className="panel community-callout">
-          <span className="mini-label">PAR LES DEVS, POUR LES DEVS</span>
-          <h2>Les bonnes idées grandissent ensemble.</h2>
+          <span className="mini-label">
+            {t("PAR LES DEVS, POUR LES DEVS", "BY DEVS, FOR DEVS")}
+          </span>
+          <h2>
+            {t(
+              "Les bonnes idées grandissent ensemble.",
+              "Great ideas grow together.",
+            )}
+          </h2>
           <p>
-            Propose ton aide, découvre un talent et construis quelque chose qui
-            compte.
+            {t(
+              "Une étoile pour encourager. Un commentaire pour avancer.",
+              "A star to encourage. A comment to move forward.",
+            )}
           </p>
           <button
             className="btn-primary"
             onClick={() => onNavigate("messages/groupes")}
           >
-            Trouver un groupe
+            {t("Découvrir les groupes", "Discover groups")}
             <ArrowRight size={17} />
           </button>
-          <div className="callout-orbit">
-            <CodeOrbit />
+          <div className="callout-orbit" aria-hidden="true">
+            &lt;/&gt;
           </div>
         </section>
         <section className="panel">
-          <h2>Une étoile, un avis utile.</h2>
+          <h2>
+            {t(
+              "Une étoile, un encouragement.",
+              "One star, one show of support.",
+            )}
+          </h2>
           <p>
-            Note les projets et découvertes de 1 à 5. La moyenne évolue avec les
-            avis ; ton commentaire explique ce qui t’a marqué.
+            {t(
+              "Chaque personne peut ajouter ou retirer son étoile. Le compteur montre le nombre d’utilisateurs qui apprécient la publication.",
+              "Each person can add or remove a star. The counter shows how many users appreciate the post.",
+            )}
           </p>
-          <div className="stars-decoration" aria-hidden="true">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <Star key={n} size={20} fill="currentColor" />
-            ))}
-          </div>
           <small className="muted">
-            Les notes affichées sont des exemples locaux.
+            {t(
+              "1 000 étoiles = 1k · exemples locaux.",
+              "1,000 stars = 1k · local examples.",
+            )}
           </small>
-        </section>
-        <section className="panel">
-          <h2>Des talents, partout.</h2>
-          <div className="country-stack">
-            {["Madagascar", "Sénégal", "Côte d’Ivoire", "Kenya"].map((c) => (
-              <CountryFlag key={c} country={c} />
-            ))}
-          </div>
         </section>
       </aside>
       {report && (
-        <Modal title="Signaler une publication" onClose={() => setReport(null)}>
+        <Modal
+          title={t("Signaler une publication", "Report a post")}
+          onClose={() => setReport(null)}
+        >
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -424,6 +583,7 @@ export default function Community({
                 new FormData(e.currentTarget).get("reason"),
               ).trim();
               if (!reason) return;
+              const id = Date.now();
               try {
                 const reports = JSON.parse(
                   localStorage.getItem("devafrica:reports") || "[]",
@@ -433,37 +593,56 @@ export default function Community({
                   JSON.stringify([
                     ...reports,
                     {
+                      id,
                       target: report.id,
                       reason,
                       date: new Date().toISOString(),
                     },
                   ]),
                 );
+                setReviews((current) => [
+                  makeReview(
+                    "report",
+                    id,
+                    report.title || report.author,
+                    reason,
+                  ),
+                  ...current,
+                ]);
                 onNotice(
-                  "Signalement enregistré dans la démo. Aucun modérateur contacté.",
+                  t(
+                    "Signalement transmis à la file de modération locale.",
+                    "Report sent to the local moderation queue.",
+                  ),
                 );
               } catch {
                 onNotice(
-                  "Le signalement n’a pas pu être conservé sur cet appareil.",
+                  t(
+                    "Impossible d’enregistrer le signalement.",
+                    "Could not save the report.",
+                  ),
                 );
               }
               setReport(null);
             }}
           >
             <p>
-              Décris le problème concernant la publication de {report.author}.
+              {t(
+                "Explique la raison de ton signalement.",
+                "Explain why you are reporting this post.",
+              )}
             </p>
             <label>
-              Motif
+              {t("Motif", "Reason")}
               <textarea name="reason" required maxLength={1000} />
             </label>
-            <button className="btn-primary">Enregistrer le signalement</button>
+            <button className="btn-primary">
+              <Flag size={16} />
+              {t("Envoyer le signalement", "Send report")}
+            </button>
           </form>
         </Modal>
       )}
     </div>
   );
-}
-function CodeOrbit() {
-  return <span aria-hidden="true">&lt;/&gt;</span>;
 }

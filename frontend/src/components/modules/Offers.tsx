@@ -1,3 +1,5 @@
+import { useI18n } from "../../i18n/context";
+import { useApplications, useReviews, makeReview } from "../../data/workflow";
 import { useState } from "react";
 import {
   ArrowRight,
@@ -15,16 +17,17 @@ export default function Offers({
 }: {
   onNotice: (message: string) => void;
 }) {
+  const { t } = useI18n();
+
   const [jobs, setJobs] = useLocalData("jobs", initialJobs);
-  const [applications, setApplications] = useLocalData<number[]>(
-    "applications",
-    [],
-  );
+  const [applications, setApplications] = useApplications();
+  const [, setReviews] = useReviews();
   const [query, setQuery] = useState(""),
     [mode, setMode] = useState("Tous"),
     [creating, setCreating] = useState(false);
   const filtered = jobs.filter(
     (j) =>
+      j.moderation !== "rejected" &&
       (mode === "Tous" || mode === j.mode) &&
       normalizeText(
         `${j.title} ${j.country} ${j.skills} ${j.company}`,
@@ -36,28 +39,33 @@ export default function Offers({
         <label className="search-box">
           <Search size={19} />
           <input
-            aria-label="Rechercher une offre"
-            placeholder="Poste, compétence, pays…"
+            aria-label={t("Rechercher une offre")}
+            placeholder={t("Poste, compétence, pays…")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
         <select
-          aria-label="Mode de travail"
+          aria-label={t("Mode de travail")}
           value={mode}
           onChange={(e) => setMode(e.target.value)}
         >
           {["Tous", "Remote", "Hybride", "Local"].map((m) => (
-            <option key={m}>{m}</option>
+            <option key={m} value={m}>
+              {t(m)}
+            </option>
           ))}
         </select>
         <button className="btn-primary" onClick={() => setCreating(true)}>
           <Plus size={18} />
-          Publier une offre
+          {t("Publier une offre")}
         </button>
       </div>
       <p className="muted results-count">
-        {filtered.length} offre{filtered.length > 1 ? "s" : ""} à découvrir
+        {filtered.length}
+        {t("offre")}
+        {filtered.length > 1 ? t("s") : ""}
+        {t("à découvrir")}
       </p>
       <div className="module-grid offers-grid">
         {filtered.map((j) => (
@@ -73,24 +81,41 @@ export default function Offers({
               <span>{j.mode}</span>
             </div>
             <p>{j.skills}</p>
+            {j.moderation === "pending" && (
+              <span className="pending-review">
+                {t("En attente de modération · démo")}
+              </span>
+            )}
             <button
               className="btn-primary"
-              disabled={applications.includes(j.id)}
+              disabled={applications.some((a) => a.jobId === j.id)}
               onClick={() => {
-                setApplications((current) => [...current, j.id]);
+                setApplications((current) => [
+                  ...current,
+                  {
+                    id: Date.now(),
+                    jobId: j.id,
+                    title: j.title,
+                    company: j.company,
+                    status: "pending",
+                    sentAt: new Date().toISOString(),
+                  },
+                ]);
                 onNotice(
-                  "Candidature simulée enregistrée. Aucun employeur n’a été contacté.",
+                  t(
+                    "Candidature simulée enregistrée. Aucun employeur n’a été contacté.",
+                  ),
                 );
               }}
             >
-              {applications.includes(j.id) ? (
+              {applications.some((a) => a.jobId === j.id) ? (
                 <>
                   <Check size={16} />
-                  Candidature enregistrée
+                  {t("Candidature enregistrée")}
                 </>
               ) : (
                 <>
-                  Postuler
+                  {t("Postuler")}
                   <ArrowRight size={17} />
                 </>
               )}
@@ -101,19 +126,33 @@ export default function Offers({
       {!filtered.length && (
         <div className="panel empty-state">
           <Search />
-          <h2>Aucune offre trouvée.</h2>
-          <p>Essaie un autre mot-clé ou un autre mode de travail.</p>
+          <h2>{t("Aucune offre trouvée.")}</h2>
+          <p>{t("Essaie un autre mot-clé ou un autre mode de travail.")}</p>
         </div>
       )}
       {creating && (
-        <Modal title="Publier une offre" onClose={() => setCreating(false)}>
+        <Modal
+          title={t("Publier une offre")}
+          onClose={() => setCreating(false)}
+        >
           <form
             onSubmit={(e) => {
               e.preventDefault();
               const d = new FormData(e.currentTarget);
+              const id = Date.now();
+              setReviews((current) => [
+                makeReview(
+                  "offer",
+                  id,
+                  String(d.get("title")),
+                  String(d.get("skills")),
+                ),
+                ...current,
+              ]);
               setJobs((current) => [
                 {
-                  id: Date.now(),
+                  id,
+                  moderation: "pending",
                   title: String(d.get("title")).trim(),
                   company: String(d.get("company")).trim(),
                   country: String(d.get("country")).trim(),
@@ -124,46 +163,46 @@ export default function Offers({
                 ...current,
               ]);
               setCreating(false);
-              onNotice("Offre ajoutée à la démonstration locale.");
+              onNotice(t("Offre ajoutée à la démonstration locale."));
             }}
           >
             <label>
-              Intitulé du poste
+              {t("Intitulé du poste")}
               <input name="title" required maxLength={120} pattern=".*\S.*" />
             </label>
             <label>
-              Organisation
+              {t("Organisation")}
               <input name="company" required maxLength={80} />
             </label>
             <label>
-              Pays
+              {t("Pays")}
               <input name="country" required maxLength={80} />
             </label>
             <div className="form-grid">
               <label>
-                Contrat
+                {t("Contrat")}
                 <select name="contract">
-                  <option>CDI</option>
-                  <option>CDD</option>
-                  <option>Stage</option>
-                  <option>Freelance</option>
+                  <option value="CDI">{t("CDI")}</option>
+                  <option value="CDD">{t("CDD")}</option>
+                  <option value="Stage">{t("Stage")}</option>
+                  <option value="Freelance">{t("Freelance")}</option>
                 </select>
               </label>
               <label>
-                Mode de travail
+                {t("Mode de travail")}
                 <select name="mode">
-                  <option>Remote</option>
-                  <option>Hybride</option>
-                  <option>Local</option>
+                  <option value="Remote">{t("Remote")}</option>
+                  <option value="Hybride">{t("Hybride")}</option>
+                  <option value="Local">{t("Local")}</option>
                 </select>
               </label>
             </div>
             <label>
-              Compétences recherchées
+              {t("Compétences recherchées")}
               <textarea name="skills" required maxLength={1000} />
             </label>
             <button className="btn-primary">
-              Créer l’offre
+              {t("Créer l’offre")}
               <ArrowRight size={17} />
             </button>
           </form>
