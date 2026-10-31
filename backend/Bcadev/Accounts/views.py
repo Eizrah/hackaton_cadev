@@ -11,7 +11,7 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from .serializers import InscriptionSerializer, ConnexionSerializer, DevelopperSerializer
 from Groups.models import Group
-from .models import Developper,Blocage, Sourdine
+from .models import Developper,Blocage, Sourdine,Notif
 import os
 from django.db.models import Q
 
@@ -279,3 +279,58 @@ class SourdineView(APIView):
                 return Response({'erreur': 'Sourdine introuvable.'}, status=status.HTTP_404_NOT_FOUND)
 
         return Response({'erreur': 'Fournissez un email ou un id_group.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+
+
+class NotificationsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # retourne toutes les notifications du dev connecté
+        notifs = Notif.objects.filter(destinataire=request.user)
+        result = []
+        for notif in notifs:
+            result.append({
+                'id': notif.id,
+                'type': notif.type,
+                'message': notif.message,
+                'lu': notif.lu,
+                'date': notif.date,
+            })
+        return Response(result, status=status.HTTP_200_OK)
+
+class LireNotifView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, id_notif):
+        # marquer une notification comme lue
+        try:
+            notif = Notif.objects.get(id=id_notif, destinataire=request.user)
+        except Notif.DoesNotExist:
+            return Response({'erreur': 'Notification introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        notif.lu = True
+        notif.save()
+        return Response({'message': 'Notification marquée comme lue.'}, status=status.HTTP_200_OK)
+
+class LireToutesNotifsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        # marquer toutes les notifications comme lues
+        Notif.objects.filter(destinataire=request.user, lu=False).update(lu=True)
+        return Response({'message': 'Toutes les notifications marquées comme lues.'}, status=status.HTTP_200_OK)
+
+class SupprimerNotifView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, id_notif):
+        try:
+            notif = Notif.objects.get(id=id_notif, destinataire=request.user)
+        except Notif.DoesNotExist:
+            return Response({'erreur': 'Notification introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        notif.delete()
+        return Response({'message': 'Notification supprimée.'}, status=status.HTTP_200_OK)

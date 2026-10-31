@@ -9,6 +9,11 @@ urlpatterns = [
     path('supprimer-compte/', SupprimerCompteView.as_view(), name='supprimer-compte'),
     path('mot-de-passe-oublie/', MotDePasseOublieView.as_view(), name='mot-de-passe-oublie'),
     path('recherche/', RechercheDeveloppeurView.as_view(), name='recherche-devs'),
+    path('notifications/', NotificationsView.as_view(), name='notifications'),
+path('notifications/lire-tout/', LireToutesNotifsView.as_view(), name='lire-tout-notifs'),
+path('notifications/<int:id_notif>/', LireNotifView.as_view(), name='lire-notif'),
+path('notifications/<int:id_notif>/supprimer/', SupprimerNotifView.as_view(), name='supprimer-notif'),
+
     path('bloquer/<str:email>/', BlocageView.as_view(), name='bloquer'),
     path('sourdine/', SourdineView.as_view(), name='sourdine'),
 

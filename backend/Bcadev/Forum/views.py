@@ -2,11 +2,14 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from .models import Forum_post,Commentaire, Note
+from .models import Forum_post,Commentaire, Note,Enregistrement
 from .serializers import ForumPostSerializer, ForumPostListSerializer, CommentaireSerializer
 from django.db.models import Q
 # import de Blocage pour filtrer les posts des devs bloqués
 from Accounts.models import Blocage
+# import de creer_notif pour créer des notifications automatiques
+from Accounts.utils import creer_notif
+from Jobs.models import Offre_Emploi
 
 class CreerForumPostView(APIView):
     permission_classes = [IsAuthenticated]
@@ -152,7 +155,7 @@ class RechercheForumPostView(APIView):
 
 class CommentaireView(APIView):
     permission_classes = [IsAuthenticated]
-
+    
     def post(self, request, id_publication):
         # vérifie que le dev n'est pas banni
         if request.user.banne:
@@ -179,6 +182,30 @@ class CommentaireView(APIView):
                 developper=request.user,
                 forum_post=post
             )
+            # notifie le créateur du post qu'il a reçu un commentaire
+            # on ne notifie pas si le dev commente son propre post
+            if post.developper != request.user:
+                creer_notif(
+                    post.developper,
+                    'commentaire',
+                    f'{request.user.pseudo} a commenté votre post.'
+                )
+
+            # notifie l'auteur du commentaire parent s'il y a une réponse
+            commentaire_parent_id = request.data.get('commentaire_parent')
+            if commentaire_parent_id:
+                try:
+                    parent = Commentaire.objects.get(id_commentaire=commentaire_parent_id)
+                    # on ne notifie pas si le dev répond à son propre commentaire
+                    if parent.developper != request.user:
+                        creer_notif(
+                            parent.developper,
+                            'commentaire',
+                            f'{request.user.pseudo} a répondu à votre commentaire.'
+                        )
+                except Commentaire.DoesNotExist:
+                    pass
+
             return Response({
                 'message': 'Commentaire ajouté avec succès.',
                 'commentaire': serializer.data
@@ -286,7 +313,117 @@ class NoteView(APIView):
                 developper=request.user,
                 forum_post=post
             )
+            # notifie le créateur du post qu'il a reçu un like
+            # on ne notifie pas si le dev like son propre post
+            if post.developper != request.user:
+                creer_notif(
+                    post.developper,
+                    'commentaire',
+                    f'{request.user.pseudo} a aimé votre post.'
+                )
             return Response({
                 'message': 'Note ajoutée.',
                 'nombre_notes': post.note_set.count()
             }, status=status.HTTP_201_CREATED)
+    
+
+
+
+
+class EnregistrementView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # retourne tous les enregistrements du dev connecté
+        enregistrements = Enregistrement.objects.filter(dev=request.user)
+        result = []
+        for e in enregistrements:
+            if e.forum_post:
+                result.append({
+                    'id': e.id,
+                    'type': 'forum_post',
+                    'date_enregistrement': e.date_enregistrement,
+                    'publication': {
+                        'id': str(e.forum_post.id_publication),
+                        'description': e.forum_post.description,
+                        'date': e.forum_post.date_publication,
+                        'auteur': e.forum_post.developper.pseudo,
+                    }
+                })
+            elif e.offre_emploi:
+                result.append({
+                    'id': e.id,
+                    'type': 'offre_emploi',
+                    'date_enregistrement': e.date_enregistrement,
+                    'publication': {
+                        'id': str(e.offre_emploi.id_publication),
+                        'nom_poste': e.offre_emploi.nom_poste,
+                        'localisation': e.offre_emploi.localisation,
+                        'date': e.offre_emploi.date_publication,
+                        'auteur': e.offre_emploi.developper.pseudo,
+                    }
+                })
+        return Response(result, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        # enregistrer un post ou une offre
+        type_pub = request.data.get('type_publication')
+        id_pub = request.data.get('id_publication')
+
+        if not type_pub or not id_pub:
+            return Response(
+                {'erreur': 'type_publication et id_publication sont obligatoires.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if type_pub == 'forum_post':
+            try:
+                post = Forum_post.objects.get(id_publication=id_pub, feu_vert=True)
+            except Forum_post.DoesNotExist:
+                return Response({'erreur': 'Post introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+            if Enregistrement.objects.filter(dev=request.user, forum_post=post).exists():
+                return Response({'erreur': 'Publication déjà enregistrée.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            Enregistrement.objects.create(
+                dev=request.user,
+                forum_post=post,
+                type_publication='forum_post'
+            )
+
+        elif type_pub == 'offre_emploi':
+            try:
+                offre = Offre_Emploi.objects.get(id_publication=id_pub, feu_vert=True)
+            except Offre_Emploi.DoesNotExist:
+                return Response({'erreur': 'Offre introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+            if Enregistrement.objects.filter(dev=request.user, offre_emploi=offre).exists():
+                return Response({'erreur': 'Publication déjà enregistrée.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            Enregistrement.objects.create(
+                dev=request.user,
+                offre_emploi=offre,
+                type_publication='offre_emploi'
+            )
+        else:
+            return Response(
+                {'erreur': 'type_publication invalide. Utilisez "forum_post" ou "offre_emploi".'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response({'message': 'Publication enregistrée.'}, status=status.HTTP_201_CREATED)
+
+class SupprimerEnregistrementView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, id_enregistrement):
+        try:
+            enregistrement = Enregistrement.objects.get(
+                id=id_enregistrement,
+                dev=request.user
+            )
+        except Enregistrement.DoesNotExist:
+            return Response({'erreur': 'Enregistrement introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        enregistrement.delete()
+        return Response({'message': 'Enregistrement supprimé.'}, status=status.HTTP_200_OK)

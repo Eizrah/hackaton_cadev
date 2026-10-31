@@ -7,6 +7,8 @@ from .serializers import OffreEmploiSerializer, OffreEmploiListSerializer, Candi
 from django.db.models import Q
 # import de Blocage pour filtrer les offres des devs bloqués
 from Accounts.models import Blocage
+# import de creer_notif pour créer des notifications automatiques
+from Accounts.utils import creer_notif
 
 class CreerOffreEmploiView(APIView):
     permission_classes = [IsAuthenticated]
@@ -161,6 +163,12 @@ class PostulerOffreView(APIView):
                 developpeur=request.user,
                 offre_emploi=offre
             )
+            # notifie le recruteur qu'il a reçu une candidature
+            creer_notif(
+                offre.developper,
+                'candidature',
+                f'{request.user.pseudo} a postulé à votre offre "{offre.nom_poste}".'
+            )
             return Response({
                 'message': 'Candidature envoyée avec succès.'
             }, status=status.HTTP_201_CREATED)
@@ -292,6 +300,13 @@ class GererCandidaturesView(APIView):
             message=message,
             from_email='noreply@cadev.com',
             recipient_list=[candidature.developpeur.email],
+        )
+
+        # notifie le candidat via le système de notifications
+        creer_notif(
+            candidature.developpeur,
+            'candidature_reponse',
+            f'Votre candidature pour "{offre.nom_poste}" a été {"acceptée" if nouvel_etat == "accepte" else "refusée"}.'
         )
 
         return Response({

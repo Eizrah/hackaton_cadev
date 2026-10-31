@@ -47,16 +47,26 @@ class ForumPostListSerializer(serializers.ModelSerializer):
 
 class CommentaireSerializer(serializers.ModelSerializer):
     developper_pseudo = serializers.CharField(source='developper.pseudo', read_only=True)
-
+    commentaire_parent_contenu = serializers.SerializerMethodField()
     class Meta:
         model = Commentaire
         fields = [
             'id_commentaire', 'commentaire', 'date_commentaire',
-            'point_penalite_obtenu', 'developper_pseudo'
+            'point_penalite_obtenu', 'developper_pseudo',
+            'commentaire_parent', 'commentaire_parent_contenu'
         ]
         read_only_fields = [
             'id_commentaire', 'date_commentaire',
-            'point_penalite_obtenu', 'developper_pseudo'
+            'point_penalite_obtenu', 'developper_pseudo',
+            'commentaire_parent_contenu'
         ]
+    def get_commentaire_parent_contenu(self, obj):
+        if obj.commentaire_parent:
+            return {
+                'id': str(obj.commentaire_parent.id_commentaire),
+                'commentaire': obj.commentaire_parent.commentaire,
+                'auteur': obj.commentaire_parent.developper.pseudo
+            }
+        return None
 
 

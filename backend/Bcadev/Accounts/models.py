@@ -40,7 +40,17 @@ class Experience(models.Model):
     nbr_annee_exp=models.IntegerField()
     diplome=models.CharField(max_length=200, blank=True,null=True)
     certificat=models.CharField(max_length=100,blank=True,null=True)
-    
+    fichier_diplome = models.FileField(
+        upload_to='diplomes/',
+        blank=True,
+        null=True
+    )
+    fichier_certificat = models.FileField(
+        upload_to='certificats/',
+        blank=True,
+        null=True
+    )
+
     
 
     class Meta:
@@ -96,3 +106,51 @@ class Sourdine(models.Model):
 
 
 
+class Notif(models.Model):
+    TYPE = [
+        ('post_valide', 'Post validé'),
+        ('post_refuse', 'Post refusé'),
+        ('post_supprime', 'Post supprimé'),
+        ('commentaire', 'Nouveau commentaire'),
+        ('candidature', 'Candidature reçue'),
+        ('candidature_reponse', 'Réponse à candidature'),
+        ('groupe_supprime', 'Groupe supprimé'),
+        ('point_penalite', 'Point de pénalité reçu'),
+        ('bannissement', 'Compte banni'),
+    ]
+    destinataire = models.ForeignKey(
+        Developper,
+        on_delete=models.CASCADE,
+        related_name='notifications'
+    )
+    type = models.CharField(max_length=30, choices=TYPE)
+    message = models.TextField()
+    lu = models.BooleanField(default=False)
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'notif'
+        ordering = ['-date']  # plus récentes en premier
+
+
+class Possession(models.Model):
+    """
+    Relation entre un Dev et une Compétence qu'il possède déjà.
+    Différent de Apprentissage (Learning) qui représente une compétence en cours d'acquisition.
+    """
+    developper = models.ForeignKey(
+        Developper,
+        on_delete=models.CASCADE,
+        related_name='possessions'
+    )
+    competence = models.ForeignKey(
+        'Learning.Competence',
+        on_delete=models.CASCADE,
+        related_name='possessions'
+    )
+    date_ajout = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'possession'
+        # un dev ne peut pas avoir deux fois la même compétence
+        unique_together = ('developper', 'competence')

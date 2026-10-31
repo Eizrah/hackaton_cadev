@@ -5,6 +5,8 @@ class Signalement(models.Model):
     id_signalement=models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     date_signalement=models.DateField(auto_now_add=True)
     motif=models.TextField()
+    traite = models.BooleanField(default=False)
+
     id_signaleur=models.ForeignKey('Accounts.Developper',on_delete=models.CASCADE, related_name='%(class)s_signalements')
     class Meta:
         abstract=True 
