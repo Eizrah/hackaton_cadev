@@ -262,3 +262,127 @@ class SupprimerMessageView(APIView):
             'id_message': str(id_message)
         }, status=status.HTTP_200_OK)
 
+
+# ─── Sessions avec l'agent IA ─────────────────────────────────────────────────
+
+class SessionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Liste toutes les sessions du dev — épinglées en premier."""
+        from .models import Session
+        from .serializers import SessionSerializer
+        sessions = Session.objects.filter(developper=request.user)
+        serializer = SessionSerializer(sessions, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        """Crée une nouvelle session de discussion avec l'agent."""
+        from .models import Session
+        from .serializers import SessionSerializer
+        titre = request.data.get('titre', None)
+        session = Session.objects.create(
+            developper=request.user,
+            titre=titre
+        )
+        return Response({
+            'message': 'Session créée.',
+            'session': SessionSerializer(session).data
+        }, status=status.HTTP_201_CREATED)
+
+class DetailSessionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id_session):
+        """Voir tous les messages d'une session."""
+        from .models import Session, Message
+        from .serializers import SessionSerializer, MessageSerializer
+        try:
+            session = Session.objects.get(
+                id_session=id_session,
+                developper=request.user
+            )
+        except Session.DoesNotExist:
+            return Response({'erreur': 'Session introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        messages = Message.objects.filter(
+            session=session
+        ).order_by('date_envoie')
+
+        return Response({
+            'session': SessionSerializer(session).data,
+            'messages': MessageSerializer(messages, many=True).data
+        }, status=status.HTTP_200_OK)
+
+    def put(self, request, id_session):
+        """Modifier le titre ou épingler/désépingler une session."""
+        from .models import Session
+        from .serializers import SessionSerializer
+        try:
+            session = Session.objects.get(
+                id_session=id_session,
+                developper=request.user
+            )
+        except Session.DoesNotExist:
+            return Response({'erreur': 'Session introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # modification du titre
+        if 'titre' in request.data:
+            session.titre = request.data['titre']
+
+        # épinglage / désépinglage (toggle)
+        if 'epingle' in request.data:
+            session.epingle = request.data['epingle']
+
+        session.save()
+        return Response({
+            'message': 'Session mise à jour.',
+            'session': SessionSerializer(session).data
+        }, status=status.HTTP_200_OK)
+
+    def delete(self, request, id_session):
+        """Supprimer une session et tous ses messages."""
+        from .models import Session
+        try:
+            session = Session.objects.get(
+                id_session=id_session,
+                developper=request.user
+            )
+        except Session.DoesNotExist:
+            return Response({'erreur': 'Session introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        session.delete()  # CASCADE supprime aussi tous les messages de la session
+        return Response({'message': 'Session supprimée.'}, status=status.HTTP_200_OK)
+
+class DiscuterAgentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id_session):
+        """Envoyer un message à l'agent dans une session."""
+        from .models import Session
+        try:
+            session = Session.objects.get(
+                id_session=id_session,
+                developper=request.user
+            )
+        except Session.DoesNotExist:
+            return Response({'erreur': 'Session introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        message = request.data.get('message')
+        if not message:
+            return Response(
+                {'erreur': 'Le message est obligatoire.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # appel au service agent de session
+        from Agents.services.session_service import discuter
+        reponse = discuter(
+            session=session,
+            dev=request.user,
+            message_user=message
+        )
+
+        return Response({
+            'reponse': reponse
+        }, status=status.HTTP_200_OK)

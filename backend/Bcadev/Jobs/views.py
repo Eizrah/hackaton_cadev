@@ -7,7 +7,7 @@ from .serializers import OffreEmploiSerializer, OffreEmploiListSerializer, Candi
 from django.db.models import Q
 # import de Blocage pour filtrer les offres des devs bloqués
 from Accounts.models import Blocage
-# import de creer_notif pour créer des notifications automatiques
+# import de creer_notif pour notifier le dev en cas de refus IA
 from Accounts.utils import creer_notif
 
 class CreerOffreEmploiView(APIView):
@@ -23,18 +23,44 @@ class CreerOffreEmploiView(APIView):
 
         serializer = OffreEmploiSerializer(data=request.data)
         if serializer.is_valid():
-            # associe le dev connecté à l'offre
-            # feu_vert reste False — l'IA doit valider
             offre = serializer.save(developper=request.user)
 
-            # TODO: appeler l'agent IA pour vérifier le contenu
-            # si l'IA approuve → offre.feu_vert = True, offre.save()
-            # si l'IA refuse → envoyer un email au dev + ajouter point_penalite
-
-            return Response({
-                'message': 'Offre créée avec succès. En attente de validation.',
-                'offre': OffreEmploiSerializer(offre).data
-            }, status=status.HTTP_201_CREATED)
+            # appel direct au service agent
+            try:
+                from Agents.services.verification_services import verifier_offre
+                resultat = verifier_offre(
+                    nom_poste=offre.nom_poste,
+                    description=offre.description,
+                    localisation=offre.localisation,
+                    competences=offre.competence_requise
+                )
+                if resultat["approuve"]:
+                    offre.feu_vert = True
+                    offre.save()
+                    return Response({
+                        'message': 'Offre créée et validée avec succès.',
+                        'offre': OffreEmploiSerializer(offre).data
+                    }, status=status.HTTP_201_CREATED)
+                else:
+                    raison = resultat["raison"] or "Contenu non conforme aux règles de la plateforme."
+                    creer_notif(
+                        offre.developper,
+                        'post_refuse',
+                        f'Votre offre a été refusée : {raison}'
+                    )
+                    # l'offre reste en base avec feu_vert=False
+                    # le dev peut la modifier et la resoumettre
+                    return Response({
+                        'message': 'Votre offre a été refusée par l\'IA. Vous pouvez la modifier.',
+                        'raison': raison,
+                        'feu_vert': False,
+                        'offre': OffreEmploiSerializer(offre).data
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            except Exception:
+                return Response({
+                    'message': 'Offre créée avec succès. En attente de validation.',
+                    'offre': OffreEmploiSerializer(offre).data
+                }, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -90,13 +116,33 @@ class DetailOffreEmploiView(APIView):
 
         serializer = OffreEmploiSerializer(offre, data=request.data, partial=True)
         if serializer.is_valid():
-            # quand l'offre est modifiée, feu_vert repasse à False
             offre = serializer.save(feu_vert=False)
 
-            # TODO: rappeler l'agent IA pour revalider le contenu modifié
+            # rappel direct au service agent pour revalider
+            try:
+                from Agents.services.verification_services import verifier_offre
+                resultat = verifier_offre(
+                    nom_poste=offre.nom_poste,
+                    description=offre.description,
+                    localisation=offre.localisation,
+                    competences=offre.competence_requise
+                )
+                if resultat["approuve"]:
+                    offre.feu_vert = True
+                    offre.save()
+                    message_retour = 'Offre modifiée et revalidée avec succès.'
+                else:
+                    creer_notif(
+                        offre.developper,
+                        'post_refuse',
+                        f'Votre offre modifiée a été refusée : {resultat["raison"]}'
+                    )
+                    message_retour = f'Offre modifiée mais refusée par l\'IA : {resultat["raison"]}'
+            except Exception:
+                message_retour = 'Offre modifiée avec succès. En attente de revalidation.'
 
             return Response({
-                'message': 'Offre modifiée avec succès. En attente de revalidation.',
+                'message': message_retour,
                 'offre': OffreEmploiSerializer(offre).data
             }, status=status.HTTP_200_OK)
 

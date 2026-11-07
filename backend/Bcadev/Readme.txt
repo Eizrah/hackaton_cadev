@@ -35,7 +35,10 @@
    - Pour générer une clé secrète Django, lancer dans un terminal Python :
      python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 
-3. Lancer le backend (première fois) :
+3. Installer les dépendances (si tu n'utilises pas Docker) :
+   pip install -r requirements.txt
+
+4. Lancer le backend (première fois) :
    docker-compose up --build
 
 4. Lancer le backend (fois suivantes) :

@@ -24,18 +24,47 @@ class CreerForumPostView(APIView):
 
         serializer = ForumPostSerializer(data=request.data)
         if serializer.is_valid():
-            # on sauvegarde le post en associant le dev connecté
-            # feu_vert reste False par défaut — l'IA doit valider
             post = serializer.save(developper=request.user)
 
-            # TODO: appeler l'agent IA pour vérifier le contenu
-            # si l'IA approuve → post.feu_vert = True, post.save()
-            # si l'IA refuse → envoyer un email au dev + ajouter point_penalite
-
-            return Response({
-                'message': 'Post créé avec succès. En attente de validation.',
-                'post': ForumPostSerializer(post).data
-            }, status=status.HTTP_201_CREATED)
+            # appel direct au service agent (Python 3.12 unique)
+            try:
+                from Agents.services.verification_services import verifier_post
+                resultat = verifier_post(
+                    description=post.description,
+                    lien=post.lien,
+                    email_auteur=request.user.email
+                )
+                if resultat["approuve"]:
+                    # l'IA a approuvé — le post est visible
+                    post.feu_vert = True
+                    post.save()
+                    return Response({
+                        'message': 'Post créé et validé avec succès.',
+                        'post': ForumPostSerializer(post).data
+                    }, status=status.HTTP_201_CREATED)
+                else:
+                    # l'IA a refusé — on notifie le dev
+                    # le post reste en base avec feu_vert=False
+                    # le dev peut le modifier et le resoumettre
+                    raison = resultat["raison"] or "Contenu non conforme aux règles de la plateforme."
+                    creer_notif(
+                        post.developper,
+                        'post_refuse',
+                        f'Votre post a été refusé : {raison}'
+                    )
+                    return Response({
+                        'message': 'Votre post a été refusé par l\'IA. Vous pouvez le modifier.',
+                        'raison': raison,
+                        'feu_vert': False,
+                        'post': ForumPostSerializer(post).data
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            except Exception:
+                # si l'agent IA est indisponible, on laisse feu_vert=False
+                # le post reste en attente sans bloquer le dev
+                return Response({
+                    'message': 'Post créé avec succès. En attente de validation.',
+                    'post': ForumPostSerializer(post).data
+                }, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -92,14 +121,32 @@ class DetailForumPostView(APIView):
 
         serializer = ForumPostSerializer(post, data=request.data, partial=True)
         if serializer.is_valid():
-            # quand le post est modifié, feu_vert repasse à False
-            # l'IA doit revalider le contenu modifié
             post = serializer.save(feu_vert=False)
 
-            # TODO: rappeler l'agent IA pour revalider le contenu modifié
+            # rappel direct au service agent pour revalider le contenu modifié
+            try:
+                from Agents.services.verification_services import verifier_post
+                resultat = verifier_post(
+                    description=post.description,
+                    lien=post.lien,
+                    email_auteur=request.user.email
+                )
+                if resultat["approuve"]:
+                    post.feu_vert = True
+                    post.save()
+                    message_retour = 'Post modifié et revalidé avec succès.'
+                else:
+                    creer_notif(
+                        post.developper,
+                        'post_refuse',
+                        f'Votre post modifié a été refusé : {resultat["raison"]}'
+                    )
+                    message_retour = f'Post modifié mais refusé par l\'IA : {resultat["raison"]}'
+            except Exception:
+                message_retour = 'Post modifié avec succès. En attente de revalidation.'
 
             return Response({
-                'message': 'Post modifié avec succès. En attente de revalidation.',
+                'message': message_retour,
                 'post': ForumPostSerializer(post).data
             }, status=status.HTTP_200_OK)
 

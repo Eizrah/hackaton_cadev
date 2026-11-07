@@ -11,5 +11,7 @@ urlpatterns = [
     path('api/messaging/', include('Messaging.urls')),
     path('api/groups/', include('Groups.urls')),
     path('api/moderation/', include('Moderation.urls')),
+    path('api/learning/', include('Learning.urls')),
+
     path('social-auth/', include('social_django.urls', namespace='social')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

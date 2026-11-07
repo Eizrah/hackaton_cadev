@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Message, Audio, Fichier
+from .models import Message, Audio, Fichier,Session
 from fonction_utils.gestion_fichier import valider_fichier, valider_audio
 from mutagen import File as MutagenFile
 from django.conf import settings
@@ -117,3 +117,17 @@ class FichierSerializer(serializers.ModelSerializer):
                     f'Taille maximale 20Mo. Votre fichier fait {round(value.size / 1024 / 1024, 2)}Mo.'
                 )
         return value
+
+
+
+
+class SessionSerializer(serializers.ModelSerializer):
+    nombre_messages = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Session
+        fields = ['id_session', 'titre', 'date_session', 'epingle', 'nombre_messages']
+        read_only_fields = ['id_session', 'date_session', 'nombre_messages']
+
+    def get_nombre_messages(self, obj):
+        return obj.messages.count()

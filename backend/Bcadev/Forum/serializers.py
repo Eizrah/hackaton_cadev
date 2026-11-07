@@ -12,7 +12,9 @@ class ForumPostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Forum_post
         fields = [
-            
+            'id_publication', 'description', 'fichier', 'lien',
+            'date_publication', 'feu_vert', 'point_penalite_obtenu',
+            'developper_email', 'developper_pseudo', 'nombre_notes'
         ]
         # ces champs sont gérés automatiquement par le système
         read_only_fields = [

@@ -17,7 +17,7 @@ class Offre_Emploi(Publication):
     deadline=models.DateField()
     type_contrat=models.CharField(choices=TYPE_CONTRACT, max_length=3)
     nom_poste=models.CharField(max_length=255)
-    duree=models.DurationField()
+    duree=models.DurationField(blank=True, null=True)
     competence_requise=models.TextField()
     type_travail=models.CharField(choices=TYPE_TRAVAIL, max_length=1)
     

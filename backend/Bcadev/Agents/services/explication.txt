@@ -1,0 +1,28 @@
+couche appelée depuis les views Django
+
+Couche d'appel depuis Django
+
+C'est ce qui relie ton code Django aux agents. Tes vues Django n'appellent jamais LangGraph directement — elles passent par les services.
+
+
+verification_service.py — sera appelé dans 
+views.py (forum)
+ et 
+views.py (jobs)
+ à la place des TODO :
+ # dans Forum/views.py, à la place du TODO
+from agents.services.verification_service import verifier_contenu
+
+resultat = verifier_contenu(post.description, post.fichier)
+if resultat["approuve"]:
+    post.feu_vert = True
+else:
+    post.feu_vert = False
+    creer_notif(post.developper, 'post_refuse', resultat["raison"])
+
+
+assistant_service.py — sera appelé dans 
+views.py
+ pour répondre aux questions des devs.
+
+recommendation_service.py — pour recommander des offres/posts.
