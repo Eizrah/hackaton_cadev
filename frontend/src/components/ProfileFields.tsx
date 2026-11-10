@@ -3,7 +3,6 @@ import {
   BriefcaseBusiness,
   CalendarDays,
   ChartNoAxesColumnIncreasing,
-  Check,
   Code2,
   GraduationCap,
   MapPin,
@@ -12,18 +11,20 @@ import {
   UserRound,
 } from "lucide-react";
 import { useI18n } from "../i18n/context";
-import { africanCountries } from "../data/countries";
+import SkillSearch from "./shared/SkillSearch";
+import CountrySelect from "./shared/CountrySelect";
+
 import {
   currentYear,
   newExperience,
   newSkill,
-  skillDifficulties,
-  skillDomains,
   type Experience,
   type DeveloperSkill,
   type PersonalInformation,
 } from "../data/profile";
-import TechIcon from "./TechIcon";
+import { SkillChip } from "./TechIcon";
+import CredentialFields from "./shared/CredentialFields";
+import type { CredentialAttachment } from "../data/profile";
 import "./profile-fields.css";
 export function PersonalFields({
   value,
@@ -95,11 +96,16 @@ export function PersonalFields({
             onChange={(e) => update("level", e.target.value)}
             required
           >
-            <option value="" disabled>
+            <option
+              value=""
+              disabled>
               {t("Sélectionner votre niveau", "Select your level")}
             </option>
-            <option value="Junior">Junior</option>
-            <option value="Senior">Senior</option>
+            {["Débutant", "Intermédiaire", "Avancé"].map(level => <option
+              key={level}
+              value={level}>
+              {t(level, level === "Débutant" ? "Beginner" : level === "Intermédiaire" ? "Intermediate" : "Advanced")}
+            </option>)}
           </select>
         </span>
       </label>
@@ -107,25 +113,9 @@ export function PersonalFields({
         {t("Pays", "Country")}
         <span className="onboard-input">
           <MapPin size={18} />
-          <select
-            name="country"
-            autoComplete="country-name"
+          <CountrySelect
             value={value.country}
-            onChange={(e) => update("country", e.target.value)}
-            required
-          >
-            <option value="" disabled>
-              {t("Sélectionner un pays", "Select a country")}
-            </option>
-            {!africanCountries.includes(value.country) && value.country && (
-              <option value={value.country}>{value.country}</option>
-            )}
-            {africanCountries.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+            onChange={text => update("country", text)} />
         </span>
       </label>
       <label>
@@ -178,7 +168,9 @@ export function ExperienceFields({
           <BriefcaseBusiness size={22} />
         </span>
         <div>
-          <h3>{t("Votre parcours compte.", "Your journey matters.")}</h3>
+          <h3>
+            {t("Votre parcours compte.", "Your journey matters.")}
+          </h3>
           <p>
             {t(
               "Expériences, stages ou projets : partagez ce que vous avez déjà réalisé.",
@@ -204,9 +196,13 @@ export function ExperienceFields({
         </div>
       )}
       {value.map((row, i) => (
-        <fieldset className="experience-entry structured-entry" key={row.id}>
+        <fieldset
+          className="experience-entry structured-entry"
+          key={row.id}>
           <legend>
-            {t("Expérience", "Experience")} {i + 1}
+            {t("Expérience", "Experience")}
+            {" "}
+            {i + 1}
           </legend>
           <button
             type="button"
@@ -257,30 +253,6 @@ export function ExperienceFields({
                 placeholder="2026"
               />
             </label>
-            <label>
-              {t("Diplôme", "Qualification")}
-              <input
-                value={row.diploma}
-                maxLength={150}
-                onChange={(e) => update(row.id, "diploma", e.target.value)}
-                placeholder={t(
-                  "Facultatif · nom du diplôme",
-                  "Optional · qualification name",
-                )}
-              />
-            </label>
-            <label className="full-row">
-              {t("Certificat", "Certificate")}
-              <input
-                value={row.certificate}
-                maxLength={150}
-                onChange={(e) => update(row.id, "certificate", e.target.value)}
-                placeholder={t(
-                  "Facultatif · nom de la certification",
-                  "Optional · certification name",
-                )}
-              />
-            </label>
           </div>
         </fieldset>
       ))}
@@ -295,145 +267,42 @@ export function ExperienceFields({
     </div>
   );
 }
-export function SkillFields({
-  value,
-  onChange,
-}: {
-  value: DeveloperSkill[];
-  onChange: (value: DeveloperSkill[]) => void;
-}) {
+export function SkillFields({ value, onChange, documents = [], onDocumentsChange, onBusy }: { value: DeveloperSkill[]; onChange: (value: DeveloperSkill[]) => void; documents?: CredentialAttachment[]; onDocumentsChange?: (value: CredentialAttachment[]) => void; onBusy?: (busy: boolean) => void }) {
   const { t } = useI18n();
-  const suggestions = ["React", "Python", "HTML", "CSS", "Figma", "Kotlin"];
-  function update(id: string, key: keyof DeveloperSkill, text: string) {
-    onChange(
-      value.map((row) => (row.id === id ? { ...row, [key]: text } : row)),
-    );
-  }
-  return (
-    <div className="structured-fields skill-fields">
-      <div className="structured-intro">
-        <span className="structured-icon">
-          <Code2 size={22} />
-        </span>
-        <div>
-          <h3>
-            {t("Ce que vous aimez construire.", "What you like to build.")}
-          </h3>
-          <p>
-            {t(
-              "Ajoutez vos compétences avec leur difficulté et leur domaine. Vous pourrez les modifier ensuite.",
-              "Add your skills, their difficulty and their field. You can update them later.",
-            )}
-          </p>
-        </div>
-      </div>
-      <div className="skill-suggestions">
-        {suggestions.map((name) => {
-          const added = value.some(
-            (s) => s.name.trim().toLowerCase() === name.toLowerCase(),
-          );
-          return (
-            <button
-              type="button"
-              key={name}
-              disabled={added}
-              onClick={() => onChange([...value, newSkill(name)])}
-            >
-              <TechIcon name={name} size={17} />
-              {name}
-              {added ? <Check size={13} /> : <Plus size={13} />}
-            </button>
-          );
-        })}
-      </div>
-      {value.map((row, i) => (
-        <fieldset className="skill-entry structured-entry" key={row.id}>
-          <legend>
-            <TechIcon name={row.name} size={17} />
-            {t("Compétence", "Skill")} {i + 1}
-          </legend>
-          <button
-            type="button"
-            className="remove-entry"
-            aria-label={`${t("Retirer la compétence", "Remove skill")} ${i + 1}`}
-            onClick={() => onChange(value.filter((s) => s.id !== row.id))}
-          >
-            <Trash2 size={16} />
-          </button>
-          <div className="professional-grid">
-            <label className="full-row">
-              {t("Nom de la compétence", "Skill name")}
-              <input
-                value={row.name}
-                onChange={(e) => update(row.id, "name", e.target.value)}
-                required
-                maxLength={80}
-                placeholder={t(
-                  "Ex. React, Python, Blender…",
-                  "E.g. React, Python, Blender…",
-                )}
-              />
-            </label>
-            <label>
-              {t("Difficulté", "Difficulty")}
-              <select
-                required
-                value={row.difficulty}
-                onChange={(e) => update(row.id, "difficulty", e.target.value)}
-              >
-                <option value="" disabled>
-                  {t("Choisir la difficulté", "Choose difficulty")}
-                </option>
-                {skillDifficulties.map((d) => (
-                  <option value={d} key={d}>
-                    {t(
-                      d,
-                      d === "Facile"
-                        ? "Easy"
-                        : d === "Intermédiaire"
-                          ? "Intermediate"
-                          : "Advanced",
-                    )}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              {t("Domaine", "Field")}
-              <select
-                required
-                value={row.domain}
-                onChange={(e) => update(row.id, "domain", e.target.value)}
-              >
-                <option value="" disabled>
-                  {t("Choisir le domaine", "Choose a field")}
-                </option>
-                {skillDomains.map((d) => (
-                  <option key={d} value={d}>
-                    {t(d)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </fieldset>
-      ))}
-      <button
-        type="button"
-        className="add-structured"
-        onClick={() => onChange([...value, newSkill()])}
-      >
-        <Plus size={17} />
-        {t("Ajouter une compétence", "Add a skill")}
-      </button>
-      {!value.length && (
-        <p className="structured-note">
-          {t(
-            "Vous débutez ? Vous pouvez aussi ajouter vos compétences plus tard.",
-            "Just starting out? You can also add skills later.",
-          )}
+  return <div className="structured-fields skill-fields">
+    <div className="structured-intro">
+      <span className="structured-icon">
+        <Code2 size={22} />
+      </span>
+      <div>
+        <h3>
+          {t("Ce que vous aimez construire.", "What you like to build.")}
+        </h3>
+        <p>
+          {t("Recherchez les technologies des cours, ou ajoutez une autre compétence.", "Search technologies from the courses, or add another skill.")}
         </p>
-      )}
+      </div>
     </div>
-  );
+    <SkillSearch
+      selected={value.map(s => s.name)}
+      onSelect={name => onChange([...value, newSkill(name)])} />
+    {onDocumentsChange && <CredentialFields
+      value={documents}
+      onChange={onDocumentsChange}
+      onBusy={onBusy} />}
+    <div className="selected-skills profile-selected-skills">
+      {value.map(row => <span key={row.id}>
+        <SkillChip name={row.name} />
+        <button
+          type="button"
+          aria-label={`${t("Retirer", "Remove")} ${row.name}`}
+          onClick={() => onChange(value.filter(s => s.id !== row.id))}>
+          <Trash2 size={15} />
+        </button>
+      </span>)}
+    </div>
+    {!value.length && <p className="structured-note">
+      {t("Vous pouvez aussi ajouter vos compétences plus tard.", "You can also add your skills later.")}
+    </p>}
+  </div>;
 }

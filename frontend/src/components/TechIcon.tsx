@@ -1,4 +1,4 @@
-import { Code2, Coffee } from "lucide-react";
+import { Code2, Coffee, Database } from "lucide-react";
 import { normalizeText } from "../data/models";
 const techNames: Record<string, string> = {
   react: "react",
@@ -66,6 +66,8 @@ export default function TechIcon({
   name: string;
   size?: number;
 }) {
+  if (normalizeText(name) === "sql")
+    return <Database size={size} className="tech-icon" aria-hidden="true" />;
   const slug = techNames[normalizeText(name)];
   if (slug === "java")
     return (
@@ -77,7 +79,7 @@ export default function TechIcon({
       src={`/tech/${slug}.svg`}
       width={size}
       height={size}
-      alt={`Icône ${name}`}
+      alt="" aria-hidden="true"
     />
   ) : (
     <Code2 size={size} className="tech-icon" aria-hidden="true" />

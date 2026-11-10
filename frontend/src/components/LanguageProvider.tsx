@@ -13,6 +13,7 @@ export default function LanguageProvider({
   );
   useEffect(() => {
     document.documentElement.lang = language;
+    document.title=language === "en" ? "DevAfrica Connect — By developers, for developers" : "DevAfrica Connect — Par les devs, pour les devs";
   }, [language]);
   return (
     <LanguageContext.Provider value={{ language, setLanguage }}>

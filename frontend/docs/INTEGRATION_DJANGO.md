@@ -1,117 +1,166 @@
-# Contrat Django à valider en équipe
+# Intégration Django · contrat actuel de la version 18
 
-Ce document propose des routes. Elles ne sont pas déclarées comme existantes. Le backend reste responsable des permissions, des règles métier et des validations.
+Ce document décrit les attentes du frontend. Il ne déclare pas que ces endpoints existent déjà. Les adaptateurs de connexion et de récupération sont branchables avec VITE_AUTH_MODE=api ; les autres écrans fonctionnent encore avec leurs données locales.
 
-## Choisir une méthode d’authentification
+## Connexion déjà préparée
 
-Le client `src/lib/api.ts` est préparé pour une session Django par cookies, avec `credentials: include` et le jeton CSRF lu dans le cookie `csrftoken`. Si l’équipe choisit des JWT, adapter le client et les règles de renouvellement ; ne pas mélanger les deux stratégies implicitement.
+Copier .env.example en .env.local, puis définir VITE_AUTH_MODE=api uniquement lorsque le backend est prêt. VITE_API_URL=/api utilise le proxy Vite vers http://127.0.0.1:8000. Redémarrer Vite après un changement de variable.
 
-Pour la session, Django doit initialiser le cookie CSRF avant le premier POST. Proposition : `GET /api/auth/csrf/` avec `ensure_csrf_cookie`, puis `POST /api/auth/login/`. Le client actuel suppose un cookie CSRF lisible par JavaScript ; une autre configuration demande une autre méthode de transmission du jeton. Les cookies de session peuvent rester HttpOnly. Prévoir HTTPS en production.
+Le client src/lib/api.ts envoie les cookies de session avec credentials: include. Il lit le cookie csrftoken pour les POST. Les clés VITE_ sont publiques ; elles ne doivent pas contenir de secret.
 
-En développement, Vite transmet `/api/*` à `http://127.0.0.1:8000`. Si Django refuse les POST, vérifier le message serveur et configurer l’origine de développement dans `CSRF_TRUSTED_ORIGINS` ainsi que les hôtes autorisés. Ne pas désactiver CSRF pour contourner le problème. Si les deux serveurs sont sur des origines distinctes sans proxy, configurer CORS et les cookies explicitement. En production, le proxy Vite ne tourne plus : configurer le serveur qui sert `dist/` pour transmettre `/api/` à Django, ou définir une URL API et CORS adaptés.
-
-## Routes proposées
-
-| Module | Routes proposées | Données importantes |
-| --- | --- | --- |
-| Auth | `POST /api/auth/register/`, `POST /api/auth/login/`, `POST /api/auth/logout/`, `GET /api/auth/me/` | nom, email, password ; session serveur |
-| Récupération | `POST /api/auth/password-reset/`, `POST /api/auth/password-reset/confirm/` | email puis uid/token/nouveau mot de passe |
-| Profil | `GET/PATCH /api/profiles/me/`, `GET /api/profiles/{id}/` | nom, prénom, pseudo, pays, niveau, compétences, expériences |
-| Publications | `GET/POST /api/posts/`, `POST /api/posts/{id}/comments/` | description, catégorie/projet, auteur, date, fichiers |
-| Signalements | `POST /api/reports/` | cible (publication/dev/groupe), identifiant, motif |
-| Apprentissage | `GET /api/skills/`, `GET /api/exercises/`, `POST /api/exercises/{id}/attempts/`, `GET /api/progress/` | compétence, difficulté, réponse, score, progression |
-| IA | `POST /api/assistant/` | question, contexte autorisé ; appel du modèle géré par Django |
-| Offres | `GET/POST /api/jobs/`, `POST /api/jobs/{id}/applications/` | poste, compétences, lieu, contrat, durée, mode, deadline |
-| Groupes | `GET/POST /api/groups/`, `POST /api/groups/{id}/join/`, `POST /api/groups/{id}/leave/` | nom, motif, photo, membres, rôles |
-| Conversations | `GET/POST /api/conversations/`, `GET/POST /api/conversations/{id}/messages/` | participants, texte, date, statut |
-| Fichiers | route multipart à confirmer | type, taille, URL autorisée et accès contrôlé |
-
-Décider ensemble : noms des champs JSON (français ou anglais), IDs, pagination, dates ISO 8601, valeurs d’énumérations, champs obligatoires et format des erreurs. Exemple de liste paginée proposé : `{ "count": 2, "next": null, "previous": null, "results": [...] }`.
-
-Le diagramme contient des règles qui ne sont pas encore toutes implémentées : signalements individuels et groupes, pénalités/bannissement, validation de contenu, membres, durée CDD, état des candidatures, messages audio. La relation de discussion porte une indication `3..15` : confirmer son sens avant d’imposer une taille de groupe. Ne pas exposer une API permettant au navigateur de modifier directement ses propres pénalités ou son état de bannissement.
-
-## Exemple de branchement après confirmation des routes
-
-```ts
-import { apiRequest } from './lib/api'
-
-// D’abord initialiser CSRF via l’endpoint réellement choisi.
-await apiRequest('auth/csrf/')
-await apiRequest('auth/login/', {
-  method: 'POST',
-  body: JSON.stringify({ email, password }),
-})
-// Ensuite charger le profil réel et afficher l’espace connecté.
-```
-
-Prévoir des états chargement/vide/erreur/succès, empêcher les doubles envois, traiter 400 (validation), 401/403 (session/permissions), 429 et erreurs réseau. Les mots de passe passent uniquement par HTTPS en production ; ne pas les journaliser. Les clés du fournisseur IA restent exclusivement côté Django.
-
-Pour les messages temps réel, convenir d’un WebSocket (par exemple via l’infrastructure choisie par le backend) ou d’un polling initial. Une interface de chat locale n’envoie actuellement rien à un autre utilisateur.
-
-Pour les fichiers : envoyer un `FormData` ; le client HTTP évite alors de fixer `Content-Type` afin que le navigateur génère la boundary multipart. Valider côté Django taille, type, droits et stockage. La limite locale de 5 Mo du prototype n’est pas une protection serveur.
-
-## Contrat à adapter aux interfaces du 31 octobre 2026
-
-| Sujet | Proposition à confirmer |
+| Étape | Attente actuelle du client |
 | --- | --- |
-| Appréciations | `PUT /api/posts/{id}/star/` avec `{ "starred": true/false }`, réponse `{ "star_count": 1000, "starred": true }`. Unicité utilisateur/publication côté serveur ; aucune moyenne 1–5. |
-| Publications | Deux catégories : `project`, `question_discovery` ; `title`, `body`, `collaboration_open`, `published_at`, état de modération. Seul l’auteur peut changer sa demande d’aide. |
-| Enregistrements | `PUT /api/posts/{id}/bookmark/` avec état actif/inactif, liste personnelle des enregistrements. |
-| Profils | Identifiant stable, nom affiché, code pays ISO, compétences, portfolio facultatif et photo. Consulter un membre ne doit pas ouvrir l’édition du profil connecté. |
-| Candidatures | `GET /api/applications/me/` : identifiant, offre, organisation, date et `pending/accepted/rejected`. Les anciens nombres seuls du prototype ne suffisent pas. |
-| Agent apprentissage | `POST /api/agents/learning/chat/` reçoit `{ messages: [{role,content}], language }` et renvoie `{ answer }`. Client préparé dans `lib/agents.ts` ; activer `VITE_AGENT_MODE=api` seulement avec un endpoint opérationnel. |
-| Agent modérateur | File des publications/offres/signalements, vérification et décision, accès protégé par rôle serveur. La file et les boutons actuels sont une simulation locale ; aucun endpoint réel de décision n’est encore appelé. |
-| Conversations | Identifiants de conversations privées/groupes, participants, messages, fichiers autorisés et pagination. Présence réelle et statut lu ne doivent pas être inférés des exemples visuels. |
-| Langues | Codes `fr/en` pour les commandes et réponses d’agent. La traduction des contenus publiés par les membres est une fonction séparée non implémentée. |
+| Initialiser CSRF | GET /api/auth/csrf/ ; Django fournit le cookie CSRF lisible par JavaScript. Une réponse 204 convient. |
+| Connexion | POST /api/auth/login/ ; JSON : email, password, remember. |
+| Succès | Objet JSON contenant profile ou user, avec la forme de profil ci-dessous. |
+| Compte banni | HTTP 403 ou 423 avec code: account_banned, ou profil retourné avec accountStatus: banned. Le client ouvre une fenêtre dédiée et n’ouvre pas le profil. |
+| Autre erreur | Mauvais identifiants, CSRF ou indisponibilité : erreur de connexion, sans message de bannissement. |
 
-La clé du fournisseur IA reste exclusivement côté serveur. Le backend contrôle les rôles et l’unicité des étoiles, définit les dates, décide des candidatures et valide les fichiers. Les vérifications locales du prototype ne remplacent pas ces décisions. Traiter un signalement doit être séparé d’une suppression de contenu ou d’une sanction.
-
-## Inscription en trois étapes et profil structuré
-
-Le nouveau composant `src/components/Authentication.tsx` prépare le profil local avec les types de `src/data/profile.ts`. Il n’envoie encore aucune requête d’authentification. L’e-mail et les mots de passe sont saisis en fin de troisième étape ; les mots de passe restent en mémoire uniquement. Le backend devra créer le compte, ses relations et la session selon la stratégie retenue.
-
-Exemple de corps JSON **proposé** pour `POST /api/auth/register/` — noms à confirmer avec les sérialiseurs Django :
+Exemple minimal de réponse de connexion :
 
 ```json
 {
-  "first_name": "Diana",
-  "last_name": "Rakoto",
-  "age": 23,
-  "level": "Senior",
-  "country": "Madagascar",
-  "username": "Diana23",
-  "email": "diana@example.test",
-  "password": "<mot de passe saisi, transmis uniquement au serveur>",
-  "experiences": [
-    {
-      "position": "Développeuse React",
-      "description": "Création d’une interface communautaire.",
-      "year": 2025,
-      "diploma": "Master 1 informatique",
-      "certificate": "React Fundamentals"
-    }
-  ],
-  "skills": [
-    {
-      "name": "React",
-      "difficulty": "Intermédiaire",
-      "domain": "Web"
-    }
-  ]
+  "profile": {
+    "id": "42",
+    "firstName": "Diana",
+    "lastName": "Rakoto",
+    "name": "Diana Rakoto",
+    "pseudo": "Diana23",
+    "email": "diana@example.test",
+    "age": "23",
+    "level": "Intermédiaire",
+    "country": "Madagascar",
+    "skillDetails": [
+      { "id": "skill-1", "name": "React", "difficulty": "", "domain": "" }
+    ],
+    "experiences": [],
+    "documents": [],
+    "accountStatus": "active"
+  }
 }
 ```
 
-| Frontend local | Proposition API / diagramme |
+Le client reconnaît aussi first_name, last_name, username, un id numérique, et les niveaux beginner/intermediate/advanced. Les autres champs doivent être sérialisés selon ce modèle, ou adaptés explicitement dans src/lib/auth.ts. Les âges et années sont actuellement des chaînes de saisie. Les anciens noms difficulty et domain restent présents pour compatibilité ; ils ne sont plus demandés dans l’interface.
+
+En production, le serveur doit vérifier le bannissement sur la connexion et chaque opération protégée. Il doit aussi choisir la durée de session selon remember. Le statut local ne constitue pas un mécanisme d’authentification.
+
+Le client ne restaure pas encore automatiquement une session avec GET /auth/me/, et n’appelle pas encore logout. Brancher ces parcours avant l’utilisation avec de vrais comptes. OAuth attend également son intégration.
+
+## Récupération de mot de passe préparée en version 18
+
+`src/lib/passwordRecovery.ts` et `src/components/PasswordRecovery.tsx` utilisent le même VITE_AUTH_MODE. Le mode demo ne transmet rien ; le mode api initialise CSRF avant chaque POST.
+
+| Endpoint attendu | Corps JSON | Réponse attendue |
+| --- | --- | --- |
+| POST /api/auth/password-reset/ | email | 200 ou 204 avec un message neutre, sans révéler l’existence d’un compte. |
+| POST /api/auth/password-reset/verify/ | email, code, method: code ou temporary_password | reset_token : preuve courte de réinitialisation après vérification du code ou du mot de passe temporaire. |
+| POST /api/auth/password-reset/confirm/ depuis un lien | uid, token, new_password1, new_password2 | 200 ou 204 après modification réussie. |
+| POST /api/auth/password-reset/confirm/ après vérification manuelle | email, reset_token, new_password1, new_password2 | 200 ou 204 après modification réussie. Le code initial n’est pas renvoyé. |
+
+Le lien envoyé par le serveur doit pointer vers l’URL frontend `/#reset?uid=<uid>&token=<token>` avec valeurs encodées ; `uidb64` est aussi reconnu. Un lien incomplet affiche directement une fenêtre de récupération de nouveau lien. Un refus HTTP 410, ou HTTP 400 avec code invalid_token / expired_token / token_expired / invalid_reset_token, affiche le même état après la tentative de confirmation. Une autre validation de mot de passe reste une erreur du formulaire.
+
+Le serveur crée, vérifie, expire et consomme les jetons. Il vérifie les règles du nouveau mot de passe, limite les tentatives, gère l’e-mail et définit l’effet sur les sessions existantes. Le frontend ne stocke ni mots de passe, ni codes, ni jetons de récupération dans localStorage. Le champ method permet de distinguer code et mot de passe temporaire ; si le backend ne propose qu’un des deux modes, garder seulement celui pris en charge.
+
+## Inscription et profil à brancher
+
+Le formulaire possède trois écrans ; sa validation actuelle crée un profil local. VITE_AUTH_MODE=api n’active pas l’inscription serveur. Ajouter un appel POST /api/auth/register/ avant d’annoncer une création de compte réelle.
+
+| Donnée | Contrat proposé |
 | --- | --- |
-| `firstName`, `lastName`, `pseudo` | `first_name`, `last_name`, `username` ; nom, prénom et pseudo du développeur. |
-| `age`, `year` en chaînes de saisie | Convertir en entiers après validation avant le POST. |
-| `level` | Seulement `Junior` ou `Senior` ; convenir des codes serveur si différents. |
-| `experiences[].position/description/year/diploma/certificate` | Nom_poste, Description, Année_Exp, Diplome, Certificat du diagramme. |
-| `skillDetails[].name/difficulty/domain` | Nom, Difficulté, Domaine de Compétence. Le champ local `skills` contient encore un résumé textuel pour compatibilité avec les anciens modules ; l’API devrait utiliser une liste structurée. |
-| `id` local d’une expérience/compétence | Identifiant temporaire d’interface ; laisser Django produire les identifiants persistants et renvoyer les relations. |
-| `country` | Libellé de pays actuel ; convenir d’un code ISO si le backend l’exige. |
-| `portfolio`, `photo`, `bio`, `role` | Champs du profil complétés depuis l’édition ; portfolio facultatif. |
+| Informations personnelles | first_name, last_name, username, email, âge, niveau, pays. |
+| Niveau général | beginner, intermediate ou advanced ; affichage Débutant, Intermédiaire, Avancé. |
+| Expériences | Liste position, description, year. Diplômes et certificats sortent de cette liste dans la nouvelle interface. |
+| Compétences | Liste de noms ou d’identifiants, plus autorisation de noms personnalisés. Le niveau et le domaine ne sont plus obligatoires. |
+| Documents | Relations de fichiers avec kind: diploma ou certificate. |
+| Profil privé/public | Définir les champs visibles publiquement et les documents que le membre accepte de partager. E-mail, CV et lettres de motivation ne doivent pas être renvoyés dans un profil public par défaut. |
 
-Expériences et compétences peuvent être des listes vides. Une expérience ajoutée exige poste, description et année ; diplôme et certificat sont facultatifs et textuels. Une compétence ajoutée exige nom, difficulté (`Facile`, `Intermédiaire`, `Avancée`) et domaine (`Web`, `Desktop`, `Mobile`, `Design`, `Langages de programmation`). Ces listes devront être partagées avec le backend. La difficulté d’une compétence est distincte du niveau Junior/Senior du développeur.
+Valider les noms, l’âge, l’unicité e-mail/pseudo, les mots de passe et les relations côté serveur. Une réponse de profil ne doit jamais contenir les mots de passe.
 
-Revalider côté Django : champs obligatoires, âge, pseudo, unicité e-mail/pseudo, mots de passe, domaines, difficultés et relations. Ne jamais renvoyer le mot de passe dans la réponse. L’API doit également distinguer les informations du profil privé de celles visibles publiquement. Les boutons Google/GitHub nécessitent chacun un flux OAuth serveur ; leurs logos seuls ne réalisent aucune connexion.
+## Fichiers : remplacer le stockage local par le stockage serveur
+
+Actuellement, src/lib/attachments.ts conserve les blobs dans IndexedDB. La métadonnée StoredAttachment contient id, name, type, size et éventuellement une URL HTTP(S). Les identifiants locaux ne permettent pas à Django de lire les fichiers.
+
+Proposition : POST /api/files/ en multipart FormData, puis réponse id/name/type/size/url. Après téléversement, utiliser l’identifiant serveur dans la publication, le message, le document ou la candidature. Le client HTTP évite de fixer Content-Type pour FormData afin que le navigateur ajoute la bonne boundary.
+
+Le backend contrôle taille, type réel, autorisations de lecture et conservation. La sélection locale est limitée à cinq fichiers à la fois et 10 Mo par fichier ; ce contrôle d’interface ne remplace pas la validation serveur. Prévoir le téléchargement authentifié des CV et documents privés, ainsi que le renouvellement des liens expirés.
+
+## Publications, commentaires et enregistrements
+
+| Action | Route proposée | Règle |
+| --- | --- | --- |
+| Publier | POST /api/posts/ | body, attachment_ids, links, collaboration_open. Le titre et le type ne sont plus demandés. Auteur déduit de la session. Statut initial en modération. |
+| Lister | GET /api/posts/ | Contenus approuvés, plus ceux de l’auteur selon leurs états. Dates et compteurs serveur. |
+| Commenter / répondre | POST /api/posts/{id}/comments/ | text et parent_id facultatif. Le parent appartient à la même publication. Réponse avec profil public, pays et date. |
+| Apprécier | PUT /api/posts/{id}/star/ | starred booléen ; unicité utilisateur/publication. Réponse star_count et starred. |
+| Enregistrer | PUT /api/posts/{id}/bookmark/ | État personnel ; liste GET /api/bookmarks/me/ pour le profil. |
+| Signaler | POST /api/reports/ | target_type, target_id, category, reason ; texte requis pour other. |
+
+Le frontend garde les catégories historiques dans les anciennes données, sans réafficher les filtres retirés. Le serveur peut conserver ces anciennes valeurs en migration.
+
+## Offres et candidatures
+
+| Action | Route proposée | Données et droits |
+| --- | --- | --- |
+| Publier | POST /api/jobs/ | title, company, country, contract, mode, skills, description, contact_email facultatif. Auteur déduit de la session. |
+| Durée | Même offre | duration entier positif et duration_unit: days/weeks/months obligatoires pour Stage et CDD. |
+| Suggestions | GET /api/skills/?search=rea | Noms du catalogue et compétences personnalisées normalisées. Les pays peuvent venir du référentiel local ou du serveur. |
+| Candidater | POST /api/jobs/{id}/applications/ | cv_file_id ou cv_url HTTP(S), motivation obligatoire. Interdire doublon, auto-candidature et offre fermée. |
+| Suivi candidat | GET /api/applications/mine/ | Uniquement les candidatures du profil authentifié. |
+| Espace recruteur | GET /api/recruitment/jobs/?search=frontend | Offres du recruteur, compteurs et recherche par poste. |
+| Liste des candidats | GET /api/jobs/{id}/applications/ | Réservée au propriétaire autorisé de l’offre ; profil public, compétences, CV, motivation et état. |
+| Décision | PATCH /api/applications/{id}/ | pending/accepted/rejected ; permission du recruteur vérifiée côté serveur. |
+
+Le modèle local Application possède cvFile facultatif, cvUrl, motivation, applicantId, applicant, ownerId et status. Ne pas faire confiance à l’instantané applicant fourni par le navigateur : retrouver les identités depuis la session et l’offre.
+
+Stage est un type de contrat ; le mode reste Remote, Hybride ou Local. Une offre de stage peut être à distance. Pour les offres anciennes sans durée, le frontend affiche qu’elle reste à préciser.
+
+## Conversations et droits des groupes
+
+| Action | Proposition serveur |
+| --- | --- |
+| Conversations/messages | GET/POST /api/conversations/ et GET/POST /api/conversations/{id}/messages/ avec pagination, date, auteur et identifiants de fichiers. |
+| Préférences personnelles | PATCH /api/conversations/{id}/preferences/ : muted, blocked, cleared_before. Effacer sa copie ne doit pas effacer celle des autres. |
+| Éléments partagés | GET /api/conversations/{id}/shared/?type=photos/files/links, avec recherche et téléchargements autorisés. |
+| Groupe | Créateur administrateur ; identifiants de membres stables. |
+| Photo, description et membres | Endpoints protégés : seul l’administrateur autorisé peut modifier, ajouter ou retirer. |
+| Supprimer un groupe | DELETE /api/groups/{id}/, avec vérification de rôle et notification de ses membres. |
+
+Le frontend vérifie ces rôles pour ses commandes locales ; Django doit répéter ces vérifications pour chaque requête. Les clés locales group:id servent à reprendre les anciennes conversations nommées Groupe : nom. Prévoir un identifiant serveur stable pour les conversations privées également.
+
+La sourdine locale ne modifie actuellement aucun service de notification distant ; le blocage local empêche l’envoi dans l’interface. Les services de réception et de temps réel doivent appliquer leurs propres règles. Le frontend n’envoie aucun message à un autre compte sans ce raccordement.
+
+## Notifications
+
+GET /api/notifications/, PATCH /api/notifications/{id}/ et POST /api/notifications/read-all/ doivent filtrer par destinataire authentifié.
+
+| Événement | Destinataire |
+| --- | --- |
+| Offre adaptée à des compétences | Profil correspondant après approbation de l’offre. |
+| Candidature reçue | Recruteur de l’offre. |
+| Candidature acceptée/refusée | Candidat concerné. |
+| Publication bloquée | Auteur de la publication. |
+| Groupe supprimé | Chaque membre au moment de la suppression. |
+| Membre retiré | Membre concerné. |
+
+Créer décision et notification dans la même transaction. Renvoyer un code d’événement et ses paramètres traduisibles, ou des textes fr/en. Le modèle local accepte textEn pour afficher les nouveaux événements dans les deux langues. Le serveur doit éviter les doublons lors des reprises et gérer les événements pour les utilisateurs déconnectés.
+
+## Apprentissage et agents
+
+Le catalogue garde 23 fiches ; 22 parcours détaillés distincts sont réutilisés, Swift étant aussi accessible dans Mobile. Les cours et compilateurs n’ont pas été remplacés par cette révision.
+
+- Programme : GET /api/learning/courses/{course_id}/.
+- Progression : GET /api/learning/progress/me/ et PUT /api/learning/courses/{course_id}/progress/.
+- Brouillons : GET/PUT /api/learning/drafts/{draft_id}/, avec propriétaire déduit de la session.
+- Agent apprentissage déjà préparé : POST /api/agents/learning/chat/ avec messages, language et context facultatif ; réponse answer. Activer VITE_AGENT_MODE=api avec un endpoint fonctionnel.
+- Le contexte de code possède courseId, courseTitle, level, lessonTitle, file, code, explanation et returnPath.
+- Le robot ouvre une discussion flottante près du code. Le point d’interrogation général est présent uniquement dans Apprentissage pour expliquer les mots et phrases de la leçon active.
+- Pour ce second usage, context contient kind: lesson, courseId, courseTitle, level, lessonTitle, explanation et returnPath ; il ne contient pas de fichier ni de code. L’agent connecté doit adapter sa réponse à ce contexte pédagogique.
+- La file du modérateur est une simulation locale ; ses décisions serveur demandent des endpoints et un rôle protégé.
+
+Les clés du fournisseur IA restent côté Django. Pour la compilation, conserver un service isolé avec langages autorisés et limites de ressources ; les guides APPRENTISSAGE_LANGAGES.md et APPRENTISSAGE_SCRIPTS_SQL.md décrivent l’environnement existant.
+
+## Développement et production
+
+Le proxy Vite de développement n’existe pas dans dist/. En production, transmettre /api/ vers Django avec le serveur qui sert le frontend, ou configurer explicitement l’URL API, CORS et les cookies. Pour les POST de développement, configurer les hôtes et origines CSRF autorisés selon les URL réellement utilisées.
+
+Le backend n’était pas fourni pour cette révision. Les tests de connexion et de récupération utilisent des réponses interceptées ; ils ne valident pas un serveur réel. Voir [VERIFICATIONS_V18.md](VERIFICATIONS_V18.md).

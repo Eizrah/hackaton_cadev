@@ -1,0 +1,171 @@
+import { useSyncExternalStore, useCallback, useEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
+import { Bot, CircleHelp, History, LoaderCircle, Plus, Send, X } from "lucide-react";
+import { askTutor, type TutorMessage } from "../../lib/agents";
+import { isLessonContext, saveLearningCodeContext, type LearningLessonContext, type LearningTutorContext } from "../../lib/learningTutorContext";
+import { createLocalId } from "../../lib/format";
+import { useLocalData } from "../../lib/storage";
+import { useI18n } from "../../i18n/context";
+import { LessonHelpRegistration, TutorOverlay } from "../../lib/tutorOverlayContext";
+type Thread = { id: number; title: string; messages: TutorMessage[]; createdAt: string; context?: LearningTutorContext };
+const subscribeRoute = (update: () => void) => { for (const event of ["devafrica:navigate", "hashchange", "popstate"]) window.addEventListener(event, update); return () => { for (const event of ["devafrica:navigate", "hashchange", "popstate"]) window.removeEventListener(event, update); }; };
+const routeSnapshot = () => window.location.hash;
+export default function FloatingTutor({ children }: { children: ReactNode }) {
+  const { t, language } = useI18n(), [threads, setThreads] = useLocalData<Thread[]>("tutor-threads", []);
+  const [open, setOpen] = useState(false), [selected, setSelected] = useState<number | null>(null), [context, setContext] = useState<LearningTutorContext>(), [question, setQuestion] = useState(""), [busy, setBusy] = useState(false), [error, setError] = useState(""), [history, setHistory] = useState(false), [position, setPosition] = useState<CSSProperties>({});
+  const currentLesson = useRef<LearningLessonContext | undefined>(undefined);
+  const registerLesson = useCallback((value?: LearningLessonContext) => { currentLesson.current = value; }, []);
+  const anchor = useRef<HTMLElement | undefined>(undefined), input = useRef<HTMLTextAreaElement>(null), scroll = useRef<HTMLDivElement>(null), close = useRef<HTMLButtonElement>(null);
+  const route = useSyncExternalStore(subscribeRoute, routeSnapshot);
+  const showHelp = route.startsWith("#workspace/apprentissage");
+  const thread = threads.find(item => item.id === selected), attached = thread?.context || context;
+  const codeMode = !!attached && !isLessonContext(attached);
+  const contextLabel = attached ? (isLessonContext(attached) ? attached.lessonTitle : attached.file) : "";
+  const place = useCallback(() => {
+    if (window.innerWidth < 700) { setPosition({}); return; }
+    const width = Math.min(424, window.innerWidth - 32), height = Math.min(610, window.innerHeight - 40), rect = anchor.current?.getBoundingClientRect();
+    let left = window.innerWidth - width - 24, top = window.innerHeight - height - 24;
+    if (rect) { left = rect.right + 18 + width < window.innerWidth ? rect.right + 18 : rect.left - width - 18 > 16 ? rect.left - width - 18 : window.innerWidth - width - 24; top = Math.max(16, Math.min(rect.top, window.innerHeight - height - 16)); }
+    setPosition({ left: Math.max(16, left), top, width, height, bottom: "auto", right: "auto" });
+  }, []);
+  const openTutor = useCallback((value?: LearningTutorContext, element?: HTMLElement) => {
+    if (value && !isLessonContext(value)) saveLearningCodeContext(value);
+    anchor.current = element; setContext(value); setSelected(null); setError(""); setHistory(false); setQuestion(value && !isLessonContext(value) ? (language === "en" ? "Explain this code step by step." : "Explique-moi ce code pas à pas.") : ""); setOpen(true); place();
+    requestAnimationFrame(() => input.current?.focus({ preventScroll: true }));
+  }, [language, place]);
+  useEffect(() => { const closeOnNavigation = () => setOpen(false); return subscribeRoute(closeOnNavigation); }, []);
+  const dismiss = useCallback(() => { setOpen(false); anchor.current?.focus({ preventScroll: true }); }, []);
+  useEffect(() => { if (!open) return; const reposition = () => place(), key = (e: KeyboardEvent) => { if (e.key === "Escape") dismiss(); }; window.addEventListener("resize", reposition); document.addEventListener("keydown", key); return () => { window.removeEventListener("resize", reposition); document.removeEventListener("keydown", key); }; }, [open, place, dismiss]);
+  useEffect(() => { scroll.current?.scrollTo({ top: scroll.current.scrollHeight, behavior: "smooth" }); }, [thread?.messages.length, busy]);
+  async function send() {
+    const content = question.trim(); if (!content || busy) return;
+    const id = selected ?? createLocalId(), messages: TutorMessage[] = [...(thread?.messages || []), { role: "user", content }], currentContext = attached;
+    setThreads(current => current.some(item => item.id === id) ? current.map(item => item.id === id ? { ...item, messages } : item) : [{ id, title: currentContext ? `${currentContext.courseTitle} · ${contextLabel}` : content.slice(0, 48), messages, createdAt: new Date().toISOString(), context: currentContext }, ...current]);
+    setSelected(id); setQuestion(""); setBusy(true); setError("");
+    try { const answer = await askTutor(messages, language, currentContext); setThreads(current => current.map(item => item.id === id ? { ...item, messages: [...item.messages, { role: "assistant", content: answer }] } : item)); } catch { setError(t("L’agent est indisponible. Tu peux réessayer ou vérifier la connexion Django.", "The agent is unavailable. Try again or check the Django connection.")); } finally { setBusy(false); }
+  }
+  return <LessonHelpRegistration.Provider value={registerLesson}>
+    <TutorOverlay.Provider value={openTutor}>
+      {children}
+      {showHelp && !open && <button
+        className="floating-help"
+        aria-label={t("Ouvrir l’aide à l’apprentissage", "Open learning help")}
+        title={t("Un mot ou une phrase à comprendre ?", "Need help with a word or sentence?")}
+        onClick={event => openTutor(currentLesson.current, event.currentTarget)}>
+        <CircleHelp size={27} />
+      </button>}
+      {showHelp && open && <section
+        className="floating-tutor"
+        style={position}
+        role="dialog"
+        aria-modal="false"
+        aria-labelledby="floating-tutor-title">
+        <header>
+          <span className="floating-tutor-avatar">
+            <Bot size={23} />
+          </span>
+          <div>
+            <h2 id="floating-tutor-title">
+              {codeMode ? t("Comprendre le code", "Understand the code") : t("Comprendre la leçon", "Understand the lesson")}
+            </h2>
+            <small>
+              {attached ? `${attached.courseTitle} · ${contextLabel}` : t("Les mots et les phrases du cours", "Words and sentences from your course")}
+            </small>
+          </div>
+          <button
+            className="quiet"
+            onClick={() => setHistory(!history)}
+            aria-label={t("Historique des discussions", "Conversation history")}
+            aria-expanded={history}>
+            <History size={18} />
+          </button>
+          <button
+            className="quiet"
+            ref={close}
+            onClick={dismiss}
+            aria-label={t("Fermer l’aide", "Close learning help")}>
+            <X size={20} />
+          </button>
+        </header>
+        {history ? <div className="floating-tutor-history">
+          <button
+            className="text-link"
+            onClick={() => { setContext(attached || currentLesson.current); setSelected(null); setHistory(false); setQuestion(""); }}>
+            <Plus size={16} />
+            {t("Nouvelle discussion", "New conversation")}
+          </button>
+          {threads.length ? threads.map(item => <button
+            key={item.id}
+            onClick={() => { setSelected(item.id); setContext(item.context); setHistory(false); setError(""); }}>
+            <History size={15} />
+            {item.title}
+          </button>) : <p>
+            {t("Tes discussions apparaîtront ici.", "Your conversations will appear here.")}
+          </p>}
+        </div> : <>
+          <div
+            className="floating-tutor-scroll"
+            ref={scroll}>
+            {!thread && <div className="floating-tutor-welcome">
+              <Bot size={34} />
+              <h3>
+                {codeMode ? t("Comprenons ce code ensemble.", "Let’s understand this code together.") : t("Quel passage veux-tu comprendre ?", "Which passage would you like to understand?")}
+              </h3>
+              <p>
+                {codeMode ? t("Demande le rôle d’une balise, d’une variable ou d’une ligne. Ton code est joint à cette discussion.", "Ask about a tag, a variable or a line. Your code is attached to this conversation.") : t("Écris un mot, un acronyme ou copie une phrase de la leçon. Je t’aide à en comprendre le sens avec un exemple.", "Enter a word or acronym, or paste a sentence from your lesson. I can help explain its meaning with an example.")}
+              </p>
+            </div>}
+            {thread?.messages.map((message, index) => <article
+              key={index}
+              className={`floating-tutor-message ${message.role}`}>
+              <strong>
+                {message.role === "user" ? t("Toi", "You") : t("Agent apprentissage", "Learning agent")}
+              </strong>
+              {message.content.split(/```(?:[a-zA-Z0-9]+)?\n?/).map((part, i) => i % 2 ? <pre key={i}>
+                <code>
+                  {part.trim()}
+                </code>
+              </pre> : <p key={i}>
+                {part}
+              </p>)}
+            </article>)}
+            {busy && <p
+              className="tutor-loading"
+              role="status">
+              <LoaderCircle
+                className="spin"
+                size={17} />
+              {t("Préparation de la réponse…", "Preparing a reply…")}
+            </p>}
+          </div>
+          {error && <p
+            className="form-error"
+            role="alert">
+            {error}
+          </p>}
+          <form
+            className="floating-tutor-composer"
+            onSubmit={e => { e.preventDefault(); void send(); }}>
+            <textarea
+              ref={input}
+              rows={2}
+              aria-label={t("Question pour l’agent", "Question for the agent")}
+              placeholder={codeMode ? t("Que signifie cette ligne ?", "What does this line mean?") : t("Que signifie ce mot ou cette phrase ?", "What does this word or sentence mean?")}
+              value={question}
+              maxLength={8000}
+              onChange={e => setQuestion(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }} />
+            <button
+              className="btn-primary"
+              disabled={busy || !question.trim()}
+              aria-label={t("Envoyer à l’agent", "Send to the agent")}>
+              <Send size={18} />
+            </button>
+          </form>
+          <small className="floating-tutor-mode">
+            {import.meta.env.VITE_AGENT_MODE === "api" ? t("Agent connecté à Django", "Agent connected to Django") : t("Aide locale · connexion IA à configurer", "Local help · AI connection to configure")}
+          </small>
+        </>}
+      </section>}
+    </TutorOverlay.Provider>
+  </LessonHelpRegistration.Provider>;
+}

@@ -1,5 +1,8 @@
+import SavedPosts from "./SavedPosts";
+import { AttachmentCard } from "../shared/Attachments";
 import { useI18n } from "../../i18n/context";
 import ApplicationDashboard from "./ApplicationDashboard";
+import RecruiterDashboard from "./RecruiterDashboard";
 import { useState, type FormEvent } from "react";
 import {
   ArrowLeft,
@@ -10,7 +13,6 @@ import {
   ExternalLink,
   Globe2,
   GraduationCap,
-  BadgeCheck,
   Pencil,
   Share2,
   Sparkles,
@@ -42,7 +44,9 @@ function Avatar({
   return (
     <div className={large ? "profile-avatar" : "avatar"}>
       {profile.photo.startsWith("data:image/") ? (
-        <img src={profile.photo} alt={`Photo de ${profile.name}`} />
+        <img
+          src={profile.photo}
+          alt={`Photo de ${profile.name}`} />
       ) : (
         <span>
           {profile.name
@@ -62,8 +66,12 @@ export default function ProfileView({
   onNotice,
   isOwn = true,
   onMessage,
+  onNavigate,
+  focusJob,
 }: {
   profile: Profile;
+  onNavigate: (path: string) => void;
+  focusJob?: number;
   onEdit: () => void;
   onNotice: (message: string) => void;
   isOwn?: boolean;
@@ -98,9 +106,13 @@ export default function ProfileView({
   return (
     <>
       <div className="profile-layout">
-        <section className="glass-profile" aria-label={t("Carte de profil")}>
+        <section
+          className="glass-profile"
+          aria-label={t("Carte de profil")}>
           <div className="profile-card-top">
-            <span className="mini-label">{t("DÉVELOPPEUR · DEVAfrica")}</span>
+            <span className="mini-label">
+              {t("DÉVELOPPEUR · DEVAfrica")}
+            </span>
             <button
               className="glass-icon"
               aria-label={t("Copier le lien du profil")}
@@ -109,8 +121,12 @@ export default function ProfileView({
               <Share2 size={22} />
             </button>
           </div>
-          <Avatar profile={profile} large />
-          <h2>{profile.name}</h2>
+          <Avatar
+            profile={profile}
+            large />
+          <h2>
+            {profile.name}
+          </h2>
           <p className="profile-role">
             {profile.role || "Développeur de la communauté"}
           </p>
@@ -120,25 +136,41 @@ export default function ProfileView({
           <CountryFlag country={profile.country} />
           <div className="profile-skill-preview">
             {skills.slice(0, 4).map((s) => (
-              <SkillChip key={s} name={s} />
+              <SkillChip
+                key={s}
+                name={s} />
             ))}
           </div>
           <div className="profile-stats">
             <div>
-              <strong>{skills.length}</strong>
-              <span>{t("Compétences")}</span>
+              <strong>
+                {skills.length}
+              </strong>
+              <span>
+                {t("Compétences")}
+              </span>
             </div>
             <div>
-              <strong>{isOwn ? progress.length : "—"}</strong>
-              <span>{t("Fiches validées")}</span>
+              <strong>
+                {isOwn ? progress.length : "—"}
+              </strong>
+              <span>
+                {t("Fiches validées")}
+              </span>
             </div>
             <div>
-              <strong>{contributions}</strong>
-              <span>{t("Publications")}</span>
+              <strong>
+                {contributions}
+              </strong>
+              <span>
+                {t("Publications")}
+              </span>
             </div>
           </div>
           <div className="profile-card-bottom">
-            <button className="glass-edit" onClick={isOwn ? onEdit : onMessage}>
+            <button
+              className="glass-edit"
+              onClick={isOwn ? onEdit : onMessage}>
               {isOwn ? t("Modifier mon profil") : t("Contacter")}
               <Pencil size={18} />
             </button>
@@ -182,7 +214,7 @@ export default function ProfileView({
                     t("Âge", "Age"),
                     profile.age ? `${profile.age} ${t("ans", "years")}` : "",
                   ],
-                  [t("Niveau", "Level"), profile.level],
+                  [t("Niveau", "Level"), t(profile.level)],
                   [t("Pays", "Country"), profile.country],
                   [
                     t("Pseudo", "Username"),
@@ -191,8 +223,12 @@ export default function ProfileView({
                   [t("Adresse e-mail", "Email address"), profile.email],
                 ].map(([label, value]) => (
                   <div key={label}>
-                    <dt>{label}</dt>
-                    <dd>{value || t("Non renseigné", "Not provided")}</dd>
+                    <dt>
+                      {label}
+                    </dt>
+                    <dd>
+                      {value || t("Non renseigné", "Not provided")}
+                    </dd>
                   </div>
                 ))}
               </dl>
@@ -203,12 +239,16 @@ export default function ProfileView({
               <span className="round-icon">
                 <UserRound size={20} />
               </span>
-              <h2>{t("À propos de moi")}</h2>
-              <span className="level-pill">{t(profile.level)}</span>
+              <h2>
+                {t("À propos de moi")}
+              </h2>
+              <span className="level-pill">
+                {t(profile.level)}
+              </span>
             </div>
             <p className="preserve-lines">
               {profile.bio ||
-                "Ajoute quelques mots sur ce que tu aimes construire."}
+                t("Ajoute quelques mots sur ce que tu aimes construire.", "Add a few words about what you like to build.")}
             </p>
           </section>
           <section className="panel">
@@ -216,34 +256,23 @@ export default function ProfileView({
               <span className="round-icon">
                 <Code2 size={20} />
               </span>
-              <h2>{t("Mes compétences")}</h2>
+              <h2>
+                {t("Mes compétences")}
+              </h2>
             </div>
             {profile.skillDetails.length ? (
               <div className="profile-skill-list">
                 {profile.skillDetails.map((skill) => (
-                  <article className="profile-skill-detail" key={skill.id}>
-                    <TechIcon name={skill.name} size={26} />
+                  <article
+                    className="profile-skill-detail"
+                    key={skill.id}>
+                    <TechIcon
+                      name={skill.name}
+                      size={26} />
                     <div>
-                      <strong>{skill.name}</strong>
-                      <small>
-                        {skill.domain
-                          ? t(skill.domain)
-                          : t("Domaine à préciser", "Field not specified")}{" "}
-                        ·{" "}
-                        {skill.difficulty
-                          ? t(
-                              skill.difficulty,
-                              skill.difficulty === "Facile"
-                                ? "Easy"
-                                : skill.difficulty === "Avancée"
-                                  ? "Advanced"
-                                  : "Intermediate",
-                            )
-                          : t(
-                              "Difficulté à préciser",
-                              "Difficulty not specified",
-                            )}
-                      </small>
+                      <strong>
+                        {skill.name}
+                      </strong>
                     </div>
                   </article>
                 ))}
@@ -251,9 +280,13 @@ export default function ProfileView({
             ) : (
               <div className="skills-wall">
                 {skills.length ? (
-                  skills.map((name) => <SkillChip key={name} name={name} />)
+                  skills.map((name) => <SkillChip
+                    key={name}
+                    name={name} />)
                 ) : (
-                  <p>{t("Aucune compétence renseignée pour le moment.")}</p>
+                  <p>
+                    {t("Aucune compétence renseignée pour le moment.")}
+                  </p>
                 )}
               </div>
             )}
@@ -263,34 +296,26 @@ export default function ProfileView({
               <span className="round-icon">
                 <GraduationCap size={20} />
               </span>
-              <h2>{t("Mon parcours")}</h2>
+              <h2>
+                {t("Mon parcours")}
+              </h2>
             </div>
             {profile.experiences.length ? (
               <div className="profile-experience-list">
                 {profile.experiences.map((entry) => (
-                  <article className="profile-experience-item" key={entry.id}>
+                  <article
+                    className="profile-experience-item"
+                    key={entry.id}>
                     <span className="experience-year">
                       {entry.year ||
                         t("Année non renseignée", "Year unavailable")}
                     </span>
-                    <h3>{entry.position}</h3>
-                    <p>{entry.description}</p>
-                    {entry.diploma && (
-                      <div className="profile-qualification">
-                        <GraduationCap size={16} />
-                        <span>
-                          {t("Diplôme", "Qualification")} : {entry.diploma}
-                        </span>
-                      </div>
-                    )}
-                    {entry.certificate && (
-                      <div className="profile-qualification">
-                        <BadgeCheck size={16} />
-                        <span>
-                          {t("Certificat", "Certificate")} : {entry.certificate}
-                        </span>
-                      </div>
-                    )}
+                    <h3>
+                      {entry.position}
+                    </h3>
+                    <p>
+                      {entry.description}
+                    </p>
                   </article>
                 ))}
               </div>
@@ -304,15 +329,41 @@ export default function ProfileView({
               </p>
             )}
           </section>
+          {profile.documents.length > 0 && <section className="panel profile-documents">
+            <div className="section-title">
+              <GraduationCap size={21} />
+              <h2>
+                {t("Diplômes et certificats", "Diplomas and certificates")}
+              </h2>
+            </div>
+            {profile.documents.map(document => <div key={document.id}>
+              <small>
+                {document.kind === "diploma" ? t("Diplôme", "Diploma") : t("Certificat", "Certificate")}
+              </small>
+              <AttachmentCard
+                file={document.file}
+                preview={false} />
+            </div>)}
+          </section>}
+          {profile.experiences.some(e => e.diploma || e.certificate) && <section className="panel">
+            <h2>
+              {t("Diplômes et certificats", "Diplomas and certificates")}
+            </h2>
+            {profile.experiences.map(e => <p key={e.id}>
+              {[e.diploma, e.certificate].filter(Boolean).join(" · ")}
+            </p>)}
+          </section>}
           <section className="panel portfolio-panel">
             <div>
-              <h2>{t("Mon portfolio")}</h2>
+              <h2>
+                {t("Mon portfolio")}
+              </h2>
               <p>
                 {portfolio
                   ? t("Une autre façon de découvrir mon univers.")
                   : t(
-                      "Un site, des projets, ton univers créatif. Le lien est facultatif.",
-                    )}
+                    "Un site, des projets, ton univers créatif. Le lien est facultatif.",
+                  )}
               </p>
             </div>
             {portfolio ? (
@@ -337,7 +388,18 @@ export default function ProfileView({
           </section>
         </div>
       </div>
-      {isOwn && <ApplicationDashboard />}
+      {isOwn && <>
+        <SavedPosts
+          profile={profile}
+          onNavigate={onNavigate} />
+        <ApplicationDashboard profile={profile} />
+        <RecruiterDashboard
+          key={focusJob || "all"}
+          focusJob={focusJob}
+          profile={profile}
+          onNavigate={onNavigate}
+          onNotice={onNotice} />
+      </>}
     </>
   );
 }
@@ -362,8 +424,10 @@ export function ProfileEditor({
     }),
   );
   const [error, setError] = useState("");
+  const [uploadCount, setUploadCount] = useState(0);
   function submit(event: FormEvent) {
     event.preventDefault();
+    if (uploadCount) return;
     setError("");
     if (!draft.firstName.trim() || !draft.lastName.trim() || !draft.country) {
       setError(
@@ -455,18 +519,24 @@ export function ProfileEditor({
 
   return (
     <section className="profile-edit-page">
-      <button className="back-link" onClick={onCancel}>
+      <button
+        className="back-link"
+        onClick={onCancel}>
         <ArrowLeft size={17} />
         {t("Revenir à mon profil")}
       </button>
       <div className="profile-editor-layout">
-        <form className="panel edit-profile-form" onSubmit={submit}>
+        <form
+          className="panel edit-profile-form"
+          onSubmit={submit}>
           <div className="section-title">
             <span className="round-icon">
               <Pencil size={20} />
             </span>
             <div>
-              <h2>{t("Un profil qui te ressemble")}</h2>
+              <h2>
+                {t("Un profil qui te ressemble")}
+              </h2>
               <p>
                 {t(
                   "Vos informations, votre parcours et vos compétences.",
@@ -476,7 +546,9 @@ export function ProfileEditor({
             </div>
           </div>
           <div className="photo-editor">
-            <Avatar profile={draft} large />
+            <Avatar
+              profile={draft}
+              large />
             <div>
               <label className="upload-photo">
                 <Camera size={17} />
@@ -487,7 +559,9 @@ export function ProfileEditor({
                   onChange={(e) => uploadPhoto(e.target.files?.[0])}
                 />
               </label>
-              <small>{t("Facultatif · JPG, PNG ou WebP · 2 Mo max.")}</small>
+              <small>
+                {t("Facultatif · JPG, PNG ou WebP · 2 Mo max.")}
+              </small>
               {draft.photo && (
                 <button
                   className="text-link"
@@ -554,12 +628,18 @@ export function ProfileEditor({
           <section className="structured-editor-section">
             <SkillFields
               value={draft.skillDetails}
+              documents={draft.documents}
+              onBusy={busy => setUploadCount(n => Math.max(0, n + (busy ? 1 : -1)))}
+              onDocumentsChange={documents => setDraft(current => ({ ...current, documents }))}
               onChange={(skillDetails) => setDraft({ ...draft, skillDetails })}
             />
           </section>
           <label>
-            {t("Portfolio")}{" "}
-            <span className="field-optional">{t("facultatif")}</span>
+            {t("Portfolio")}
+            {" "}
+            <span className="field-optional">
+              {t("facultatif")}
+            </span>
             <input
               type="url"
               value={draft.portfolio}
@@ -571,15 +651,22 @@ export function ProfileEditor({
             />
           </label>
           {error && (
-            <p className="form-error" role="alert">
-              {error}
+            <p
+              className="form-error"
+              role="alert">
+              {t(error)}
             </p>
           )}
           <div className="editor-actions">
-            <button type="button" className="btn-secondary" onClick={onCancel}>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={onCancel}>
               {t("Annuler")}
             </button>
-            <button className="btn-primary">
+            <button
+              className="btn-primary"
+              disabled={uploadCount > 0}>
               <Check size={18} />
               {t("Enregistrer mon profil")}
             </button>
@@ -587,7 +674,9 @@ export function ProfileEditor({
         </form>
         <aside className="panel editor-tips">
           <Sparkles size={28} />
-          <h2>{t("Fais découvrir ton potentiel.")}</h2>
+          <h2>
+            {t("Fais découvrir ton potentiel.")}
+          </h2>
           <p>
             {t(
               "Racontez votre parcours, même s’il débute. Chaque compétence peut ouvrir une nouvelle collaboration.",

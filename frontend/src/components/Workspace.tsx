@@ -9,7 +9,6 @@ import {
   Bot,
   BriefcaseBusiness,
   ChevronRight,
-  CircleHelp,
   LogOut,
   Menu,
   MessageCircle,
@@ -19,7 +18,10 @@ import {
 } from "lucide-react";
 import { useLocalData } from "../lib/storage";
 import { initialProfile, migrateProfile } from "../data/models";
-import { CountryFlag } from "./CountryFlag";
+import NotificationCenter from "./shared/NotificationCenter";
+import { useToast } from "../lib/toastContext";
+import { findPerson, usePeople } from "../data/people";
+import { useApplications } from "../data/workflow";
 import Community from "./modules/Community";
 import ProfileView, { ProfileEditor } from "./modules/Profile";
 import Learning from "./modules/Learning";
@@ -29,17 +31,17 @@ import Assistant from "./modules/Assistant";
 import "../workspace.css";
 const modules = [
   {
-    id: "communaute",
-    label: "Communauté",
-    Icon: UsersRound,
-    description: "Des idées, des projets et des talents qui se rencontrent.",
-  },
-  {
     id: "profil",
     label: "Mon profil",
     Icon: UserRound,
     description:
       "Ton parcours, tes compétences et ce que tu as envie de construire.",
+  },
+  {
+    id: "communaute",
+    label: "Communauté",
+    Icon: UsersRound,
+    description: "Des idées, des projets et des talents qui se rencontrent.",
   },
   {
     id: "apprentissage",
@@ -80,12 +82,16 @@ export default function Workspace({
   const { t } = useI18n();
 
   const parts = route.split("/").filter(Boolean);
+  const studioPage = parts[0] === "apprentissage" && parts[1] === "cours" && ["atelier", "projet"].includes(parts[4]);
   const active = modules.find((m) => m.id === parts[0]) || modules[0];
   const [profile, setProfile] = useLocalData(
     "profile",
     initialProfile,
     migrateProfile,
   );
+  const [people, setPeople] = usePeople();
+  const [applications] = useApplications();
+  useEffect(() => { setPeople(current => { const previous = current.find(p => p.id === profile.id); return JSON.stringify(previous) === JSON.stringify(profile) ? current : [...current.filter(p=>p.id!==profile.id),profile]; }); }, [profile, setPeople]);
   const [posts] = useLocalData("posts", initialPosts, migratePosts);
   const [collapsed, setCollapsed] = useLocalData("sidebar-collapsed", false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -101,7 +107,11 @@ export default function Workspace({
     media.addEventListener("change", sync);
     return () => media.removeEventListener("change", sync);
   }, []);
-  const [notice, setNotice] = useState("");
+  const setNotice = useToast();
+  const wideModule = active.id === "messages" || active.id === "ia";
+  const [wideMenuExpanded, setWideMenuExpanded] = useState(false);
+  const effectiveCollapsed = !isMobile && (wideModule ? !wideMenuExpanded : collapsed);
+  const toggleMenuWidth = () => wideModule ? setWideMenuExpanded(!wideMenuExpanded) : setCollapsed(!collapsed);
   const sidebar = useRef<HTMLElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
   const mainTitle = useRef<HTMLHeadingElement>(null);
@@ -115,7 +125,6 @@ export default function Workspace({
   useEffect(() => {
     const closeNavigation = () => {
       setMobileOpen(false);
-      setNotice("");
     };
     window.addEventListener("hashchange", closeNavigation);
     return () => window.removeEventListener("hashchange", closeNavigation);
@@ -156,7 +165,6 @@ export default function Workspace({
   }, [mobileOpen]);
   function navigate(path: string) {
     setMobileOpen(false);
-    setNotice("");
     onNavigate(path);
   }
   let memberName = "";
@@ -167,9 +175,11 @@ export default function Workspace({
     /* Adresse invalide. */
   }
   const memberPost = posts.find((p) => p.author === memberName);
+  const knownMember = memberName ? findPerson(people, memberName, profile) || applications.find(a=>a.applicantId===memberName)?.applicant : undefined;
   const viewedProfile = memberName
-    ? {
+    ? knownMember || {
         ...initialProfile,
+        id: `member-${memberName}`,
         name: memberName,
         firstName: memberName.split(" ")[0],
         lastName: memberName.split(" ").slice(1).join(" "),
@@ -187,10 +197,12 @@ export default function Workspace({
         photo: "",
       }
     : profile;
+  const focusSection = active.id === "profil" && ["candidatures","recrutement"].includes(parts[1]) ? parts[1] : "";
+  useEffect(()=>{if(focusSection)requestAnimationFrame(()=>document.getElementById(focusSection)?.scrollIntoView({block:"start"}));},[focusSection,route]);
   const editing = active.id === "profil" && parts[1] === "modifier";
   return (
     <div
-      className={`workspace ${collapsed ? "sidebar-collapsed" : ""} ${mobileOpen ? "mobile-menu-open" : ""}`}
+      className={`workspace ${studioPage ? "studio-workspace" : ""} ${effectiveCollapsed ? "sidebar-collapsed" : ""} ${wideModule ? "workspace-wide" : ""} ${mobileOpen ? "mobile-menu-open" : ""}`}
     >
       {mobileOpen && (
         <button
@@ -252,46 +264,26 @@ export default function Workspace({
               </button>
             ))}
           </nav>
-          <section className="sidebar-invitation">
+          <div className="sidebar-menu-control">
             <button
-              className="sidebar-invitation-icon"
-              aria-label={t("Réduire le menu")}
-              onClick={() => setCollapsed(true)}
+              className="sidebar-menu-toggle"
+              aria-label={effectiveCollapsed ? t("Développer le menu") : t("Réduire le menu")}
+              title={effectiveCollapsed ? t("Développer le menu") : t("Réduire le menu")}
+              onClick={toggleMenuWidth}
             >
-              <ArrowLeftToLine size={22} />
+              {effectiveCollapsed ? <ArrowRightToLine size={22} /> : <ArrowLeftToLine size={22} />}
             </button>
-            <strong>{t("Ensemble, on va plus loin.")}</strong>
-            <button className="sidebar-quit" onClick={onHome}>
-              <LogOut size={16} />
-              {t("Quitter")}
-            </button>
-          </section>
+          </div>
           <div className="sidebar-bottom">
             <button
-              className="sidebar-link"
-              title={t("Retour à l’accueil")}
-              aria-label={t("Retour à l’accueil")}
+              className="sidebar-link sidebar-quit"
+              title={t("Quitter")}
+              aria-label={t("Quitter")}
               onClick={onHome}
             >
               <LogOut size={19} />
-              <span>{t("Retour à l’accueil")}</span>
+              <span>{t("Quitter")}</span>
             </button>
-            <button
-              className="sidebar-collapse-button"
-              onClick={() => setCollapsed(!collapsed)}
-              title={collapsed ? t("Développer le menu") : t("Réduire le menu")}
-              aria-label={
-                collapsed ? t("Développer le menu") : t("Réduire le menu")
-              }
-            >
-              {collapsed ? (
-                <ArrowRightToLine size={18} />
-              ) : (
-                <ArrowLeftToLine size={18} />
-              )}
-              <span>{t("Réduire le menu")}</span>
-            </button>
-            <small>{t("FAIT POUR CRÉER DES LIENS.")}</small>
           </div>
         </div>
       </aside>
@@ -323,14 +315,7 @@ export default function Workspace({
           </div>
           <div className="workspace-top-actions">
             <LanguageSwitcher />
-            <button
-              className="header-help"
-              title={t("Aide à l’apprentissage")}
-              aria-label={t("Ouvrir l’aide")}
-              onClick={() => navigate("ia")}
-            >
-              <CircleHelp size={19} />
-            </button>
+            <NotificationCenter profile={profile} onNavigate={navigate}/>
             <button
               className="header-profile"
               onClick={() => navigate("profil")}
@@ -349,40 +334,11 @@ export default function Workspace({
           </div>
         </header>
         <div className="workspace-page">
-          <div className="module-heading">
-            <div>
-              <p className="eyebrow">{t("PAR LES DEVS, POUR LES DEVS")}</p>
-              <h1 ref={mainTitle} tabIndex={-1}>
-                {editing ? t("Modifier mon profil") : t(active.label)}
-              </h1>
-              <p>{t(active.description)}</p>
-            </div>
-            <span className="location-pill">
-              <CountryFlag country={profile.country} />
-            </span>
-          </div>
-          <div className="demo-banner">
-            <span className="status-dot" />
-            <span>
-              {t(
-                "Espace de démonstration · tes données restent sur cet appareil.",
-              )}
-            </span>
-          </div>
-          {notice && (
-            <div className="notice" role="status">
-              <span>{notice}</span>
-              <button
-                aria-label={t("Fermer la notification")}
-                onClick={() => setNotice("")}
-              >
-                <X size={17} />
-              </button>
-            </div>
-          )}
+          <h1 className="sr-only" ref={mainTitle} tabIndex={-1}>{editing ? t("Modifier mon profil") : t(active.label)}</h1>
           {active.id === "communaute" && (
             <Community
               profile={profile}
+              focusPostId={parts[1] === "publication" ? Number(parts[2]) : undefined}
               onNavigate={navigate}
               onNotice={setNotice}
             />
@@ -394,6 +350,7 @@ export default function Workspace({
                 profile={profile}
                 onSave={(next) => {
                   setProfile(next);
+                  setNotice(t("Profil mis à jour.", "Profile updated."));
                   navigate("profil");
                 }}
                 onCancel={() => navigate("profil")}
@@ -402,9 +359,11 @@ export default function Workspace({
             ) : (
               <ProfileView
                 profile={viewedProfile}
-                isOwn={!memberName}
+                isOwn={!memberName || viewedProfile.id === profile.id}
+                onNavigate={navigate}
+                focusJob={parts[1] === "recrutement" ? Number(parts[2]) || undefined : undefined}
                 onMessage={() =>
-                  navigate(`messages/prive/${encodeURIComponent(memberName)}`)
+                  navigate(`messages/prive/${encodeURIComponent(viewedProfile.name)}`)
                 }
                 onEdit={() => navigate("profil/modifier")}
                 onNotice={setNotice}
@@ -417,7 +376,7 @@ export default function Workspace({
               onNavigate={navigate}
             />
           )}
-          {active.id === "offres" && <Offers onNotice={setNotice} />}
+          {active.id === "offres" && <Offers key={route} profile={profile} route={parts.slice(1)} onNavigate={navigate} onNotice={setNotice} />}
           {active.id === "messages" && (
             <Messages
               profile={profile}

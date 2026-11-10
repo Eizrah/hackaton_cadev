@@ -1,0 +1,80 @@
+/* Une seule commande de largeur, puis Quitter au pied de la navigation. */
+.sidebar-menu-control { padding:18px 10px; }
+.sidebar-menu-toggle {
+  display:grid;place-items:center;width:40px;height:40px;border:1px solid #ffffff24;
+  border-radius:13px;background:#ffffff09;color:#cceeff;cursor:pointer;
+}
+.sidebar-menu-toggle:hover { color:#fff;background:#ffffff20; }
+.sidebar-bottom { margin-top:auto; }
+.sidebar-bottom > .sidebar-quit { display:flex;border-radius:14px;margin:0; }
+.sidebar-bottom > .sidebar-quit:hover { background:#ffffff15; }
+.sidebar-collapsed .sidebar-menu-control { padding:18px 0;display:flex;justify-content:center; }
+.sidebar-collapsed .sidebar-bottom > .sidebar-quit { justify-content:center; }
+.sidebar-collapsed .sidebar-menu-toggle { width:36px;height:36px; }
+@media(max-width:900px) { .sidebar-menu-control { display:none; } }
+
+/* Récupération : mêmes carte et illustration que la connexion. */
+.recovery-header-nav { margin-left:auto;margin-right:20px; }
+.recovery-header-nav > button { border:0;border-radius:18px;padding:13px 20px;background:#ffffffa6;color:#1953ff;font-weight:650; }
+.recovery-card { max-width:590px; }
+.recovery-symbol { width:57px;height:57px;display:grid;place-items:center;border-radius:19px;background:linear-gradient(140deg,#d9eaff,#eff7ff);color:#2366dc;margin-bottom:23px; }
+.recovery-card .registration-card-heading { margin-bottom:24px; }
+.recovery-progress { list-style:none;display:flex;justify-content:space-between;gap:16px;padding:0;margin:0 0 27px; }
+.recovery-progress li { flex:1;position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;color:#8ea1bd; }
+.recovery-progress li:not(:last-child):after { content:"";position:absolute;left:calc(50% + 22px);right:calc(-50% + 7px);top:15px;height:2px;background:#e3ebf5; }
+.recovery-progress li > span { display:grid;place-items:center;width:31px;height:31px;border-radius:50%;background:#edf3fc;font-size:12px;font-weight:700; }
+.recovery-progress li.active { color:#1b4db2; }
+.recovery-progress li.active > span { color:#fff;background:linear-gradient(120deg,#1d81f6,#1953ff);box-shadow:0 4px 12px #2768ff3b; }
+.recovery-progress li.complete > span { color:#377bcc;background:#e1edff; }
+.recovery-progress small { font-size:11px; }
+.recovery-demo { border:1px solid #cfe3f8;background:#f0f7ff;border-radius:13px;padding:11px 13px;color:#5f83a6;font-size:11px;line-height:1.7;margin:0 0 22px; }
+.recovery-form { display:grid;gap:20px; }
+.recovery-form > label { display:flex;flex-direction:column;gap:9px;font-size:13px;font-weight:650; }
+.recovery-form .onboard-input { width:100%; }
+.recovery-form .onboard-input input { min-width:0;flex:1;width:100%; }
+.recovery-hint { color:#7b96b2;font-size:12px;line-height:1.8;margin:0;display:flex;align-items:flex-start;gap:9px; }
+.recovery-hint svg { flex-shrink:0;margin-top:3px; }
+.recovery-card .register-continue { width:100%;margin:6px 0;justify-content:center;min-height:49px; }
+.recovery-methods { display:flex;gap:8px;flex-wrap:wrap;background:#eef5ff;border:1px solid #dce8f9;padding:6px;border-radius:15px; }
+.recovery-methods button { flex:1;padding:10px;border:0;border-radius:11px;background:none;color:#7291b4;font-size:11px; }
+.recovery-methods button[aria-pressed=true] { background:#fff;color:#2059bd;box-shadow:0 3px 9px #1b5aaf12; }
+.recovery-text-button { border:0;background:none;color:#3472c9;display:block;margin:18px auto;font-size:12px;text-align:center;line-height:1.6; }
+.recovery-back { display:flex;align-items:center;justify-content:center;gap:9px;border:0;background:none;color:#6d8cab;font-size:12px;margin:25px auto 0;padding:9px; }
+.recovery-next { display:grid;gap:19px; }
+.recovery-inbox { display:flex;gap:13px;align-items:center;border-radius:16px;background:#edf6ff;padding:20px;color:#427bac;min-width:0; }
+.recovery-inbox > span { min-width:0;display:grid;gap:6px; }
+.recovery-inbox strong { font-size:13px;overflow-wrap:anywhere; }
+.recovery-inbox small { font-size:11px;color:#7e99b4;line-height:1.7; }
+@media(max-width:700px) {
+  .recovery-header-nav { display:none; }
+  .recovery-page .registration-header > .language-switcher { margin-left:auto; }
+  .recovery-symbol { width:48px;height:48px;margin-bottom:18px; }
+  .recovery-progress { gap:7px; }
+  .recovery-progress small { font-size:10px; }
+  .recovery-form input { font-size:16px!important; }
+}
+
+/* Rail gris-bleu et curseur turquoise lumineux, d'après la référence. */
+@supports selector(::-webkit-scrollbar) {
+  * { scrollbar-width:auto!important;scrollbar-color:auto!important; }
+  *::-webkit-scrollbar { width:14px;height:14px; }
+  *::-webkit-scrollbar-track {
+    background:#7b8ca3;border-radius:999px;
+    box-shadow:inset 0 1px 2px #53657b55;
+  }
+  *::-webkit-scrollbar-thumb {
+    min-height:36px;min-width:36px;border:3px solid #7b8ca3;border-radius:999px;
+    background:linear-gradient(180deg,#d3ffff 0%,#8fffff 35%,#4fe3ec 78%,#8cf9ff 100%);
+    box-shadow:inset 0 1px 2px #f0ffff,0 0 5px #68f3ff99;
+  }
+  *::-webkit-scrollbar-thumb:hover { background:linear-gradient(180deg,#e3ffff,#79fbff 50%,#49d9ef); }
+  *::-webkit-scrollbar-corner { background:transparent; }
+}
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width:auto!important;scrollbar-color:#73f1f5 #7b8ca3!important; }
+}
+@media(forced-colors:active) {
+  * { scrollbar-color:auto!important; }
+  *::-webkit-scrollbar-track { background:Canvas;box-shadow:none; }
+  *::-webkit-scrollbar-thumb { background:ButtonText;border-color:Canvas;box-shadow:none; }
+}

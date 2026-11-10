@@ -1,16 +1,19 @@
 import { useI18n } from "../i18n/context";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 export default function Modal({
   title,
   children,
   onClose,
+  size = "normal",
 }: {
+  size?: "normal"|"wide";
   title: string;
   children: ReactNode;
   onClose: () => void;
 }) {
   const { t } = useI18n();
+  const titleId=useId();
 
   const ref = useRef<HTMLElement>(null);
   const close = useRef(onClose);
@@ -26,7 +29,7 @@ export default function Modal({
         ref.current?.querySelectorAll<HTMLElement>(
           'button:not([disabled]),input,select,textarea,a[href],[tabindex="0"]',
         ) || [],
-      );
+      ).filter(element=>element.tabIndex>=0 && !!element.getClientRects().length);
     focusable()[0]?.focus();
     const trap = (e: KeyboardEvent) => {
       if (e.key === "Escape") close.current();
@@ -53,14 +56,14 @@ export default function Modal({
     <div className="modal-backdrop" onClick={onClose}>
       <section
         ref={ref}
-        className="panel modal"
+        className={`panel modal ${size === "wide" ? "modal-wide" : ""}`}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="modal-title"
+        aria-labelledby={titleId}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="row">
-          <h2 id="modal-title">{title}</h2>
+          <h2 id={titleId}>{title}</h2>
           <button
             type="button"
             className="quiet"

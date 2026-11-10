@@ -368,3 +368,14 @@ Object.assign(english, {
   "Cette compétence apparaît plusieurs fois.":
     "This skill appears more than once.",
 });
+
+// Libellés partagés par les notifications et le recrutement.
+Object.assign(english, {
+  "Notifications": "Notifications", "non lues": "unread", "Fermer": "Close",
+  "Une offre pour tes compétences": "A job matching your skills",
+  "Nouvelle candidature": "New application", "Candidature acceptée": "Application accepted",
+  "Candidature non retenue": "Application not selected", "Candidature en cours": "Application in progress",
+  "Remote": "Remote", "Hybride": "Hybrid", "Local": "On-site", "Stage": "Internship",
+  "Toutes": "All", "En cours": "In progress", "Acceptées": "Accepted", "Acceptée": "Accepted",
+  "Non retenues": "Not selected", "Non retenue": "Not selected", "Validée": "Accepted",
+});

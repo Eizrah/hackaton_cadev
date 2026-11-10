@@ -1,9 +1,11 @@
+import { AttachmentPicker, AttachmentCard } from "../shared/Attachments";
+import type { StoredAttachment } from "../../lib/attachments";
+import { safePortfolio } from "../../lib/urls";
 import { compactStars } from "../../lib/format";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ArrowRight,
   Bookmark,
-  Check,
   Flag,
   MessageCircle,
   MoreHorizontal,
@@ -14,11 +16,16 @@ import {
   Star,
   UserRound,
   UsersRound,
+  Link2,
+  Reply,
+  X,
 } from "lucide-react";
 import { useLocalData } from "../../lib/storage";
 import {
   initialPosts,
   migratePosts,
+  isSavedBy,
+  orderedComments,
   type Post,
   type Profile,
 } from "../../data/models";
@@ -27,16 +34,12 @@ import { useI18n } from "../../i18n/context";
 import { CountryFlag } from "../CountryFlag";
 import Modal from "../Modal";
 function PostMenu({
-  post,
-  owner,
-  onCollaboration,
+  saved,
   onProfile,
   onSave,
   onReport,
 }: {
-  post: Post;
-  owner: boolean;
-  onCollaboration: () => void;
+  saved: boolean;
   onProfile: () => void;
   onSave: () => void;
   onReport: () => void;
@@ -64,7 +67,9 @@ function PostMenu({
     };
   }, [open]);
   return (
-    <div className="post-menu" ref={ref}>
+    <div
+      className="post-menu"
+      ref={ref}>
       <button
         className="quiet"
         ref={trigger}
@@ -82,32 +87,6 @@ function PostMenu({
           aria-label={t("Actions de la publication", "Post actions")}
         >
           <button
-            role="menuitemcheckbox"
-            aria-checked={post.collaboration}
-            disabled={!owner}
-            title={
-              !owner
-                ? t(
-                    "Seul l’auteur peut modifier sa demande d’aide.",
-                    "Only the author can change this request.",
-                  )
-                : undefined
-            }
-            onClick={onCollaboration}
-          >
-            <span
-              className={`menu-check ${post.collaboration ? "checked" : ""}`}
-            >
-              {post.collaboration && <Check size={13} />}
-            </span>
-            <span>
-              {t(
-                "Demande d’aide / collaboration",
-                "Help / collaboration request",
-              )}
-            </span>
-          </button>
-          <button
             role="menuitem"
             onClick={() => {
               onProfile();
@@ -124,8 +103,10 @@ function PostMenu({
               setOpen(false);
             }}
           >
-            <Bookmark size={17} fill={post.saved ? "currentColor" : "none"} />
-            {post.saved
+            <Bookmark
+              size={17}
+              fill={saved ? "currentColor" : "none"} />
+            {saved
               ? t("Annonce enregistrée", "Saved post")
               : t("Enregistrer l’annonce", "Save post")}
           </button>
@@ -149,32 +130,41 @@ export default function Community({
   profile,
   onNavigate,
   onNotice,
+  focusPostId,
 }: {
   profile: Profile;
+  focusPostId?: number;
   onNavigate: (path: string) => void;
   onNotice: (text: string) => void;
 }) {
   const { t, locale } = useI18n();
   const [posts, setPosts] = useLocalData("posts", initialPosts, migratePosts);
   const [, setReviews] = useReviews();
-  const [filter, setFilter] = useState("Tous");
   const [text, setText] = useState(""),
-    [title, setTitle] = useState(""),
-    [tag, setTag] = useState("Projet"),
     [collaboration, setCollaboration] = useState(false);
   const [commentPost, setCommentPost] = useState<number | null>(null),
     [comment, setComment] = useState(""),
-    [report, setReport] = useState<Post | null>(null);
+    [report, setReport] = useState<Post | null>(null),
+    [replyTo, setReplyTo] = useState<string | null>(null),
+    [reportCategory, setReportCategory] = useState("");
+  const [attachments, setAttachments] = useState<StoredAttachment[]>([]), [link, setLink] = useState(""), [uploading, setUploading] = useState(false);
+  useEffect(() => { if (focusPostId) requestAnimationFrame(() => document.getElementById(`post-${focusPostId}`)?.scrollIntoView({ block: "center" })); }, [focusPostId]);
   function publish(e: FormEvent) {
     e.preventDefault();
-    if (!text.trim()) return;
+    if (uploading || (!text.trim() && !attachments.length && !link.trim())) return;
+    const url = link.trim() ? safePortfolio(link.trim()) : null;
+    if (link.trim() && !url) { onNotice(t("Indique un lien HTTP(S) valide.", "Enter a valid HTTP(S) link.")); return; }
     const id = Date.now();
     const post: Post = {
       id,
+      authorId: profile.id,
       author: profile.name,
       country: profile.country,
-      tag,
-      title: title.trim(),
+      tag: "Publication",
+      title: "",
+      attachments,
+      links: url ? [url] : [],
+      savedBy: [],
       text: text.trim(),
       comments: [],
       publishedAt: new Date().toISOString(),
@@ -187,11 +177,11 @@ export default function Community({
     };
     setPosts((current) => [post, ...current]);
     setReviews((current) => [
-      makeReview("post", id, post.title || post.text.slice(0, 70), post.text),
+      makeReview("post", id, post.text.slice(0, 70) || t("Publication avec pièce jointe", "Post with attachment"), [post.text, ...(post.links || []), ...(post.attachments || []).map(f => f.name)].join("\n")),
       ...current,
     ]);
     setText("");
-    setTitle("");
+    setAttachments([]); setLink("");
     onNotice(
       t(
         "Publication envoyée à la file de modération de démonstration.",
@@ -199,15 +189,13 @@ export default function Community({
       ),
     );
   }
-  const visible = posts.filter(
-    (p) =>
-      p.moderation !== "rejected" &&
-      (filter === "Tous" || (filter === "saved" ? p.saved : p.tag === filter)),
-  );
+  const visible = posts.filter(post => !post.moderation || post.moderation === "approved" || post.authorId === profile.id || (!post.authorId && post.author === profile.name));
   return (
     <div className="feed-layout">
       <section className="feed-column">
-        <form className="panel composer" onSubmit={publish}>
+        <form
+          className="panel composer"
+          onSubmit={publish}>
           <div className="row">
             <div className="person">
               <span className="avatar">
@@ -228,18 +216,10 @@ export default function Community({
                 </small>
               </div>
             </div>
-            <Sparkles size={20} className="composer-spark" />
+            <Sparkles
+              size={20}
+              className="composer-spark" />
           </div>
-          <input
-            aria-label={t("Titre de la publication", "Post title")}
-            placeholder={t(
-              "Un titre pour ton projet ou ta question",
-              "A title for your project or question",
-            )}
-            maxLength={120}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
           <textarea
             aria-label={t("Votre publication", "Your post")}
             placeholder={t(
@@ -248,19 +228,32 @@ export default function Community({
             )}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            required
             maxLength={3000}
           />
-          <div className="composer-options">
-            <label>
-              {t("Type de publication", "Post type")}
-              <select value={tag} onChange={(e) => setTag(e.target.value)}>
-                <option value="Projet">{t("Projet", "Project")}</option>
-                <option value="Question & découverte">
-                  {t("Question & découverte", "Question & discovery")}
-                </option>
-              </select>
+          <div className="composer-attachments">
+            <AttachmentPicker
+              label={t("Joindre des fichiers", "Attach files")}
+              multiple
+              onBusy={setUploading}
+              onAdd={files => setAttachments(current => [...current, ...files].slice(0, 5))} />
+            <label className="composer-link">
+              <Link2 size={18} />
+              <input
+                type="url"
+                aria-label={t("Lien à partager", "Link to share")}
+                placeholder={t("Lien vers un projet, une ressource…", "Link to a project or resource…")}
+                value={link}
+                onChange={e => setLink(e.target.value)}
+                maxLength={2000} />
             </label>
+          </div>
+          {attachments.length > 0 && <div className="post-attachments">
+            {attachments.map(file => <AttachmentCard
+              key={file.id}
+              file={file}
+              onRemove={() => setAttachments(current => current.filter(f => f.id !== file.id))} />)}
+          </div>}
+          <div className="composer-options">
             <label className="checkbox-label">
               <input
                 type="checkbox"
@@ -272,40 +265,22 @@ export default function Community({
                 "Ask for help / collaborate",
               )}
             </label>
-            <button className="btn-primary">
+            <button
+              className="btn-primary"
+              disabled={uploading || (!text.trim() && !attachments.length && !link.trim())}>
               <Plus size={18} />
               {t("Publier", "Publish")}
             </button>
           </div>
         </form>
-        <div
-          className="filter-tabs"
-          role="group"
-          aria-label={t("Filtrer les publications", "Filter posts")}
-        >
-          {[
-            ["Tous", t("Tout le fil", "All posts")],
-            ["Projet", t("Projets", "Projects")],
-            [
-              "Question & découverte",
-              t("Questions & découvertes", "Questions & discoveries"),
-            ],
-            ["saved", t("Enregistrées", "Saved")],
-          ].map(([id, label]) => (
-            <button
-              key={id}
-              className={filter === id ? "active" : ""}
-              aria-pressed={filter === id}
-              onClick={() => setFilter(id)}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="feed-divider">
+          {t("Tout le fil", "Community feed")}
         </div>
         {visible.map((post) => {
-          const owner = post.owned || post.author === profile.name;
+          const owner = post.authorId ? post.authorId === profile.id : post.author === profile.name;
           return (
             <article
+              id={`post-${post.id}`}
               className="panel post"
               key={post.id}
               aria-label={post.title || post.author}
@@ -320,56 +295,39 @@ export default function Community({
                       .join("")}
                   </span>
                   <div>
-                    <strong>{post.author}</strong>
+                    <strong>
+                      {post.author}
+                    </strong>
                     <div className="post-meta">
                       <CountryFlag country={post.country} />
-                      <span>·</span>
-                      <span>
-                        {t(
-                          post.tag,
-                          post.tag === "Projet"
-                            ? "Project"
-                            : "Question & discovery",
-                        )}
-                      </span>
                     </div>
                   </div>
                 </div>
                 <PostMenu
-                  post={post}
-                  owner={owner}
-                  onCollaboration={() =>
-                    setPosts((current) =>
-                      current.map((p) =>
-                        p.id === post.id
-                          ? { ...p, collaboration: !p.collaboration }
-                          : p,
-                      ),
-                    )
-                  }
+                  saved={isSavedBy(post, profile.id)}
                   onProfile={() =>
                     onNavigate(
                       owner
                         ? "profil"
-                        : `profil/membre/${encodeURIComponent(post.author)}`,
+                        : `profil/membre/${encodeURIComponent(post.authorId || post.author)}`,
                     )
                   }
                   onSave={() => {
                     setPosts((current) =>
                       current.map((p) =>
-                        p.id === post.id ? { ...p, saved: !p.saved } : p,
+                        p.id === post.id ? { ...p, saved: !isSavedBy(p, profile.id), savedBy: isSavedBy(p, profile.id) ? (p.savedBy || ["dev-juliana"]).filter(id => id !== profile.id) : [...(p.savedBy || []), profile.id] } : p,
                       ),
                     );
                     onNotice(
-                      post.saved
+                      isSavedBy(post, profile.id)
                         ? t(
-                            "Annonce retirée des enregistrements.",
-                            "Post removed from saved items.",
-                          )
+                          "Annonce retirée des enregistrements.",
+                          "Post removed from saved items.",
+                        )
                         : t("Annonce enregistrée.", "Post saved."),
                     );
                   }}
-                  onReport={() => setReport(post)}
+                  onReport={() => { setReportCategory(""); setReport(post); }}
                 />
               </header>
               <div className="post-badges">
@@ -394,7 +352,8 @@ export default function Community({
                 <span className="post-date">
                   {post.publishedAt ? (
                     <time dateTime={post.publishedAt}>
-                      {t("Publié le", "Published")}{" "}
+                      {t("Publié le", "Published")}
+                      {" "}
                       {new Intl.DateTimeFormat(locale, {
                         dateStyle: "medium",
                         timeStyle: "short",
@@ -409,8 +368,30 @@ export default function Community({
                   )}
                 </span>
               </div>
-              {post.title && <h2 className="post-title">{post.title}</h2>}
-              <p className="post-content">{post.text}</p>
+              {post.title && <h2 className="post-title">
+                {post.title}
+              </h2>}
+              <p className="post-content">
+                {post.text}
+              </p>
+              {(post.links || []).map(url => <a
+                className="post-link"
+                href={safePortfolio(url) || undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                key={url}>
+                <Link2 size={16} />
+                {url}
+              </a>)}
+              {!!post.attachments?.length && <div className="post-attachments">
+                {post.attachments.map(file => <AttachmentCard
+                  key={file.id}
+                  file={file} />)}
+              </div>}
+              {post.moderation === "rejected" && <p className="blocked-post-status">
+                <ShieldCheck size={15} />
+                {t("Cette publication a été bloquée par la modération.", "This post has been blocked by moderation.")}
+              </p>}
               <div className="post-actions">
                 <button
                   className={`star-like ${post.starred ? "is-starred" : ""}`}
@@ -421,13 +402,13 @@ export default function Community({
                       current.map((p) =>
                         p.id === post.id
                           ? {
-                              ...p,
-                              starred: !p.starred,
-                              starCount: Math.max(
-                                0,
-                                p.starCount + (p.starred ? -1 : 1),
-                              ),
-                            }
+                            ...p,
+                            starred: !p.starred,
+                            starCount: Math.max(
+                              0,
+                              p.starCount + (p.starred ? -1 : 1),
+                            ),
+                          }
                           : p,
                       ),
                     )
@@ -437,17 +418,24 @@ export default function Community({
                     size={21}
                     fill={post.starred ? "currentColor" : "none"}
                   />
-                  <strong>{compactStars(post.starCount)}</strong>
-                  <span>{t("Étoiles", "Stars")}</span>
+                  <strong>
+                    {compactStars(post.starCount)}
+                  </strong>
+                  <span>
+                    {t("Étoiles", "Stars")}
+                  </span>
                 </button>
                 <button
                   onClick={() => {
                     setCommentPost(commentPost === post.id ? null : post.id);
                     setComment("");
+                    setReplyTo(null);
                   }}
                 >
                   <MessageCircle size={18} />
-                  {post.comments.length} {t("commentaires", "comments")}
+                  {post.comments.length}
+                  {" "}
+                  {t("commentaires", "comments")}
                 </button>
                 {post.collaboration && (
                   <button
@@ -466,9 +454,63 @@ export default function Community({
               </div>
               {commentPost === post.id && (
                 <div className="comments">
-                  {post.comments.map((c, i) => (
-                    <p key={i}>{c}</p>
-                  ))}
+                  {orderedComments(post.comments).map(({ comment: c, depth }) => {
+                    const parent = post.comments.find(item => item.id === c.parentId);
+                    return <article
+                      className={`comment-card ${parent ? "comment-reply" : ""}`}
+                      key={c.id}
+                      style={{ marginLeft: Math.min(depth, 3) * 14 }}>
+                      {parent && <small className="reply-context">
+                        <Reply size={13} />
+                        {t("En réponse à", "Replying to")}
+                        {" "}
+                        {parent.author}
+                      </small>}
+                      <div className="comment-person">
+                        <button
+                          type="button"
+                          className="comment-profile"
+                          onClick={() => onNavigate(c.authorId === profile.id ? "profil" : `profil/membre/${encodeURIComponent(c.authorId || c.author)}`)}
+                          aria-label={`${t("Voir le profil de", "View profile of")} ${c.author}`}>
+                          <span className="avatar">
+                            {c.photo?.startsWith("data:image/") ? <img
+                              src={c.photo}
+                              alt="" /> : c.author.split(" ").map(n => n[0]).slice(0, 2).join("")}
+                          </span>
+                          <strong>
+                            {c.author}
+                          </strong>
+                        </button>
+                        <CountryFlag country={c.country} />
+                      </div>
+                      <p>
+                        {c.text}
+                      </p>
+                      <div className="comment-footer">
+                        {c.createdAt && <time dateTime={c.createdAt}>
+                          {new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(c.createdAt))}
+                        </time>}
+                        <button
+                          type="button"
+                          onClick={() => { setReplyTo(c.id); setComment(""); requestAnimationFrame(() => document.getElementById(`comment-input-${post.id}`)?.focus()); }}>
+                          <Reply size={14} />
+                          {t("Répondre", "Reply")}
+                        </button>
+                      </div>
+                    </article>;
+                  })}
+                  {replyTo && post.comments.some(c => c.id === replyTo) && <div className="reply-indicator">
+                    {t("Répondre à", "Reply to")}
+                    {" "}
+                    {post.comments.find(c => c.id === replyTo)?.author}
+                    <button
+                      type="button"
+                      className="quiet"
+                      aria-label={t("Annuler la réponse", "Cancel reply")}
+                      onClick={() => setReplyTo(null)}>
+                      <X size={15} />
+                    </button>
+                  </div>}
                   <form
                     className="row"
                     onSubmit={(e) => {
@@ -478,16 +520,19 @@ export default function Community({
                         current.map((p) =>
                           p.id === post.id
                             ? {
-                                ...p,
-                                comments: [...p.comments, comment.trim()],
-                              }
+                              ...p,
+                              comments: [...p.comments, { id: `comment-${Date.now()}`, authorId: profile.id, author: profile.name, country: profile.country, photo: profile.photo, text: comment.trim(), createdAt: new Date().toISOString(), parentId: replyTo || undefined }],
+                            }
                             : p,
                         ),
                       );
                       setComment("");
+                      setReplyTo(null);
+                      onNotice(t("Commentaire envoyé.", "Comment sent."));
                     }}
                   >
                     <input
+                      id={`comment-input-${post.id}`}
                       required
                       maxLength={1500}
                       aria-label={t("Ajouter un commentaire", "Add a comment")}
@@ -546,7 +591,9 @@ export default function Community({
             {t("Découvrir les groupes", "Discover groups")}
             <ArrowRight size={17} />
           </button>
-          <div className="callout-orbit" aria-hidden="true">
+          <div
+            className="callout-orbit"
+            aria-hidden="true">
             &lt;/&gt;
           </div>
         </section>
@@ -579,10 +626,9 @@ export default function Community({
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              const reason = String(
-                new FormData(e.currentTarget).get("reason"),
-              ).trim();
-              if (!reason) return;
+              const detail = String(new FormData(e.currentTarget).get("reason") || "").trim();
+              if (!reportCategory || (reportCategory === "Autres" && !detail)) return;
+              const reason = `${reportCategory}${detail ? ` : ${detail}` : ""}`;
               const id = Date.now();
               try {
                 const reports = JSON.parse(
@@ -611,8 +657,8 @@ export default function Community({
                 ]);
                 onNotice(
                   t(
-                    "Signalement transmis à la file de modération locale.",
-                    "Report sent to the local moderation queue.",
+                    "Signalement envoyé. Merci de contribuer à une communauté bienveillante.",
+                    "Report sent. Thank you for helping keep the community welcoming.",
                   ),
                 );
               } catch {
@@ -633,9 +679,32 @@ export default function Community({
               )}
             </p>
             <label>
-              {t("Motif", "Reason")}
-              <textarea name="reason" required maxLength={1000} />
+              {t("Motif du signalement", "Report category")}
+              <select
+                className="rounded-select report-category"
+                required
+                value={reportCategory}
+                onChange={e => setReportCategory(e.target.value)}>
+                <option
+                  value=""
+                  disabled>
+                  {t("Choisir un motif", "Choose a reason")}
+                </option>
+                {[["Harcèlement", "Harassment"], ["Propos inappropriés ou haineux", "Inappropriate or hateful language"], ["Fausses informations", "False information"], ["Arnaque ou fraude", "Scam or fraud"], ["Spam ou publicité abusive", "Spam or abusive advertising"], ["Atteinte à la vie privée", "Privacy violation"], ["Autres", "Other"]].map(([fr, en]) => <option
+                  key={fr}
+                  value={fr}>
+                  {t(fr, en)}
+                </option>)}
+              </select>
             </label>
+            {reportCategory && <label>
+              {reportCategory === "Autres" ? t("Explique la raison de ton signalement.", "Explain why you are reporting this post.") : t("Précisions (facultatif)", "Details (optional)")}
+              <textarea
+                name="reason"
+                required={reportCategory === "Autres"}
+                maxLength={1000}
+                placeholder={t("Décris les faits pour aider la modération…", "Describe what happened to help moderation…")} />
+            </label>}
             <button className="btn-primary">
               <Flag size={16} />
               {t("Envoyer le signalement", "Send report")}

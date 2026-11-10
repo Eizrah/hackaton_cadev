@@ -20,9 +20,11 @@ import {
   type LucideProps,
 } from "lucide-react";
 import Authentication from "./components/Authentication";
+import PasswordRecovery from "./components/PasswordRecovery";
 import Workspace from "./components/Workspace";
+import HomeHighlights from "./components/HomeHighlights";
 
-type Page = "home" | "login" | "signup" | "forgot" | "workspace";
+type Page = "home" | "login" | "signup" | "forgot" | "reset" | "workspace";
 type Feature = {
   id: string;
   title: string;
@@ -91,7 +93,7 @@ function Brand({ compact = false }: { compact?: boolean }) {
     >
       <img
         src="/images/africa-mark.png"
-        alt="Afrique et Madagascar connectées"
+        alt={t("Afrique et Madagascar connectées", "Connected Africa and Madagascar")}
       />
       <div className="brand-wordmark">
         <strong>
@@ -253,7 +255,7 @@ function Home({
           >
             <img
               src="/images/hero-tech.png"
-              alt="Ordinateur, code et interfaces communautaires technologiques"
+              alt={t("Ordinateur, code et interfaces communautaires technologiques", "Laptop, code and connected community interfaces")}
             />
           </div>
         </section>
@@ -355,6 +357,7 @@ function Home({
           </span>
         </div>
       </section>
+      <HomeHighlights onExplore={() => onModule("communaute")}/>
       <section className="welcome-bottom">
         <div>
           <span>
@@ -404,7 +407,9 @@ export default function App() {
         onHome={() => navigate("home")}
       />
     );
-  if (route === "login" || route === "signup" || route === "forgot")
+  if (route === "forgot" || route === "reset" || route.startsWith("reset?"))
+    return <PasswordRecovery key={route} route={route} onNavigate={navigate}/>;
+  if (route === "login" || route === "signup")
     return (
       <Authentication
         key={route}

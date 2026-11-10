@@ -1,5 +1,7 @@
+import { attachmentsFrom, type StoredAttachment } from "../lib/attachments";
 import { createLocalId } from "../lib/format";
-export type DeveloperLevel = "Junior" | "Senior";
+export type CredentialAttachment = { id:string; kind:"diploma"|"certificate"; file:StoredAttachment };
+export type DeveloperLevel = "Débutant" | "Intermédiaire" | "Avancé";
 export type Experience = {
   id: string;
   position: string;
@@ -23,6 +25,7 @@ export type PersonalInformation = {
   pseudo: string;
 };
 export type Profile = PersonalInformation & {
+  id: string;
   name: string;
   email: string;
   skills: string;
@@ -33,6 +36,8 @@ export type Profile = PersonalInformation & {
   role: string;
   portfolio: string;
   photo: string;
+  documents: CredentialAttachment[];
+  accountStatus?: "active" | "banned";
 };
 export const currentYear = new Date().getFullYear();
 export const skillDomains = [
@@ -42,7 +47,7 @@ export const skillDomains = [
   "Design",
   "Langages de programmation",
 ];
-export const skillDifficulties = ["Facile", "Intermédiaire", "Avancée"];
+export const skillDifficulties = ["Débutant", "Intermédiaire", "Avancé"];
 export const emptyPersonal: PersonalInformation = {
   firstName: "",
   lastName: "",
@@ -52,13 +57,14 @@ export const emptyPersonal: PersonalInformation = {
   pseudo: "",
 };
 export const initialProfile: Profile = {
+  id: "dev-juliana",
   name: "Juliana",
   firstName: "Juliana",
   lastName: "",
   age: "",
   email: "",
   pseudo: "",
-  level: "Junior",
+  level: "Débutant",
   country: "Madagascar",
   skills: "React, TypeScript, Figma, Blender",
   skillDetails: [],
@@ -69,6 +75,7 @@ export const initialProfile: Profile = {
   role: "Développeuse frontend · UI/UX",
   portfolio: "",
   photo: "",
+  documents: [],
 };
 export function newExperience(): Experience {
   return {
@@ -94,8 +101,8 @@ export function migrateProfile(saved: unknown): Profile {
   const text = (key: string, fallback = "") =>
     typeof value[key] === "string" ? (value[key] as string) : fallback;
   const name = text("name", initialProfile.name),
-    firstName = text("firstName", name.split(" ")[0]),
-    lastName = text("lastName", name.split(" ").slice(1).join(" "));
+    firstName = text("firstName", text("first_name", name.split(" ")[0])),
+    lastName = text("lastName", text("last_name", name.split(" ").slice(1).join(" ")));
   const experiences: Experience[] = Array.isArray(value.experiences)
     ? value.experiences.map((entry, index) => {
         const row = strings(entry);
@@ -119,7 +126,7 @@ export function migrateProfile(saved: unknown): Profile {
         return {
           id: get("id") || `legacy-skill-${index}`,
           name: get("name"),
-          difficulty: get("difficulty"),
+          difficulty: get("difficulty") === "Facile" ? "Débutant" : get("difficulty") === "Avancée" ? "Avancé" : get("difficulty"),
           domain: get("domain"),
         };
       })
@@ -134,13 +141,14 @@ export function migrateProfile(saved: unknown): Profile {
           domain: "",
         }));
   return {
-    name,
+    id: (typeof value.id === "number" ? String(value.id) : text("id")) || (text("email") || text("pseudo") ? `dev-${text("email") || text("pseudo")}` : "dev-juliana"),
+    name: text("name") || `${firstName} ${lastName}`.trim(),
     firstName,
     lastName,
     age: text("age"),
     email: text("email"),
-    pseudo: text("pseudo"),
-    level: text("level").toLowerCase() === "senior" ? "Senior" : "Junior",
+    pseudo: text("pseudo",text("username")),
+    level: ["Intermédiaire","intermediate"].includes(text("level")) ? "Intermédiaire" : ["Senior", "Avancé", "advanced"].includes(text("level")) ? "Avancé" : "Débutant",
     country: text("country", initialProfile.country),
     skills: skillDetails.length
       ? skillDetails.map((s) => s.name).join(", ")
@@ -152,6 +160,12 @@ export function migrateProfile(saved: unknown): Profile {
     role: text("role"),
     portfolio: text("portfolio"),
     photo: text("photo"),
+    documents: Array.isArray(value.documents) ? value.documents.flatMap(row => {
+      if (!row || !["diploma", "certificate"].includes(row.kind)) return [];
+      const file = attachmentsFrom([row.file])[0];
+      return file ? [{id: typeof row.id === "string" ? row.id : file.id, kind: row.kind, file}] : [];
+    }) : [],
+    accountStatus: value.accountStatus === "banned" || value.status === "banned" || value.banned === true ? "banned" : "active",
   };
 }
 export function completeProfile(
@@ -159,10 +173,13 @@ export function completeProfile(
   experiences: Experience[],
   skillDetails: DeveloperSkill[],
   email: string,
+  documents: CredentialAttachment[] = [],
 ): Profile {
   return {
     ...initialProfile,
     ...personal,
+    documents,
+    id: `dev-${createLocalId()}`,
     name: `${personal.firstName.trim()} ${personal.lastName.trim()}`.trim(),
     firstName: personal.firstName.trim(),
     lastName: personal.lastName.trim(),
@@ -199,12 +216,7 @@ export function experienceError(rows: Experience[]): string | null {
 export function skillError(rows: DeveloperSkill[]): string | null {
   const names = new Set<string>();
   for (const row of rows) {
-    if (
-      !row.name.trim() ||
-      !skillDifficulties.includes(row.difficulty) ||
-      !skillDomains.includes(row.domain)
-    )
-      return "Complète le nom, la difficulté et le domaine de chaque compétence, ou retire l’entrée vide.";
+    if (!row.name.trim()) return "Renseigne le nom de chaque compétence, ou retire l’entrée vide.";
     const name = row.name.trim().toLocaleLowerCase();
     if (names.has(name)) return "Cette compétence apparaît plusieurs fois.";
     names.add(name);

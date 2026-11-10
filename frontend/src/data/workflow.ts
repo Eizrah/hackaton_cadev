@@ -1,5 +1,10 @@
+import type { StoredAttachment } from "../lib/attachments";
+import { initialProfile, migrateProfile, type Profile } from "./profile";
 import { useLocalData } from "../lib/storage";
 export type Application = {
+  cvFile?:StoredAttachment;
+  applicantId: string; applicant: Profile; ownerId: string; cvUrl: string; motivation: string; updatedAt?: string;
+
   id: number;
   jobId: number;
   title: string;
@@ -13,6 +18,7 @@ export function migrateApplications(saved: unknown): Application[] {
     typeof value === "number"
       ? [
           {
+            applicantId: "dev-juliana", applicant: initialProfile, ownerId: "", cvUrl: "", motivation: "",
             id: value,
             jobId: value,
             title: "Candidature",
@@ -25,6 +31,11 @@ export function migrateApplications(saved: unknown): Application[] {
         ? [
             {
               ...value,
+              applicantId: typeof value.applicantId === "string" ? value.applicantId : "dev-juliana",
+              applicant: migrateProfile(value.applicant || initialProfile),
+              ownerId: typeof value.ownerId === "string" ? value.ownerId : "",
+              cvUrl: typeof value.cvUrl === "string" ? value.cvUrl : "",
+              motivation: typeof value.motivation === "string" ? value.motivation : "",
               status: ["pending", "accepted", "rejected"].includes(value.status)
                 ? value.status
                 : "pending",

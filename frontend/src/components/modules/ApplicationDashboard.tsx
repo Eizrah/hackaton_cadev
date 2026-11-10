@@ -7,13 +7,13 @@ import {
   CircleX,
 } from "lucide-react";
 import { useApplications } from "../../data/workflow";
-import { initialJobs } from "../../data/models";
+import { initialJobs, migrateJobs, type Profile } from "../../data/models";
 import { useLocalData } from "../../lib/storage";
 import { useI18n } from "../../i18n/context";
-export default function ApplicationDashboard() {
+export default function ApplicationDashboard({profile}: {profile:Profile}) {
   const { t, locale } = useI18n();
   const [applications] = useApplications();
-  const [jobs] = useLocalData("jobs", initialJobs);
+  const [jobs] = useLocalData("jobs", initialJobs, migrateJobs);
   const [filter, setFilter] = useState("all");
   const statuses = {
     pending: { label: t("En cours", "In progress"), Icon: Clock3 },
@@ -21,10 +21,10 @@ export default function ApplicationDashboard() {
     rejected: { label: t("Non retenue", "Not selected"), Icon: CircleX },
   };
   const visible = applications.filter(
-    (a) => filter === "all" || a.status === filter,
+    (a) => a.applicantId === profile.id && (filter === "all" || a.status === filter),
   );
   return (
-    <section className="applications-dashboard panel">
+    <section className="applications-dashboard panel" id="candidatures">
       <div className="section-title">
         <span className="round-icon">
           <BriefcaseBusiness size={20} />

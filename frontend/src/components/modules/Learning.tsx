@@ -1,5 +1,5 @@
 import { useI18n } from "../../i18n/context";
-import { useState, type CSSProperties } from "react";
+import { lazy, Suspense, useState, type CSSProperties } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -9,8 +9,7 @@ import {
   Code2,
   Globe2,
   Layers3,
-  Monitor,
-  Palette,
+  ExternalLink,
   Search,
   Smartphone,
   Sparkles,
@@ -20,24 +19,18 @@ import { courses, domains, type Course } from "../../data/learning";
 import { normalizeText } from "../../data/models";
 import { useLocalData } from "../../lib/storage";
 import TechIcon from "../TechIcon";
+import { completionKey, isDetailedCourse } from "../../data/webCourseTypes";
+import "../learning/web-learning.css";
+
+const WebClassroom = lazy(() => import("../learning/HtmlCssClassroom"));
 const domainIcons = {
   globe: Globe2,
-  monitor: Monitor,
   phone: Smartphone,
-  palette: Palette,
   code: Code2,
 };
 function completed(course: Course, progress: string[]) {
-  const legacy: Record<string, string> = {
-    "react-web": "Les bases de React",
-    "css-web": "Créer une interface responsive",
-    "django-web": "Découvrir les API Django",
-  };
-  return (
-    progress.includes(course.id) ||
-    progress.includes(course.title) ||
-    progress.includes(legacy[course.id])
-  );
+  const key = completionKey(course.id);
+  return progress.includes(key) || (key === course.id && progress.includes(course.title));
 }
 function CourseCard({
   course,
@@ -51,11 +44,14 @@ function CourseCard({
   const { t } = useI18n();
 
   const domain = domains.find((d) => d.id === course.domain)!;
+  const htmlCss = course.id === "html-css-web";
+  const backend = course.paths.includes("backend");
   return (
     <button className="learning-course" onClick={onOpen}>
       <div className="course-card-top">
         <span className="tech-icon-box">
-          <TechIcon name={course.tech} size={29} />
+          <TechIcon name={course.tech} size={htmlCss ? 24 : 29} />
+          {htmlCss && <TechIcon name="CSS3" size={24} />}
         </span>
         <span className={`course-badge ${done ? "complete" : ""}`}>
           {done ? (
@@ -63,22 +59,32 @@ function CourseCard({
               <CheckCircle2 size={13} />
               {t("Validé")}
             </>
+          ) : isDetailedCourse(course.id === "lang-swift" ? "swift-mobile" : course.id) ? (
+            t("3 niveaux", "3 levels")
           ) : (
-            "Découverte"
+            t("Découverte")
           )}
         </span>
       </div>
       <span className="course-location">
         {t(domain.title)}
         {course.paths[0]
-          ? ` / ${domain.paths.find((p) => p.id === course.paths[0])?.title || ""}`
+          ? ` / ${t(domain.paths.find((p) => p.id === course.paths[0])?.title || "")}`
           : ""}
       </span>
-      <h3>{course.title}</h3>
-      <p>{course.description}</p>
-      <span className="course-role">{course.role}</span>
+      <h3>{t(course.title)}</h3>
+      {!backend && (
+        <>
+          <p>{t(course.description)}</p>
+          <span className="course-role">{t(course.role)}</span>
+        </>
+      )}
       <div className="course-card-bottom">
-        <span>{done ? t("Revoir la fiche") : t("Découvrir la fiche")}</span>
+        <span>
+          {done
+            ? t("Revoir la fiche")
+            : t("Choisir la fiche", "Choose this course")}
+        </span>
         <ArrowRight size={17} />
       </div>
     </button>
@@ -98,9 +104,45 @@ export default function Learning({
 
   const selectedDomain = domains.find((d) => d.id === route[0]);
   const selectedPath = selectedDomain?.paths.find((p) => p.id === route[1]);
+  const legacyWeb = route[1] === "html-web" || route[1] === "css-web";
   const selectedCourse =
-    route[0] === "cours" ? courses.find((c) => c.id === route[1]) : undefined;
+    route[0] === "cours"
+      ? courses.find((c) => c.id === (legacyWeb ? "html-css-web" : route[1]))
+      : undefined;
   const doneCount = courses.filter((c) => completed(c, progress)).length;
+  const detailedCourseId = selectedCourse?.id === "lang-swift" ? "swift-mobile" : selectedCourse?.id;
+  if (selectedCourse && detailedCourseId && isDetailedCourse(detailedCourseId)) {
+    const key = completionKey(detailedCourseId);
+    return (
+      <Suspense
+        fallback={
+          <div className="panel" role="status">
+            {t("Ouverture du cours…", "Opening the course…")}
+          </div>
+        }
+      >
+        <WebClassroom
+          key={detailedCourseId}
+          courseId={detailedCourseId}
+          route={
+            legacyWeb
+              ? [
+                  "debutant",
+                  "lecon",
+                  route[1] === "css-web" ? "selecteurs" : "structure",
+                ]
+              : route.slice(2)
+          }
+          onNavigate={onNavigate}
+          onCourseComplete={() =>
+            setProgress((current) =>
+              current.includes(key) ? current : [...current, key],
+            )
+          }
+        />
+      </Suspense>
+    );
+  }
   if (selectedCourse)
     return (
       <CourseDetail
@@ -156,7 +198,10 @@ export default function Learning({
       (!selectedPath || c.paths.includes(selectedPath.id))
     );
   });
-  const visibleCourses = selectedDomain || tokens.length ? filtered : [];
+  const needsWebPath =
+    selectedDomain?.id === "web" && !selectedPath && !tokens.length;
+  const visibleCourses =
+    (selectedDomain || tokens.length) && !needsWebPath ? filtered : [];
   return (
     <div className="learning-page">
       {language === "en" && (
@@ -183,7 +228,8 @@ export default function Learning({
             {selectedDomain
               ? t(selectedDomain.description)
               : t(
-                  "Web, mobile, desktop, design ou langages : avance à ton rythme, une notion à la fois.",
+                  "Avance à ton rythme en Web, Mobile ou Langages de programmation.",
+                  "Learn at your own pace across Web, Mobile and Programming Languages.",
                 )}
           </p>
         </div>
@@ -261,7 +307,10 @@ export default function Learning({
                 {t("Aucune expérience nécessaire pour commencer à découvrir.")}
               </p>
             </div>
-            <span>{t("05 domaines")}</span>
+            <span>
+              {String(domains.length).padStart(2, "0")}{" "}
+              {t("domaines", "categories")}
+            </span>
           </div>
           <div className="domain-grid">
             {domains.map((d, i) => {
@@ -337,7 +386,7 @@ export default function Learning({
           <div className="courses-grid">
             {courses
               .filter((c) =>
-                ["html-web", "react-web", "python-web"].includes(c.id),
+                ["html-css-web", "javascript-web", "react-web"].includes(c.id),
               )
               .map((c) => (
                 <CourseCard
@@ -393,23 +442,27 @@ export default function Learning({
           <div className="catalog-section-title">
             <div>
               <h2>
-                {selectedPath
-                  ? t(selectedPath.title)
-                  : selectedDomain.id === "langages"
-                    ? t("Les principaux langages")
-                    : t("Les technologies à découvrir")}
+                {needsWebPath
+                  ? t("Choisis ton parcours web", "Choose your web path")
+                  : selectedPath
+                    ? t(selectedPath.title)
+                    : selectedDomain.id === "langages"
+                      ? t("Les principaux langages")
+                      : t("Les technologies à découvrir")}
               </h2>
               <p>
-                {selectedPath?.description ||
+                {t(selectedPath?.description ||
                   (selectedDomain.id === "langages"
                     ? "Un même langage peut servir dans plusieurs domaines. Les fiches précisent ses usages et outils associés."
-                    : "Choisis un parcours ou explore les fiches ci-dessous.")}
+                    : "Choisis un parcours ou explore les fiches ci-dessous."))}
               </p>
             </div>
-            <span>
-              {filtered.length}
-              {t("fiches")}
-            </span>
+            {!needsWebPath && (
+              <span>
+                {filtered.length}
+                {t("fiches")}
+              </span>
+            )}
           </div>
         </>
       )}
@@ -442,16 +495,34 @@ export default function Learning({
           ))}
         </div>
       )}
-      {(selectedDomain || tokens.length > 0) && !visibleCourses.length && (
-        <div className="panel empty-state">
-          <Search size={32} />
-          <h2>{t("Aucune fiche trouvée.")}</h2>
-          <p>{t("Essaie un mot plus simple, comme Python, web ou design.")}</p>
-          <button className="text-link" onClick={() => setQuery("")}>
-            {t("Effacer ma recherche")}
-          </button>
+      {needsWebPath && (
+        <div className="web-path-prompt">
+          <BookOpen size={24} />
+          <p>
+            {t(
+              "Choisis Frontend ou Backend ci-dessus pour découvrir les fiches de ton parcours.",
+              "Choose Frontend or Backend above to discover its courses.",
+            )}
+          </p>
         </div>
       )}
+      {(selectedDomain || tokens.length > 0) &&
+        !needsWebPath &&
+        !visibleCourses.length && (
+          <div className="panel empty-state">
+            <Search size={32} />
+            <h2>{t("Aucune fiche trouvée.")}</h2>
+            <p>
+              {t(
+                "Essaie un mot plus simple, comme Python, Web ou Mobile.",
+                "Try a simpler term, such as Python, Web or Mobile.",
+              )}
+            </p>
+            <button className="text-link" onClick={() => setQuery("")}>
+              {t("Effacer ma recherche")}
+            </button>
+          </div>
+        )}
     </div>
   );
 }
@@ -476,7 +547,7 @@ function CourseDetail({
   const domain = domains.find((d) => d.id === course.domain)!;
   const valid = checked && answer === course.answer;
   return (
-    <div className="course-detail">
+    <div className="course-detail web-classroom">
       <button
         className="back-link"
         onClick={() =>
@@ -496,8 +567,8 @@ function CourseDetail({
               <TechIcon name={course.tech} size={45} />
             </span>
             <span className="course-badge">{t("Fiche découverte")}</span>
-            <h2>{course.title}</h2>
-            <p>{course.role}</p>
+            <h2>{t(course.title)}</h2>
+            <p>{t(course.role)}</p>
             <div className="course-outline">
               <span>
                 <span>01</span>
@@ -541,7 +612,7 @@ function CourseDetail({
           </section>
         </aside>
         <section>
-          <article className="panel lesson-panel">
+          <article className="panel lesson-panel web-discovery-panel">
             <div className="section-title">
               <span className="round-icon">
                 <BookOpen size={20} />
@@ -554,18 +625,34 @@ function CourseDetail({
               <p>
                 <strong>{t("À retenir")}</strong>
                 <br />
-                {course.description}
+                {t(course.description)}
               </p>
             </div>
             <h3>{t("Un premier aperçu")}</h3>
             <pre>
               <code>{course.example}</code>
             </pre>
-            <small className="muted">
-              {t(
-                "Exemple de lecture ; aucun code n’est exécuté dans cette fiche.",
-              )}
-            </small>
+            {course.resource ? (
+              <a
+                className="web-source-link"
+                href={course.resource}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {t(
+                  "Lire la documentation officielle",
+                  "Read the official documentation",
+                )}
+                <ExternalLink size={14} />
+              </a>
+            ) : (
+              <small className="muted">
+                {t(
+                  "Exemple de lecture à explorer dans ton environnement.",
+                  "Reading example to explore in your environment.",
+                )}
+              </small>
+            )}
           </article>
           <form
             className="panel exercise"

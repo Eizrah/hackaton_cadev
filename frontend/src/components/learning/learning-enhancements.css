@@ -1,0 +1,146 @@
+/* Clearer reading rhythm, contextual definitions and a dedicated coding page. */
+.web-lesson-panel .web-lesson-section > p,
+.web-lesson-panel .web-lesson-section li,
+.web-level-objective .web-framework-definition p,
+.web-execution-note p { font-size: 14px; line-height: 1.95; color: #45647e; overflow-wrap: anywhere; }
+.web-lesson-panel .web-lesson-section { margin-block: 30px; }
+.web-lesson-panel .web-lesson-section h3 { font-size: 19px; color: #163e61; }
+.web-lesson-panel .web-lesson-section li { margin-block: 12px; padding-left: 3px; }
+.web-execution-note { padding: 18px 20px; border-left: 3px solid #2582bf; background: #eaf4ff; border-radius: 0 12px 12px 0; margin-block: 18px; }
+.web-execution-note > strong { font-size: 13px; color: #155e97; }
+.web-execution-note p { margin: 7px 0 0; }
+.web-first-steps ol { padding-left: 22px; }
+.web-first-steps li { margin-block: 10px; line-height: 1.9; color: #45647e; font-size: 13px; }
+.lesson-vocabulary { margin: 26px 0; border: 1px solid #d7e6f4; border-radius: 15px; background: #f6faff; overflow: hidden; }
+.lesson-vocabulary > summary { display: flex; align-items: center; gap: 12px; padding: 18px 20px; color: #155b94; cursor: pointer; list-style: none; font-weight: 700; font-size: 14px; }
+.lesson-vocabulary > summary::-webkit-details-marker { display: none; }
+.lesson-vocabulary > summary::after { content: "+"; margin-left: auto; font-size: 21px; font-weight: 400; }
+.lesson-vocabulary[open] > summary::after { content: "−"; }
+.lesson-vocabulary summary svg { flex-shrink: 0; }
+.lesson-vocabulary small { display: block; font-weight: 400; font-size: 11px; color: #6685a0; margin-top: 4px; }
+.lesson-vocabulary > p { margin: 0 20px 14px; font-size: 12px; color: #617c95; line-height: 1.8; }
+.lesson-vocabulary dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; padding: 0 20px 6px; gap: 0 22px; }
+.lesson-vocabulary dl > div { border-top: 1px solid #dce8f4; padding-block: 16px; min-width: 0; }
+.lesson-vocabulary dt { font-size: 14px; font-weight: 700; color: #155b91; margin-bottom: 7px; }
+.lesson-vocabulary dd { margin: 0; font-size: 13px; color: #42637e; line-height: 1.9; overflow-wrap: anywhere; }
+.lesson-vocabulary dd p { font-size: 12px; margin: 9px 0 0; color: #617d96; line-height: 1.85; }
+.web-example-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+.web-sql-dialect { padding: 17px 20px; background: linear-gradient(120deg, #edf6ff, #f9fcff); border: 1px solid #ccdeef; border-radius: 12px; margin: 22px 0; }
+.web-sql-dialect > strong { font-size: 13px; color: #1d5c90; }
+.web-sql-dialect p { font-size: 13px; line-height: 1.9; color: #56748e; margin: 7px 0; }
+.web-sql-dialect a { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: #1965a0; line-height: 1.8; }
+.workspace.studio-workspace { padding: 0; min-height: 100dvh; }
+.workspace.studio-workspace > .sidebar,
+.workspace.studio-workspace .workspace-top,
+.workspace.studio-workspace .module-heading,
+.workspace.studio-workspace .demo-banner,
+.workspace.studio-workspace .workspace-footer { display: none; }
+.workspace.studio-workspace .workspace-main { margin: 0; border-radius: 0; width: 100%; background: #101e2d; }
+.workspace.studio-workspace .workspace-page { padding: 0; margin: 0; max-width: none; }
+.web-studio-page { min-height: 100dvh; background: #101e2d; color: #d9e9f5; }
+.studio-page-header { display: flex; align-items: center; gap: 24px; justify-content: space-between; padding: 15px 24px; border-bottom: 1px solid #29415a; background: linear-gradient(115deg, #123d60, #132a40 70%); }
+.studio-page-header > button { display: inline-flex; gap: 8px; align-items: center; color: #e6f3ff; background: #ffffff0c; border: 1px solid #ffffff26; border-radius: 8px; padding: 10px 14px; min-height: 42px; font-size: 12px !important; flex-shrink: 0; }
+.studio-page-header > div { margin-right: auto; min-width: 0; }
+.studio-page-header > div > span { font-size: 15px; letter-spacing: -.03em; }
+.studio-page-header strong { font-size: 10px; letter-spacing: .15em; color: #82c9f6; margin-left: 7px; }
+.studio-page-header small { display: block; font-size: 10px; color: #9ab9d0; margin-top: 3px; }
+.studio-page-badge { display: inline-flex; align-items: center; gap: 8px; color: #9bc4df; font-size: 11px; }
+.studio-page-content { padding: 18px 22px 30px; outline: none; }
+.studio-page-content .web-studio { border-color: #33465a; border-radius: 12px; }
+.studio-page-content .studio-main { grid-template-columns: 190px minmax(0, 1.12fr) minmax(0, 1fr); min-height: max(460px, calc(100dvh - 245px)); }
+.studio-page-content .studio-editor-shell { height: max(390px, calc(100dvh - 318px)); }
+.studio-page-content .studio-textarea,
+.studio-page-content .studio-highlight,
+.studio-page-content .studio-line-numbers span { font-size: 13px !important; line-height: 1.75; }
+.studio-page-content .studio-line-numbers { padding-top: 15px; }
+.studio-page-content .studio-preview-stage iframe { min-height: max(390px, calc(100dvh - 320px)); }
+.studio-page-content .studio-preview-pane { min-width: 0; }
+.studio-page-content .studio-toolbar button { font-size: 11px !important; }
+.studio-page-content .studio-file-tabs button { font-size: 11px !important; }
+.studio-page-content .studio-files h3 { font-size: 10px; }
+.studio-page-content .web-studio-note { color: #99b2c8; margin: 0; font-size: 11px; }
+.studio-page-content .studio-status { color: #9db5c9; }
+.studio-project-instructions { background: #172e44; border: 1px solid #324d65; border-radius: 10px; }
+.studio-project-instructions > summary { display: flex; align-items: center; gap: 9px; padding: 13px 18px; cursor: pointer; color: #c8e3f7; font-size: 12px; }
+.studio-project-instructions > summary::after { content: "+"; margin-left: auto; font-size: 18px; }
+.studio-project-instructions[open] > summary::after { content: "−"; }
+.studio-project-instructions .web-project-brief { margin: 0; border-radius: 0 0 9px 9px; background: #f5f9ff; }
+.studio-file-row { display: flex; align-items: center; min-width: 0; border-radius: 5px; }
+.studio-file-row.active { background: #263c4e; }
+.studio-files .studio-file-row > button:first-child { flex: 1; width: auto; min-width: 0; font-size: 11px !important; }
+.studio-files .studio-file-row > button:first-child > .studio-user-file { color: #fff; }
+.studio-file-tab { display: flex; align-items: center; flex-shrink: 0; background: #1b2938; border-top: 2px solid transparent; }
+.studio-file-tab.active { background: #223244; border-top-color: #65a8e6; }
+.studio-file-tab > button[aria-pressed] { border-top: 0; background: none; }
+.studio-files .studio-file-delete,
+.studio-file-tabs .studio-file-delete { display: grid; place-items: center; flex-shrink: 0; width: 29px; min-width: 29px; height: 30px; padding: 0; margin-right: 3px; border: 0; border-radius: 5px; color: #bad0e4; opacity: 0; background: none; }
+.studio-file-row:hover .studio-file-delete,
+.studio-file-row:focus-within .studio-file-delete,
+.studio-file-tab:hover .studio-file-delete,
+.studio-file-tab:focus-within .studio-file-delete { opacity: 1; }
+.studio-files .studio-file-delete:hover,
+.studio-file-tabs .studio-file-delete:hover { background: #5b3243; color: #fff; }
+.studio-undo-file { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-radius: 9px; padding: 12px 16px; border: 1px solid #426488; color: #dcecff; background: #203e5d; font-size: 12px; overflow-wrap: anywhere; }
+.studio-undo-file > span { flex: 1; }
+.studio-undo-file > button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid #628ab0; background: #2d5479; color: #fff; border-radius: 6px; padding: 7px 10px; font-size: 11px !important; }
+.studio-undo-file button:disabled { opacity: .5; }
+.studio-toolbar .studio-tutor-button { color: #c4e8ff; background: #284c6e; }
+.tutor-code-context { background: #f0f7ff; border-bottom: 1px solid #d8e7f4; padding: 16px 22px; min-width: 0; }
+.tutor-code-context > div { display: flex; gap: 10px; align-items: center; color: #246aa0; }
+.tutor-code-context > div > svg { flex-shrink: 0; }
+.tutor-code-context span { min-width: 0; }
+.tutor-code-context strong { display: block; font-size: 12px; line-height: 1.7; }
+.tutor-code-context small { display: block; font-size: 10px; color: #6688a4; line-height: 1.7; overflow-wrap: anywhere; }
+.tutor-code-context > button { display: inline-flex; gap: 6px; align-items: center; background: #fff; border: 1px solid #ccdfef; border-radius: 7px; padding: 7px 11px; font-size: 11px !important; color: #1a639b; margin: 10px 0 0 29px; }
+.tutor-code-context details { margin-top: 8px; color: #356c96; font-size: 11px; }
+.tutor-code-context pre { max-height: 200px; overflow: auto; background: #19344e; color: #e5f3ff; padding: 14px; border-radius: 9px; font-size: 11px; }
+@media (max-width: 1100px) {
+  .studio-page-content .studio-main { grid-template-columns: 150px minmax(0, 1fr) minmax(0, .9fr); }
+}
+@media (max-width: 900px) {
+  .lesson-vocabulary dl { grid-template-columns: 1fr; }
+  .studio-page-content { padding: 10px 12px 25px; }
+  .studio-page-content .studio-main { display: block; min-height: 0; }
+  .studio-page-content .studio-editor-shell { height: max(390px, calc(100dvh - 330px)); }
+  .studio-page-content .studio-preview-pane { height: max(460px, calc(100dvh - 255px)); overflow: auto; }
+  .studio-page-header { padding: 12px; gap: 15px; }
+  .studio-page-badge { display: none; }
+  .studio-files .studio-file-delete, .studio-file-tabs .studio-file-delete { opacity: 1; width: 32px; min-width: 32px; height: 34px; }
+  .tutor-code-context { padding: 14px; }
+}
+@media (max-width: 540px) {
+  .web-lesson-panel .web-lesson-section > p, .web-lesson-panel .web-lesson-section li { font-size: 14px; }
+  .lesson-vocabulary > summary { padding: 15px; }
+  .lesson-vocabulary > p { margin-inline: 15px; }
+  .lesson-vocabulary dl { padding-inline: 15px; }
+  .studio-page-content { padding: 8px 6px 20px; }
+  .studio-page-header { flex-wrap: wrap; gap: 9px; }
+  .studio-page-header > div > span { font-size: 13px; }
+  .studio-page-header strong { font-size: 8px; }
+  .studio-page-header small { font-size: 9px; }
+  .studio-page-header > button { padding: 8px 10px; font-size: 10px !important; }
+  .studio-page-content .studio-toolbar { flex-wrap: wrap; gap: 6px; padding: 8px; }
+  .studio-page-content .studio-toolbar .studio-run { margin-left: auto; }
+  .studio-page-content .studio-toolbar button { font-size: 10px !important; padding-inline: 7px; }
+  .studio-page-content .studio-titlebar > small { display: none; }
+  .web-example-actions { align-items: stretch; flex-direction: column; }
+  .web-example-actions button { justify-content: center; }
+}
+@media (hover: none) { .studio-files .studio-file-delete, .studio-file-tabs .studio-file-delete { opacity: 1; } }
+/* Definitions have one introduction per course; later lessons only link back. */
+.lesson-vocabulary-review { border-top: 1px solid #dfe9f3; padding: 12px 0; margin: 12px 0 24px; }
+.lesson-vocabulary-review > summary { display: flex; align-items: center; gap: 8px; color: #537895; font-size: 12px; cursor: pointer; list-style: none; }
+.lesson-vocabulary-review > summary::-webkit-details-marker { display: none; }
+.lesson-vocabulary-review > summary::after { content: "+"; margin-left: auto; font-size: 17px; }
+.lesson-vocabulary-review[open] > summary::after { content: "−"; }
+.lesson-vocabulary-review > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-top: 12px; }
+.lesson-vocabulary-review button { display: flex; justify-content: space-between; gap: 10px; align-items: center; text-align: left; padding: 10px 12px; background: #f7fbff; color: #205e8e; border: 1px solid #dbe8f3; border-radius: 8px; font-size: 11px !important; min-width: 0; }
+.lesson-vocabulary-review button span { min-width: 0; overflow-wrap: anywhere; }
+.lesson-vocabulary-review small { color: #66869d; font-size: 9px; white-space: nowrap; }
+.web-example-code { position: relative; margin: 15px 0; }
+.web-example .web-example-code > pre { margin: 0; padding-top: 53px; }
+.web-example-code > .web-example-robot { display: grid; place-items: center; position: absolute; z-index: 1; top: 10px; right: 12px; width: 36px; height: 36px; padding: 0; color: #cceaff; background: #ffffff12; border: 1px solid #b9ddff35; border-radius: 9px; cursor: pointer; }
+.web-example-code > .web-example-robot:hover { color: #fff; background: #247eaf; border-color: #7bc6ef; }
+.web-example-code > .web-example-robot:focus-visible { outline: 3px solid #87d2ff; outline-offset: 3px; }
+.studio-toolbar .studio-tutor-button { width: 36px; min-width: 36px; padding: 0 !important; }
+@media (max-width: 540px) { .lesson-vocabulary-review > div { grid-template-columns: 1fr; } }

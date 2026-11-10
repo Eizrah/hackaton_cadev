@@ -1,3 +1,7 @@
+import Modal from "./Modal";
+import { bannedLoginError, loginWithDjango } from "../lib/auth";
+import { usePeople } from "../data/people";
+import type { CredentialAttachment } from "../data/profile";
 import { useRef, useState, type FormEvent } from "react";
 import {
   ArrowLeft,
@@ -33,7 +37,7 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import "../authentication.css";
 type AuthMode = "signup" | "login" | "forgot";
 type Destination = "home" | "signup" | "login" | "forgot" | "workspace";
-function PasswordField({
+export function PasswordField({
   label,
   value,
   onChange,
@@ -91,7 +95,9 @@ function SocialOptions() {
   return (
     <div className="register-social">
       <div className="register-divider">
-        <span>{t("ou continuer avec", "or continue with")}</span>
+        <span>
+          {t("ou continuer avec", "or continue with")}
+        </span>
       </div>
       <div className="register-social-buttons">
         <button
@@ -126,6 +132,7 @@ function SocialOptions() {
     </div>
   );
 }
+import { useToast } from "../lib/toastContext";
 export default function Authentication({
   mode,
   onNavigate,
@@ -136,7 +143,7 @@ export default function Authentication({
   onOpenProfile: () => void;
 }) {
   const { t } = useI18n();
-  const [, setProfile] = useLocalData(
+  const [profile, setProfile] = useLocalData(
     "profile",
     initialProfile,
     migrateProfile,
@@ -144,6 +151,9 @@ export default function Authentication({
   const [personal, setPersonal] = useState<PersonalInformation>(emptyPersonal),
     [experiences, setExperiences] = useState<Experience[]>([]),
     [skills, setSkills] = useState<DeveloperSkill[]>([]);
+  const [documents, setDocuments] = useState<CredentialAttachment[]>([]);
+  const [uploadCount, setUploadCount] = useState(0), [banned, setBanned] = useState(false), [logging, setLogging] = useState(false);
+  const [people] = usePeople();
   const [step, setStep] = useState(0),
     [furthest, setFurthest] = useState(0),
     [email, setEmail] = useState(""),
@@ -151,18 +161,18 @@ export default function Authentication({
     [confirmation, setConfirmation] = useState(""),
     [remember, setRemember] = useState(true),
     [error, setError] = useState(""),
-    [message, setMessage] = useState(""),
     [done, setDone] = useState(false),
     [menu, setMenu] = useState(false);
   const form = useRef<HTMLFormElement>(null),
     card = useRef<HTMLElement>(null),
     heading = useRef<HTMLHeadingElement>(null);
+  const notify = useToast();
   const signup = mode === "signup",
     forgot = mode === "forgot";
   const labels = [
     t("Informations personnelles", "Personal information"),
-    t("Expérience", "Experience"),
-    t("Compétences", "Skills"),
+    t("Expérience & compétences", "Experience & skills"),
+    t("Accès au compte", "Account access"),
   ];
   function personalMessage() {
     if (!personal.firstName.trim() || !personal.lastName.trim())
@@ -179,7 +189,7 @@ export default function Authentication({
         "Indiquez un âge valide, entre 1 et 120 ans.",
         "Enter a valid age between 1 and 120.",
       );
-    if (!["Junior", "Senior"].includes(personal.level) || !personal.country)
+    if (!["Débutant", "Intermédiaire", "Avancé"].includes(personal.level) || !personal.country)
       return t(
         "Choisissez votre niveau et votre pays.",
         "Choose your level and country.",
@@ -202,7 +212,7 @@ export default function Authentication({
   }
   function nextStep() {
     const problem =
-      step === 0 ? personalMessage() : experienceError(experiences);
+      step === 0 ? personalMessage() : experienceError(experiences) || skillError(skills);
     if (problem) {
       setError(t(problem));
       return;
@@ -211,18 +221,27 @@ export default function Authentication({
     setFurthest(Math.max(furthest, next));
     goStep(next);
   }
-  function onSubmit(event: FormEvent) {
+  async function onSubmit(event: FormEvent) {
     event.preventDefault();
+    if (uploadCount || logging) return;
     setError("");
-    setMessage("");
     if (!signup) {
       if (forgot) {
-        setMessage(
+        notify(
           t(
             "Formulaire validé en démonstration. Aucun e-mail n’a été envoyé : la récupération doit être reliée à Django.",
             "Demo form validated. No email was sent: connect password recovery to Django.",
           ),
         );
+        return;
+      }
+      const known = [profile, ...people].find(person => person.email && person.email.toLowerCase() === email.trim().toLowerCase());
+      if (known?.accountStatus === "banned") { setBanned(true); setPassword(""); return; }
+      if (import.meta.env.VITE_AUTH_MODE === "api") {
+        setLogging(true);
+        try { const authenticated = await loginWithDjango(email.trim(), password, remember); if (authenticated.accountStatus === "banned") setBanned(true); else { setProfile(authenticated); setPassword(""); onOpenProfile(); } }
+        catch (error) { if (bannedLoginError(error)) setBanned(true); else setError(t("Connexion impossible. Vérifie tes identifiants et réessaie.", "Could not sign in. Check your credentials and try again.")); }
+        finally { setLogging(false); }
         return;
       }
       if (password.length < 8) {
@@ -234,7 +253,7 @@ export default function Authentication({
         );
         return;
       }
-      setMessage(
+      notify(
         t(
           "Formulaire de connexion prêt. Aucun compte n’est authentifié tant que Django n’est pas connecté.",
           "Sign-in form ready. No account is authenticated until Django is connected.",
@@ -260,6 +279,7 @@ export default function Authentication({
     }
     const invalidSkill = skillError(skills);
     if (invalidSkill) {
+      goStep(1);
       setError(t(invalidSkill));
       return;
     }
@@ -290,11 +310,13 @@ export default function Authentication({
         })),
         skills.map((s) => ({ ...s, name: s.name.trim() })),
         email,
+        documents,
       ),
     );
     setPassword("");
     setConfirmation("");
     setDone(true);
+    notify(t("Profil enregistré. Bienvenue dans la communauté DevAfrica !", "Profile saved. Welcome to the DevAfrica community!"));
     requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: "instant" });
       heading.current?.focus({ preventScroll: true });
@@ -302,6 +324,21 @@ export default function Authentication({
   }
   return (
     <main className={`registration-page registration-${mode}`}>
+      {banned && <Modal
+        title={t("Compte banni", "Account banned")}
+        onClose={() => setBanned(false)}>
+        <div className="banned-account">
+          <p>
+            {t("Ce compte a été banni. La connexion est suspendue. Tu peux contacter la modération pour demander un réexamen.", "This account has been banned. Sign-in is suspended. You can contact moderation to request a review.")}
+          </p>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => setBanned(false)}>
+            {t("J’ai compris", "Understood")}
+          </button>
+        </div>
+      </Modal>}
       <header className="registration-header">
         <button
           className="register-brand"
@@ -311,7 +348,9 @@ export default function Authentication({
             "DevAfrica Connect, home",
           )}
         >
-          <img src="/images/africa-mark.png" alt="" />
+          <img
+            src="/images/africa-mark.png"
+            alt="" />
           <span>
             <strong>
               Dev<span>Africa</span>
@@ -372,7 +411,9 @@ export default function Authentication({
           ref={card}
         >
           <div className="registration-card-heading">
-            <h1 ref={heading} tabIndex={-1}>
+            <h1
+              ref={heading}
+              tabIndex={-1}>
               {done
                 ? t("Votre profil est prêt !", "Your profile is ready!")
                 : signup
@@ -384,23 +425,23 @@ export default function Authentication({
             <p>
               {done
                 ? t(
-                    "Vos informations sont réunies. Découvrez votre espace DevAfrica.",
-                    "Your information is ready. Explore your DevAfrica space.",
-                  )
+                  "Vos informations sont réunies. Découvrez votre espace DevAfrica.",
+                  "Your information is ready. Explore your DevAfrica space.",
+                )
                 : signup
                   ? t(
-                      "Rejoignez une communauté de développeurs passionnés et développez vos compétences.",
-                      "Join a community of passionate developers and grow your skills.",
-                    )
+                    "Rejoignez une communauté de développeurs passionnés et développez vos compétences.",
+                    "Join a community of passionate developers and grow your skills.",
+                  )
                   : forgot
                     ? t(
-                        "Indiquez votre adresse e-mail pour préparer la récupération de votre compte.",
-                        "Enter your email to prepare account recovery.",
-                      )
+                      "Indiquez votre adresse e-mail pour préparer la récupération de votre compte.",
+                      "Enter your email to prepare account recovery.",
+                    )
                     : t(
-                        "Connectez-vous pour retrouver vos projets, vos échanges et votre communauté.",
-                        "Sign in to find your projects, conversations and community.",
-                      )}
+                      "Connectez-vous pour retrouver vos projets, vos échanges et votre communauté.",
+                      "Sign in to find your projects, conversations and community.",
+                    )}
             </p>
           </div>
           {signup && !done && (
@@ -423,14 +464,14 @@ export default function Authentication({
                       type="button"
                       aria-current={step === index ? "step" : undefined}
                       aria-label={`${t("Étape", "Step")} ${index + 1} : ${label}`}
-                      disabled={index > furthest}
+                      disabled={index > furthest || uploadCount > 0}
                       onClick={() => {
                         if (index <= step) goStep(index);
                         else if (form.current?.reportValidity()) {
                           const problem =
                             step === 0
                               ? personalMessage()
-                              : experienceError(experiences);
+                              : experienceError(experiences) || skillError(skills);
                           if (problem) setError(t(problem));
                           else goStep(index);
                         }
@@ -439,7 +480,9 @@ export default function Authentication({
                       <span className="step-number">
                         {step > index ? <Check size={17} /> : index + 1}
                       </span>
-                      <span>{label}</span>
+                      <span>
+                        {label}
+                      </span>
                     </button>
                   </li>
                 ))}
@@ -452,45 +495,68 @@ export default function Authentication({
                 <CheckCircle2 size={39} />
               </span>
               <h2>
-                {personal.firstName} {personal.lastName}
+                {personal.firstName}
+                {" "}
+                {personal.lastName}
               </h2>
               <p>
-                @{personal.pseudo} · {personal.level} · {personal.country}
+                @{personal.pseudo} · {t(personal.level)} · {personal.country}
               </p>
               <div className="registration-summary">
                 <span>
-                  {experiences.length} {t("expérience(s)", "experience(s)")}
+                  {experiences.length}
+                  {" "}
+                  {t("expérience(s)", "experience(s)")}
                 </span>
                 <span>
-                  {skills.length} {t("compétence(s)", "skill(s)")}
+                  {skills.length}
+                  {" "}
+                  {t("compétence(s)", "skill(s)")}
                 </span>
               </div>
-              <div className="registration-demo-message" role="status">
+              <div
+                className="registration-demo-message"
+                role="status">
                 {t(
                   "Profil de démonstration enregistré sur cet appareil. Aucun compte serveur n’a été créé et aucun mot de passe n’a été conservé.",
                   "Demo profile saved on this device. No server account was created and no password was stored.",
                 )}
               </div>
-              <button className="register-continue" onClick={onOpenProfile}>
+              <button
+                className="register-continue"
+                onClick={onOpenProfile}>
                 {t("Découvrir mon profil", "View my profile")}
                 <ArrowRight size={19} />
               </button>
             </div>
           ) : (
-            <form className="registration-form" ref={form} onSubmit={onSubmit}>
+            <form
+              className="registration-form"
+              ref={form}
+              onSubmit={onSubmit}>
               {signup ? (
                 step === 0 ? (
-                  <PersonalFields value={personal} onChange={setPersonal} />
+                  <PersonalFields
+                    value={personal}
+                    onChange={setPersonal} />
                 ) : step === 1 ? (
-                  <ExperienceFields
-                    value={experiences}
-                    onChange={setExperiences}
-                  />
+                  <>
+                    <ExperienceFields
+                      value={experiences}
+                      onChange={setExperiences} />
+                    <SkillFields
+                      value={skills}
+                      onChange={setSkills}
+                      documents={documents}
+                      onDocumentsChange={setDocuments}
+                      onBusy={busy => setUploadCount(n => Math.max(0, n + (busy ? 1 : -1)))} />
+                  </>
                 ) : (
                   <>
-                    <SkillFields value={skills} onChange={setSkills} />
                     <fieldset className="account-access">
-                      <legend>{t("Accès au compte", "Account access")}</legend>
+                      <legend>
+                        {t("Accès au compte", "Account access")}
+                      </legend>
                       <p>
                         {t(
                           "Vos identifiants pour vous connecter à DevAfrica.",
@@ -508,7 +574,7 @@ export default function Authentication({
                             autoComplete="email"
                             required
                             onChange={(e) => setEmail(e.target.value)}
-                            placeholder="vous@exemple.com"
+                            placeholder={t("vous@exemple.com", "you@example.com")}
                             maxLength={254}
                           />
                         </span>
@@ -550,7 +616,7 @@ export default function Authentication({
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="vous@exemple.com"
+                        placeholder={t("vous@exemple.com", "you@example.com")}
                         maxLength={254}
                       />
                     </span>
@@ -583,14 +649,11 @@ export default function Authentication({
                 </div>
               )}
               {error && (
-                <p className="registration-error" role="alert">
-                  {error}
+                <p
+                  className="registration-error"
+                  role="alert">
+                  {t(error)}
                 </p>
-              )}
-              {message && (
-                <div className="registration-demo-message" role="status">
-                  {message}
-                </div>
               )}
               <div className="register-form-actions">
                 {signup && step > 0 && (
@@ -603,7 +666,10 @@ export default function Authentication({
                     {t("Retour", "Back")}
                   </button>
                 )}
-                <button className="register-continue" type="submit">
+                <button
+                  className="register-continue"
+                  type="submit"
+                  disabled={uploadCount > 0 || logging}>
                   {signup
                     ? step < 2
                       ? t("Continuer", "Continue")
@@ -623,13 +689,14 @@ export default function Authentication({
                   ? t("Déjà un compte ?", "Already have an account?")
                   : forgot
                     ? t(
-                        "Vous connaissez votre mot de passe ?",
-                        "Remember your password?",
-                      )
+                      "Vous connaissez votre mot de passe ?",
+                      "Remember your password?",
+                    )
                     : t(
-                        "Pas encore de compte ?",
-                        "Don’t have an account?",
-                      )}{" "}
+                      "Pas encore de compte ?",
+                      "Don’t have an account?",
+                    )}
+                {" "}
                 <button
                   onClick={() =>
                     onNavigate(signup || forgot ? "login" : "signup")

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 export type UpdateData<T> = (next: T | ((current: T) => T)) => void;
 
 // Les données locales servent uniquement à la démo. Aucun mot de passe ni jeton ici.
@@ -30,7 +30,7 @@ export function useLocalData<T>(
     window.addEventListener("devafrica:store", sync);
     return () => window.removeEventListener("devafrica:store", sync);
   }, [key]);
-  const update: UpdateData<T> = (next) => {
+  const update = useCallback<UpdateData<T>>((next) => {
     const result =
       typeof next === "function"
         ? (next as (value: T) => T)(current.current)
@@ -45,6 +45,6 @@ export function useLocalData<T>(
     } catch {
       /* La session reste utilisable. */
     }
-  };
+  }, [key]);
   return [value, update] as const;
 }

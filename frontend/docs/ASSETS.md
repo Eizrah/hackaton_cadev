@@ -1,5 +1,7 @@
 # Ressources visuelles
 
+- Illustration d’apprentissage : troisième image de la demande du 4 novembre 2026, copiée sans modification dans `public/images/learning-lab.jpg`. Les deux autres images servent de références de mise en page et de sommaire.
+
 - Logo et illustration d’accueil : ressources du projet fourni, conservées.
 - Illustration d’authentification : troisième image fournie avec la demande, copiée sans modification dans `public/images/auth-developer.jpg`.
 - Google : SVG local à quatre couleurs dans `src/components/GoogleIcon.tsx`. GitHub : SVG local déjà présent. Les deux marques identifient les futurs fournisseurs OAuth ; aucun service tiers n’est appelé par ces boutons.

@@ -1,7 +1,11 @@
+import { blockedPostNotice } from "../../data/lifecycle";
+import { useNotifications } from "../../data/notifications";
+import { usePeople } from "../../data/people";
 import { createLocalId } from "../../lib/format";
 import { useState } from "react";
 import {
   ArrowRight,
+  ArrowLeft,
   BookOpen,
   Bot,
   Check,
@@ -21,13 +25,16 @@ import {
 import { useI18n } from "../../i18n/context";
 import { useLocalData } from "../../lib/storage";
 import { askTutor, type TutorMessage } from "../../lib/agents";
+import { readLearningCodeContext, tutorCodeQuestion, type LearningCodeContext } from "../../lib/learningTutorContext";
 import { checkContent, useReviews, type Review } from "../../data/workflow";
-import { initialPosts, migratePosts, initialJobs } from "../../data/models";
+import { initialPosts, migratePosts, initialJobs, migrateJobs } from "../../data/models";
+import "../learning/learning-enhancements.css";
 type TutorThread = {
   id: number;
   title: string;
   messages: TutorMessage[];
   createdAt: string;
+  context?: LearningCodeContext;
 };
 function Reply({ content }: { content: string }) {
   const parts = content.split(/```(?:[a-zA-Z0-9]+)?\n?/);
@@ -76,22 +83,24 @@ export default function Assistant({
           {t("Agent modérateur", "Moderation agent")}
         </button>
       </div>
-      {moderation ? <ModerationAgent /> : <LearningAgent />}
+      {moderation ? <ModerationAgent /> : <LearningAgent key={route[0] || "accueil"} initialContext={route[0] === "code" ? readLearningCodeContext() : undefined} onNavigate={onNavigate} />}
     </div>
   );
 }
-function LearningAgent() {
+function LearningAgent({ initialContext, onNavigate }: { initialContext?: LearningCodeContext; onNavigate: (path: string) => void }) {
   const { t, language } = useI18n();
   const [threads, setThreads] = useLocalData<TutorThread[]>(
     "tutor-threads",
     [],
   );
   const [selected, setSelected] = useState<number | null>(null);
-  const [question, setQuestion] = useState(""),
+  const [attachedContext, setAttachedContext] = useState(initialContext);
+  const [question, setQuestion] = useState(() => initialContext ? tutorCodeQuestion(initialContext, language === "en") : ""),
     [search, setSearch] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const thread = threads.find((h) => h.id === selected);
+  const context = thread ? thread.context : attachedContext;
   async function send(override?: string) {
     const content = (override ?? question).trim();
     if (!content || busy) return;
@@ -110,6 +119,7 @@ function LearningAgent() {
               title: content.slice(0, 48),
               messages,
               createdAt: new Date().toISOString(),
+              ...(context ? { context } : {}),
             },
             ...current,
           ],
@@ -119,7 +129,7 @@ function LearningAgent() {
     setBusy(true);
     setError("");
     try {
-      const answer = await askTutor(messages, language);
+      const answer = await askTutor(messages, language, context);
       setThreads((current) =>
         current.map((h) =>
           h.id === id
@@ -152,6 +162,7 @@ function LearningAgent() {
           onClick={() => {
             setSelected(null);
             setQuestion("");
+            setAttachedContext(undefined);
             setError("");
           }}
           disabled={busy}
@@ -180,6 +191,7 @@ function LearningAgent() {
                   disabled={busy}
                   onClick={() => {
                     setSelected(h.id);
+                    setQuestion("");
                     setError("");
                   }}
                 >
@@ -232,6 +244,13 @@ function LearningAgent() {
               : t("Mode démo · réponses locales", "Demo mode · local replies")}
           </small>
         </header>
+        {context && (
+          <aside className="tutor-code-context" aria-label={t("Code joint à la conversation", "Code attached to this conversation")}>
+            <div><Bot size={20} /><span><strong>{context.courseTitle} · {context.lessonTitle}</strong><small>{context.file} · {t("Le code et le passage du cours accompagnent ta question.", "The code and lesson excerpt accompany your question.")}</small></span></div>
+            <button type="button" onClick={() => onNavigate(context.returnPath)}><ArrowLeft size={15} />{t("Revenir au cours ou à l’atelier", "Return to the course or studio")}</button>
+            <details><summary>{t("Voir le code joint", "View attached code")}</summary><pre><code>{context.code}</code></pre></details>
+          </aside>
+        )}
         {!thread ? (
           <div className="assistant-welcome">
             <span className="tutor-symbol">
@@ -285,7 +304,7 @@ function LearningAgent() {
                 <div>
                   <small>
                     {m.role === "assistant"
-                      ? t("Agent apprentissage · démo", "Learning agent · demo")
+                      ? import.meta.env.VITE_AGENT_MODE === "api" ? t("Agent apprentissage", "Learning agent") : t("Agent apprentissage · démo", "Learning agent · demo")
                       : t("Toi", "You")}
                   </small>
                   <Reply content={m.content} />
@@ -350,8 +369,10 @@ function LearningAgent() {
 function ModerationAgent() {
   const { t } = useI18n();
   const [reviews, setReviews] = useReviews();
-  const [, setPosts] = useLocalData("posts", initialPosts, migratePosts);
-  const [, setJobs] = useLocalData("jobs", initialJobs);
+  const [posts, setPosts] = useLocalData("posts", initialPosts, migratePosts);
+  const [people]=usePeople();
+  const [,setNotifications]=useNotifications();
+  const [, setJobs] = useLocalData("jobs", initialJobs, migrateJobs);
   const [filter, setFilter] = useState("pending");
   function decide(
     review: Review,
@@ -363,6 +384,11 @@ function ModerationAgent() {
         r.id === review.id ? { ...r, status, decision: reason } : r,
       ),
     );
+    if(review.kind === "post" && status === "rejected") {
+      const post=posts.find(p=>p.id===review.resourceId),recipientId=post?.authorId || people.find(person=>person.name===post?.author)?.id;
+      const notice=post?blockedPostNotice(post,recipientId):undefined;
+      if(notice)setNotifications(current=>[notice,...current]);
+    }
     if (review.kind === "post")
       setPosts((current) =>
         current.map((p) =>

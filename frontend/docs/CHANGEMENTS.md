@@ -1,5 +1,7 @@
 # Changements — 31 octobre 2026
 
+Historique des versions précédentes. Pour les changements actuels et leurs validations, consulte `MODIFICATIONS_V16.md` et `VERIFICATIONS_V16.md`.
+
 | Fichier | Modification |
 | --- | --- |
 | `src/App.tsx`, `src/index.css` | Accueil bord à bord avec dégradé bleu harmonisé, sélecteur de langue, navigation sans saut natif. |
@@ -37,3 +39,32 @@ Les images, drapeaux et icônes restent locaux. Aucun package applicatif supplé
 | `README.md`, `docs/AUTHENTIFICATION.md`, `docs/INTEGRATION_DJANGO.md`, `docs/VERIFICATIONS.md`, `docs/ASSETS.md` | Installation, explication des changements, contrat proposé, contrôles et origine des ressources. |
 
 Aucun nouveau package n’est nécessaire. Les modules de communauté, apprentissage, offres, groupes, messagerie et agents restent accessibles.
+
+## Apprentissage HTML5 & CSS3 — 4 novembre 2026
+
+| Fichier | Changement et raison |
+| --- | --- |
+| `src/data/learning.ts` | Un seul bloc HTML5 & CSS3 remplace les deux fiches web séparées ; le catalogue passe de 47 à 46 blocs. |
+| `src/data/htmlCssCourse.ts` | Programme en trois niveaux, neuf chapitres, 21 leçons et six projets ; exemples, exercices, quiz et liens de référence. |
+| `src/components/modules/Learning.tsx` | Choix Frontend/Backend avant les fiches web, carte commune à deux icônes, ouverture du cours et compatibilité des anciennes adresses. |
+| `src/components/learning/HtmlCssClassroom.tsx` | Bandeau illustré, niveaux, sommaire numéroté cliquable, leçon sélectionnée, validation locale et progression. |
+| `src/components/learning/WebCodeStudio.tsx` | Atelier HTML/CSS avec fichiers, coloration, lignes, aperçu, largeurs, image, brouillons, export et liste d’auto-évaluation. |
+| `src/lib/webPreview.ts` | Composition du rendu dans un document isolé et export HTML avec CSS intégré. |
+| `src/components/learning/web-learning.css` | Styles du sommaire, des leçons et de l’atelier ; menu repliable et alternance Code/Aperçu sur petit écran. |
+| `public/images/learning-lab.jpg` | Visuel d’apprentissage fourni, conservé sans modification. |
+| `README.md`, `docs/` | Guide d’utilisation et de lecture du code, état de l’intégration Django, références et contrôles. |
+
+Aucun package applicatif ajouté. Les autres domaines gardent leurs fiches existantes ; l’exécution multilangage et la progression serveur ne sont pas raccordées.
+
+## JavaScript et React · 5 novembre 2026
+
+- `src/data/learning.ts` limite le catalogue à trois domaines et les fiches du Backend aux cinq outils demandés.
+- `src/data/javascriptCourse.ts` et `src/data/reactCourse.ts` ajoutent 39 leçons. Les deux fichiers `Projects.ts` associés définissent douze mini-projets avec consignes et code de départ.
+- `HtmlCssClassroom.tsx` reprend la salle de cours HTML5 & CSS3 pour les trois programmes. Chaque cours possède son sommaire, sa boîte à outils et sa progression.
+- `WebCodeStudio.tsx` ouvre les fichiers de script, affiche la console et permet l’ajout d’un module. `scriptPreview.ts` prépare le code et les bibliothèques de l’aperçu isolé.
+- `web-learning.css` applique la palette bleue de la barre latérale au cours, aux outils et à l’atelier.
+- `package.json` et `package-lock.json` installent Sucrase, React Router et esbuild. Le script de préparation assemble le moteur de l’atelier React.
+# Version 18 · 10 novembre 2026
+
+Le détail actuel des fichiers et comportements est dans [MODIFICATIONS_V18.md](MODIFICATIONS_V18.md). Les changements des programmes et ateliers précédents sont conservés.
+
