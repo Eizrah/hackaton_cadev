@@ -1,0 +1,18 @@
+# Retrieval Augmented Generation
+
+C'est la technique qui permet à l'agent de répondre en se basant sur des documents réels (doc officielle React, Vue, Python...) plutôt que sur sa mémoire d'entraînement.
+
+Voici ce que fait chaque fichier :
+
+embeddings.py — transforme du texte en vecteurs numériques. Par exemple "React useState" devient [0.23, -0.11, 0.87, ...]. C'est ce qui permet de comparer la similarité entre textes.
+
+vectorstore.py — gère ChromaDB, la base de données qui stocke ces vecteurs. Quand tu charges la doc de React, elle est découpée en morceaux et stockée ici. Pour chaque leçon (React, Vue, Django...) tu auras une collection dédiée.
+
+retriever.py — quand un dev pose une question, ce fichier cherche dans ChromaDB les morceaux de doc les plus pertinents et les passe à l'agent comme contexte.
+
+
+flux complet 
+Doc officielle React → embeddings.py → vectorstore.py (stockage)
+Question dev "Comment useEffect fonctionne ?"
+→ retriever.py cherche les passages pertinents dans la doc React
+→ ces passages + la question → agent assistant → réponse précise

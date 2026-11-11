@@ -1,48 +1,155 @@
-import { AttachmentPicker, AttachmentCard } from "../shared/Attachments";
-import type { StoredAttachment } from "../../lib/attachments";
-import { useState, type FormEvent } from "react";
-import { ArrowRight, BriefcaseBusiness, Building2, CalendarDays, CheckCircle2, ExternalLink, Mail, Plus, Search, Send, UsersRound, X } from "lucide-react";
-import { initialJobs, migrateJobs, type Job, type Profile } from "../../data/models";
-import { makeReview, useApplications, useReviews } from "../../data/workflow";
-import { notification, useNotifications } from "../../data/notifications";
-import { useLocalData } from "../../lib/storage";
+import { useState, useEffect, type FormEvent } from "react";
+import { ArrowRight, BriefcaseBusiness, Building2, CalendarDays, ExternalLink, Mail, Plus, Search, Send, X } from "lucide-react";
+import { type Profile } from "../../data/models";
 import { useI18n } from "../../i18n/context";
-import { safePortfolio } from "../../lib/urls";
 import { CountryFlag } from "../CountryFlag";
 import { SkillChip } from "../TechIcon";
 import CountrySelect from "../shared/CountrySelect";
 import SkillSearch from "../shared/SkillSearch";
 import Modal from "../Modal";
-export default function Offers({ profile, onNotice, onNavigate, route = [] }: { profile: Profile; onNotice: (text: string) => void; onNavigate: (path: string) => void; route?: string[] }) {
-  const { t, locale } = useI18n();
-  const [jobs, setJobs] = useLocalData("jobs", initialJobs, migrateJobs), [applications, setApplications] = useApplications(), [, setReviews] = useReviews(), [, setNotifications] = useNotifications();
-  const [query, setQuery] = useState(""), [mode, setMode] = useState("Tous"), [creating, setCreating] = useState(false), [detail, setDetail] = useState<Job | null>(() => jobs.find(j => j.id === Number(route[0]) && (j.moderation !== "pending" && j.moderation !== "rejected" || j.ownerId === profile.id)) || null), [applying, setApplying] = useState<Job | null>(null), [skills, setSkills] = useState<string[]>([]), [country, setCountry] = useState(""), [error, setError] = useState("");
+import { publicationApi } from "../../api/publication";
+import ApplicationForm from "./ApplicationForm";
 
-  const [cvFile, setCvFile] = useState<StoredAttachment>(), [uploadCount, setUploadCount] = useState(0), [contract, setContract] = useState("CDI");
-  const uploading = uploadCount > 0;
+interface Offre {
+  id_publication: string
+  description: string
+  nom_poste: string
+  localisation: string
+  type_contrat: 'CDI' | 'CDD' | 'Stage' | 'Freelance'
+  duree?: string
+  competence_requise: string
+  type_travail: 'R' | 'S' | 'H'
+  deadline: string
+  lien?: string
+  email?: string
+  fichier?: string
+  date_publication: string
+  developper_email: string
+  feu_vert: boolean
+}
+
+export default function Offers({ profile, onNotice, onNavigate }: { profile: Profile; onNotice: (text: string) => void; onNavigate: (path: string) => void }) {
+  const { t } = useI18n();
+  
+  // État
+  const [offres, setOffres] = useState<Offre[]>([])
+  const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState("")
+  const [mode, setMode] = useState("Tous")
+  const [creating, setCreating] = useState(false)
+  const [detail, setDetail] = useState<Offre | null>(null)
+  const [applying, setApplying] = useState<Offre | null>(null)
+  const [skills, setSkills] = useState<string[]>([])
+  const [country, setCountry] = useState("")
+  const [error, setError] = useState("")
+  const [contract, setContract] = useState("CDI")
+  
   const needsDuration = contract === "CDD" || contract === "Stage";
-  const visible = jobs.filter(j => (j.moderation !== "pending" && j.moderation !== "rejected" || j.ownerId === profile.id) && (mode === "Tous" || mode === "Stage" ? mode === "Tous" || j.contract === "Stage" : j.mode === mode) && `${j.title} ${j.company} ${j.skills} ${j.country}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
-  function startApply(job: Job) { setDetail(null); setError(""); setCvFile(undefined); setApplying(job); }
-  function publish(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault(); if (uploading) return; if (!skills.length) { setError(t("Ajoute au moins une compétence recherchée.", "Add at least one required skill.")); return; }
-    const form = new FormData(e.currentTarget), get = (key: string) => String(form.get(key) || "").trim();
-    const job: Job = { id: Date.now(), ownerId: profile.id, ownerName: profile.name, title: get("title"), company: get("company"), country, contract: get("contract"), mode: get("mode"), skills: skills.join(" · "), description: get("description"), contactEmail: get("contactEmail"), createdAt: new Date().toISOString(), moderation: "pending", ...(needsDuration ? { duration: Number(form.get("duration")), durationUnit: String(form.get("durationUnit")) as "days" | "weeks" | "months" } : {}) };
-    setJobs(current => [job, ...current]); setReviews(current => [makeReview("offer", job.id, job.title, `${job.description}\n${job.skills}`), ...current]); setCreating(false); setSkills([]); setCountry(""); setError(""); onNotice(t("Offre envoyée à la modération. Tu peux suivre ses candidatures depuis ton profil.", "Job sent for moderation. Track applications from your profile."));
+
+  // Charger les offres
+  useEffect(() => {
+    loadOffres()
+  }, [])
+
+  const loadOffres = async () => {
+    try {
+      setLoading(true)
+      const response = await publicationApi.getOffres()
+      setOffres(response.data)
+    } catch (err) {
+      console.error('Erreur chargement offres:', err)
+      onNotice('Erreur lors du chargement des offres')
+    } finally {
+      setLoading(false)
+    }
   }
-  function apply(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault(); if (!applying) return; const form = new FormData(e.currentTarget), cvUrl = safePortfolio(String(form.get("cvUrl") || "").trim()), motivation = String(form.get("motivation") || "").trim();
-    if (uploading) return;
-    if (!cvUrl && !cvFile) { setError(t("Joins ton CV ou indique un lien HTTP(S) valide.", "Attach your CV or provide a valid HTTP(S) link.")); return; }
-    if (!motivation) { setError(t("Écris ta lettre de motivation.", "Write your cover letter.")); return; }
-    if (applications.some(a => a.jobId === applying.id && a.applicantId === profile.id)) { onNotice(t("Tu as déjà postulé à cette offre.", "You have already applied for this job.")); setApplying(null); return; }
-    const id = Date.now();
-    setApplications(current => [...current, { id, jobId: applying.id, title: applying.title, company: applying.company, status: "pending", sentAt: new Date().toISOString(), applicantId: profile.id, applicant: profile, ownerId: applying.ownerId || "", cvUrl: cvUrl || "", cvFile, motivation }]);
-    const recipientId = applying.ownerId;
-    if (recipientId) setNotifications(current => [notification({ id: `application:${id}`, recipientId, title: "Nouvelle candidature", text: `${profile.name} a postulé : ${applying.title}`, target: `profil/recrutement/${applying.id}`, kind: "application" }), ...current]);
-    setApplying(null); onNotice(t("Candidature envoyée ! Retrouve son suivi dans ton profil.", "Application sent! Track its status from your profile."));
+
+  // Filtrer les offres
+  const visible = offres.filter(offre => {
+    // Filtre par mode de travail
+    if (mode !== "Tous") {
+      const typeMap: Record<string, string> = {
+        "Remote": "R",
+        "Hybride": "H",
+        "Local": "S"
+      }
+      if (offre.type_travail !== typeMap[mode]) return false
+    }
+
+    // Filtre par recherche
+    const searchText = `${offre.nom_poste} ${offre.localisation} ${offre.competence_requise}`.toLowerCase()
+    return searchText.includes(query.toLowerCase())
+  })
+
+  const getTypeTravail = (type: string) => {
+    switch (type) {
+      case 'R': return 'Remote'
+      case 'S': return 'Sur site'
+      case 'H': return 'Hybride'
+      default: return type
+    }
   }
-  function count(job: Job) { return applications.filter(a => a.jobId === job.id).length; }
-  function applied(job: Job) { return applications.some(a => a.jobId === job.id && a.applicantId === profile.id); }
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    })
+  }
+
+  function startApply(offre: Offre) {
+    // Vérifier que ce n'est pas sa propre offre
+    if (offre.developper_email === profile.email) {
+      onNotice("Vous ne pouvez pas postuler à votre propre offre")
+      return
+    }
+    setDetail(null)
+    setApplying(offre)
+  }
+
+  async function publish(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!skills.length) {
+      setError(t("Ajoute au moins une compétence recherchée.", "Add at least one required skill."))
+      return
+    }
+    if (!country) {
+      setError("Veuillez sélectionner un pays")
+      return
+    }
+
+    const form = new FormData(e.currentTarget)
+    const get = (key: string) => String(form.get(key) || "").trim()
+
+    try {
+      const data = {
+        nom_poste: get("title"),
+        description: get("description"),
+        localisation: country,
+        type_contrat: get("contract") as 'CDI' | 'CDD' | 'Stage' | 'Freelance',
+        duree: needsDuration ? get("duration") : undefined,
+        competence_requise: skills.join(", "),
+        type_travail: get("mode") === "Remote" ? "R" as const : get("mode") === "Hybride" ? "H" as const : "S" as const,
+        deadline: get("deadline"),
+        email: get("contactEmail") || undefined,
+        lien: get("lien") || undefined,
+      }
+
+      await publicationApi.creerOffre(data)
+      
+      setCreating(false)
+      setSkills([])
+      setCountry("")
+      setError("")
+      onNotice(t("Offre créée avec succès !", "Job posted successfully!"))
+      loadOffres() // Recharger les offres
+    } catch (err: any) {
+      console.error('Erreur création offre:', err)
+      setError(err.response?.data?.message || "Erreur lors de la création de l'offre")
+    }
+  }
+
   return <div className="offers-page">
     <div className="offers-toolbar">
       <div className="offer-search">
@@ -60,11 +167,12 @@ export default function Offers({ profile, onNotice, onNavigate, route = [] }: { 
         {t("Publier une offre", "Post a job")}
       </button>
     </div>
+
     <div
       className="filter-tabs"
       role="group"
       aria-label={t("Filtrer les offres", "Filter jobs")}>
-      {["Tous", "Remote", "Hybride", "Local", "Stage"].map(value => <button
+      {["Tous", "Remote", "Hybride", "Local"].map(value => <button
         className={mode === value ? "active" : ""}
         key={value}
         onClick={() => setMode(value)}
@@ -72,73 +180,71 @@ export default function Offers({ profile, onNotice, onNavigate, route = [] }: { 
         {t(value)}
       </button>)}
     </div>
+
+    {loading && (
+      <div className="text-center py-8">
+        <div className="w-8 h-8 border-2 border-gray-700 border-t-blue-500 rounded-full animate-spin mx-auto" />
+      </div>
+    )}
+
     <div className="opportunity-grid">
-      {visible.map(job => <article
+      {visible.map(offre => <article
         className="panel opportunity-card"
-        key={job.id}>
+        key={offre.id_publication}>
         <button
           className="job-open"
-          onClick={() => setDetail(job)}
-          aria-label={`${t("Voir le détail de l’offre", "View job details")} : ${job.title}`}>
+          onClick={() => setDetail(offre)}
+          aria-label={`${t("Voir le détail de l'offre", "View job details")} : ${offre.nom_poste}`}>
           <span className="job-company-icon">
             <Building2 size={24} />
           </span>
           <span className="job-company-name">
-            {job.company}
+            {offre.localisation}
           </span>
           <h2>
-            {job.title}
+            {offre.nom_poste}
           </h2>
-          <CountryFlag country={job.country} />
+          <CountryFlag country={offre.localisation} />
           <div className="job-tags">
             <span>
-              {t(job.contract)}
+              {t(offre.type_contrat)}
             </span>
             <span>
-              {t(job.mode)}
+              {getTypeTravail(offre.type_travail)}
             </span>
-            {job.moderation === "pending" && <span className="pending-review">
-              {t("En modération", "In review")}
-            </span>}
-            {job.moderation === "rejected" && <span>
-              {t("À revoir", "Needs review")}
-            </span>}
+            {offre.duree && <span>{offre.duree}</span>}
           </div>
           <p>
-            {job.description}
+            {offre.description}
           </p>
           <div className="job-skill-list">
-            {job.skills.split(/[·,]/).filter(Boolean).map(skill => <SkillChip
+            {offre.competence_requise?.split(',').filter(Boolean).map(skill => <SkillChip
               key={skill}
               name={skill.trim()} />)}
           </div>
           <small>
-            <UsersRound size={14} />
-            {count(job)}
-            {" "}
-            {t("candidature(s)", "application(s)")}
+            <CalendarDays size={14} />
+            {formatDate(offre.date_publication)}
             <ArrowRight size={14} />
             {t("Voir les détails", "View details")}
           </small>
         </button>
         <div className="job-card-footer">
-          {job.ownerId === profile.id ? <button
+          {offre.developper_email === profile.email ? <button
             className="btn-outline"
-            onClick={() => onNavigate(`profil/recrutement/${job.id}`)}>
-            <UsersRound size={16} />
-            {t("Gérer les candidatures", "Manage applications")}
+            onClick={() => onNavigate(`profil/recrutement/${offre.id_publication}`)}>
+            {t("Mes candidatures", "My applications")}
           </button> : <button
             className="btn-primary"
-            disabled={applied(job)}
-            onClick={() => startApply(job)}>
-            {applied(job) ? <CheckCircle2 size={16} /> : <Send size={16} />}
-            {" "}
-            {applied(job) ? t("Candidature envoyée", "Application sent") : t("Postuler", "Apply")}
+            onClick={() => startApply(offre)}>
+            <Send size={16} />
+            {t("Postuler", "Apply")}
           </button>}
         </div>
       </article>)}
     </div>
-    {!visible.length && <section className="panel empty-state">
+
+    {!loading && !visible.length && <section className="panel empty-state">
       <BriefcaseBusiness size={30} />
       <h2>
         {t("Aucune offre pour cette recherche", "No jobs match your search")}
@@ -147,37 +253,39 @@ export default function Offers({ profile, onNotice, onNavigate, route = [] }: { 
         {t("Essaie une autre compétence ou un autre filtre.", "Try a different skill or filter.")}
       </p>
     </section>}
+
     {detail && <Modal
-      title={detail.title}
+      title={detail.nom_poste}
       onClose={() => setDetail(null)}>
       <div className="job-details">
         <p className="job-company-name">
           <Building2 size={18} />
-          {detail.company}
+          {detail.localisation}
         </p>
-        <CountryFlag country={detail.country} />
+        <CountryFlag country={detail.localisation} />
         <div className="job-tags">
           <span>
-            {t(detail.contract)}
+            {t(detail.type_contrat)}
           </span>
           <span>
-            {t(detail.mode)}
+            {getTypeTravail(detail.type_travail)}
           </span>
-          {detail.duration ? <span>
-            {detail.duration}{" "}
-            {t(detail.durationUnit === "days" ? "Jours" : detail.durationUnit === "weeks" ? "Semaines" : "Mois")}
-          </span> : ["CDD", "Stage"].includes(detail.contract) ? <span>
-            {t("Durée à préciser", "Duration to be confirmed")}
-          </span> : null}
+          {detail.duree && <span>{detail.duree}</span>}
         </div>
-        {detail.createdAt && <small>
+        <small>
           <CalendarDays size={14} />
           {t("Publié le", "Published")}
           {" "}
-          {new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(detail.createdAt))}
-        </small>}
+          {formatDate(detail.date_publication)}
+        </small>
+        <small>
+          <CalendarDays size={14} />
+          {t("Date limite", "Deadline")}
+          {" "}
+          {formatDate(detail.deadline)}
+        </small>
         <h3>
-          {t("Description de l’offre", "Job description")}
+          {t("Description de l'offre", "Job description")}
         </h3>
         <p className="job-description">
           {detail.description}
@@ -186,87 +294,49 @@ export default function Offers({ profile, onNotice, onNavigate, route = [] }: { 
           {t("Compétences recherchées", "Required skills")}
         </h3>
         <div className="job-skill-list">
-          {detail.skills.split(/[·,]/).filter(Boolean).map(name => <SkillChip
+          {detail.competence_requise?.split(',').filter(Boolean).map(name => <SkillChip
             key={name}
             name={name.trim()} />)}
         </div>
-        {detail.contactEmail && <a
+        {detail.email && <a
           className="job-contact"
-          href={`mailto:${detail.contactEmail}`}>
+          href={`mailto:${detail.email}`}>
           <Mail size={17} />
-          {detail.contactEmail}
+          {detail.email}
           <ExternalLink size={14} />
         </a>}
-        <p>
-          <UsersRound size={16} />
-          {" "}
-          {count(detail)}
-          {" "}
-          {t("candidature(s)", "application(s)")}
-        </p>
-        {detail.ownerId === profile.id ? <button
+        {detail.lien && <a
+          className="job-contact"
+          href={detail.lien}
+          target="_blank"
+          rel="noopener noreferrer">
+          <ExternalLink size={17} />
+          Lien externe
+        </a>}
+        {detail.developper_email === profile.email ? <button
           className="btn-primary"
-          onClick={() => { setDetail(null); onNavigate(`profil/recrutement/${detail.id}`); }}>
+          onClick={() => { setDetail(null); onNavigate(`profil/recrutement/${detail.id_publication}`); }}>
           {t("Voir les candidats", "View applicants")}
         </button> : <button
           className="btn-primary"
-          disabled={applied(detail)}
           onClick={() => startApply(detail)}>
           <Send size={16} />
-          {applied(detail) ? t("Candidature envoyée", "Application sent") : t("Postuler à cette offre", "Apply for this job")}
+          {t("Postuler à cette offre", "Apply for this job")}
         </button>}
       </div>
     </Modal>}
-    {applying && <Modal
-      title={t("Envoyer ma candidature", "Send my application")}
-      onClose={() => setApplying(null)}>
-      <p>{applying.title} · {applying.company}</p>
-      <form
-        className="job-form"
-        onSubmit={apply}>
-        <label>
-          {t("Lien vers ton CV", "Link to your CV")}
-          <input
-            aria-label={t("Lien vers ton CV", "Link to your CV")}
-            name="cvUrl"
-            type="url"
-            maxLength={2000}
-            placeholder="https://…" />
-          <small>
-            {t("Colle un lien ou joins directement ton fichier ci-dessous.", "Paste a link or attach your file below.")}
-          </small>
-        </label>
-        <AttachmentPicker
-          label={t("Joindre mon CV", "Attach my CV")}
-          accept=".pdf,.doc,.docx"
-          onBusy={busy => setUploadCount(n => Math.max(0, n + (busy ? 1 : -1)))}
-          onAdd={files => setCvFile(files[0])} />
-        {cvFile && <AttachmentCard
-          file={cvFile}
-          preview={false}
-          onRemove={() => setCvFile(undefined)} />}
-        <label>
-          {t("Lettre de motivation", "Cover letter")}
-          <textarea
-            name="motivation"
-            required
-            maxLength={10000}
-            rows={8}
-            placeholder={t("Présente ton parcours, tes compétences et ce qui te motive pour cette mission…", "Tell us about your experience, skills and motivation for this role…")} />
-        </label>
-        {error && <p
-          className="form-error"
-          role="alert">
-          {t(error)}
-        </p>}
-        <button
-          className="btn-primary"
-          disabled={uploading}>
-          <Send size={17} />
-          {t("Envoyer ma candidature", "Send my application")}
-        </button>
-      </form>
-    </Modal>}
+
+    {applying && (
+      <ApplicationForm
+        offreId={applying.id_publication}
+        onClose={() => setApplying(null)}
+        onSuccess={() => {
+          setApplying(null)
+          onNotice(t("Candidature envoyée avec succès !", "Application sent successfully!"))
+        }}
+      />
+    )}
+
     {creating && <Modal
       title={t("Publier une offre", "Post a job")}
       onClose={() => setCreating(false)}>
@@ -283,13 +353,6 @@ export default function Offers({ profile, onNotice, onNavigate, route = [] }: { 
               placeholder={t("Développeur frontend…", "Frontend developer…")} />
           </label>
           <label>
-            {t("Organisation", "Company")}
-            <input
-              name="company"
-              required
-              maxLength={100} />
-          </label>
-          <label>
             {t("Pays", "Country")}
             <CountrySelect
               value={country}
@@ -302,47 +365,27 @@ export default function Offers({ profile, onNotice, onNavigate, route = [] }: { 
               name="contract"
               value={contract}
               onChange={e => setContract(e.target.value)}>
-              {["CDI", "CDD", "Freelance", "Stage", "Alternance"].map(c => <option
+              {["CDI", "CDD", "Stage", "Freelance"].map(c => <option
                 key={c}
                 value={c}>
                 {t(c)}
               </option>)}
             </select>
           </label>
-          {needsDuration && <div className="contract-duration">
-            <label>
-              {t("Durée du contrat", "Contract duration")}
-              <input
-                name="duration"
-                type="number"
-                min={1}
-                max={3650}
-                step={1}
-                required
-                placeholder="6" />
-            </label>
-            <label>
-              {t("Unité", "Unit")}
-              <select
-                name="durationUnit"
-                defaultValue="months">
-                <option value="days">
-                  {t("Jours", "Days")}
-                </option>
-                <option value="weeks">
-                  {t("Semaines", "Weeks")}
-                </option>
-                <option value="months">
-                  {t("Mois", "Months")}
-                </option>
-              </select>
-            </label>
-          </div>}
+          {needsDuration && <label>
+            {t("Durée du contrat", "Contract duration")}
+            <input
+              name="duration"
+              type="text"
+              required
+              placeholder="6 mois" />
+          </label>}
           <label>
             {t("Mode de travail", "Work arrangement")}
             <select
               className="rounded-select"
-              name="mode">
+              name="mode"
+              defaultValue="Remote">
               {["Remote", "Hybride", "Local"].map(c => <option
                 key={c}
                 value={c}>
@@ -351,12 +394,27 @@ export default function Offers({ profile, onNotice, onNavigate, route = [] }: { 
             </select>
           </label>
           <label>
+            {t("Date limite", "Deadline")}
+            <input
+              name="deadline"
+              type="date"
+              required />
+          </label>
+          <label>
             {t("E-mail de contact (facultatif)", "Contact email (optional)")}
             <input
               name="contactEmail"
               type="email"
               maxLength={254}
               placeholder="recrutement@exemple.com" />
+          </label>
+          <label>
+            {t("Lien externe (facultatif)", "External link (optional)")}
+            <input
+              name="lien"
+              type="url"
+              maxLength={500}
+              placeholder="https://..." />
           </label>
         </div>
         <div className="job-skills-field">
@@ -379,7 +437,7 @@ export default function Offers({ profile, onNotice, onNavigate, route = [] }: { 
           </div>
         </div>
         <label>
-          {t("Description de l’offre", "Job description")}
+          {t("Description de l'offre", "Job description")}
           <textarea
             name="description"
             required
@@ -394,10 +452,9 @@ export default function Offers({ profile, onNotice, onNavigate, route = [] }: { 
           {t(error)}
         </p>}
         <button
-          className="btn-primary"
-          disabled={uploading}>
+          className="btn-primary">
           <Plus size={17} />
-          {t("Envoyer l’offre à la modération", "Submit job for review")}
+          {t("Publier l'offre", "Post job")}
         </button>
       </form>
     </Modal>}

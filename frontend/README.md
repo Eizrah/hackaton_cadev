@@ -19,6 +19,7 @@ L’accueil garde son dégradé bleu/cyan. L’authentification reprend désorma
 
 ```bash
 npm ci
+npm run compiler:build (demarrage de docker oblige)
 npm run dev
 ```
 

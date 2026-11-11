@@ -1,0 +1,560 @@
+========================================
+  LISTE DES APIs - CADEV BACKEND
+========================================
+
+Base URL : http://localhost:8000
+
+Pour les endpoints qui requièrent une authentification,
+ajouter dans le header de la requête :
+  Authorization: Bearer <access_token>
+
+Les tokens JWT ont une durée de vie de :
+  - Access token  : 30 minutes
+  - Refresh token : 7 jours
+
+========================================
+  AUTHENTIFICATION  (/api/auth/)
+========================================
+
+POST   /api/auth/inscription/
+  → Créer un nouveau compte développeur
+  → Type : Multipart Form (si photo) ou JSON (sans photo)
+  → Body : {
+        "email": "dev@example.com",
+        "nom": "Rakoto",
+        "prenom": "Jean",           (optionnel)
+        "pseudo": "rakoto_dev",
+        "age": 25,
+        "niveau": "D/I/A",
+        "pays": "Madagascar",
+        "sexe": "M/F",
+        "password": "motdepasse123",
+        "password_confirm": "motdepasse123",
+        "photoprofil": [fichier],   (optionnel)
+        "experiences": [            (optionnel)
+            {
+                "nom_poste": "Développeur Frontend",
+                "description": "Développement React",
+                "nbr_annee_exp": 2,
+                "diplome": "Licence Informatique",
+                "certificat": null,
+                "fichier_diplome": [fichier PDF/DOCX/JPEG/PNG],
+                "fichier_certificat": [fichier PDF/DOCX/JPEG/PNG]
+            }
+        ],
+        "competences": [            (optionnel — UUIDs des compétences possédées)
+            "uuid-competence-1"
+        ]
+    }
+  → Rate limit : 5 tentatives/heure par IP
+
+POST   /api/auth/connexion/
+  → Se connecter et récupérer les tokens JWT
+  → Body : { "email": "dev@example.com", "password": "motdepasse123" }
+  → Rate limit : 10 tentatives/heure par IP
+
+POST   /api/auth/deconnexion/
+  → Se déconnecter et invalider le refresh token
+  → Requiert : token JWT
+  → Body : { "refresh": "<refresh_token>" }
+
+GET    /api/auth/profil/
+  → Récupérer les infos du développeur connecté
+  → Requiert : token JWT
+
+PUT    /api/auth/profil/
+  → Modifier les infos du développeur connecté (partiel)
+  → Requiert : token JWT
+  → Type : Multipart Form (si photo) ou JSON
+
+DELETE /api/auth/supprimer-compte/
+  → Supprimer son compte et sa photo de profil
+  → Requiert : token JWT
+  → Body (optionnel) : { "refresh": "<refresh_token>" }
+
+GET    /api/auth/recherche/?q=<mot_cle>
+  → Rechercher un développeur par pseudo, nom ou prénom
+  → Requiert : token JWT
+
+POST   /api/auth/mot-de-passe-oublie/
+  → Envoyer un email de réinitialisation
+  → Body : { "email": "dev@example.com" }
+  → Rate limit : 3 tentatives/heure par IP
+
+POST   /api/auth/reinitialisation-mot-de-passe/<uidb64>/<token>/
+  → Réinitialiser le mot de passe via le lien reçu par email
+  → Body : { "password": "nouveaumotdepasse123" }
+
+----------------------------------------
+  BLOCAGE & SOURDINE
+----------------------------------------
+
+POST   /api/auth/bloquer/<email>/
+  → Bloquer un développeur (ses posts/offres disparaissent)
+  → Requiert : token JWT
+
+DELETE /api/auth/bloquer/<email>/
+  → Débloquer un développeur
+  → Requiert : token JWT
+
+POST   /api/auth/sourdine/
+  → Mettre en sourdine une personne ou un groupe
+  → Requiert : token JWT
+  → Body : { "email": "dev@example.com" }
+     ou  : { "id_group": "<uuid>" }
+
+DELETE /api/auth/sourdine/
+  → Retirer la sourdine
+  → Requiert : token JWT
+  → Body : { "email": "dev@example.com" }
+     ou  : { "id_group": "<uuid>" }
+
+----------------------------------------
+  NOTIFICATIONS
+----------------------------------------
+
+GET    /api/auth/notifications/
+  → Liste toutes ses notifications
+  → Requiert : token JWT
+
+PUT    /api/auth/notifications/lire-tout/
+  → Marquer toutes les notifications comme lues
+  → Requiert : token JWT
+
+PUT    /api/auth/notifications/<id>/
+  → Marquer une notification comme lue
+  → Requiert : token JWT
+
+DELETE /api/auth/notifications/<id>/supprimer/
+  → Supprimer une notification
+  → Requiert : token JWT
+
+----------------------------------------
+  OAUTH (connexion sociale)
+----------------------------------------
+
+GET    /social-auth/login/google-oauth2/
+  → Rediriger vers Google pour connexion OAuth
+
+GET    /social-auth/login/github/
+  → Rediriger vers GitHub pour connexion OAuth
+
+========================================
+  FORUM  (/api/forum/)
+========================================
+
+GET    /api/forum/posts/
+  → Liste des posts validés (feu_vert=True), du plus récent au plus ancien
+  → Requiert : token JWT (exclut les posts des devs bloqués)
+
+POST   /api/forum/posts/creer/
+  → Créer un post — l'IA valide automatiquement le contenu
+  → Requiert : token JWT
+  → Type : Multipart Form (si fichier) ou JSON
+  → Body : {
+        "description": "Contenu du post...",
+        "fichier": [fichier max 20Mo],  (optionnel)
+        "lien": "https://..."           (optionnel)
+    }
+  → Réponse si approuvé  : HTTP 201 + { "message": "Post créé et validé.", "post": {...} }
+  → Réponse si refusé    : HTTP 400 + { "message": "...", "raison": "...", "feu_vert": false, "post": {...} }
+  → Réponse si IA indispo : HTTP 201 + { "message": "En attente de validation.", "post": {...} }
+
+GET    /api/forum/posts/recherche/?q=<mot_cle>
+  → Rechercher un post par mots clés
+  → Requiert : token JWT
+
+GET    /api/forum/posts/<id>/
+  → Détail d'un post validé
+  → Requiert : token JWT
+
+PUT    /api/forum/posts/<id>/
+  → Modifier son post (repassera en validation IA)
+  → Requiert : token JWT + être le créateur
+
+DELETE /api/forum/posts/<id>/supprimer/
+  → Supprimer son post
+  → Requiert : token JWT + être le créateur
+
+GET    /api/forum/posts/<id>/commentaires/
+  → Liste des commentaires d'un post
+  → Requiert : token JWT
+
+POST   /api/forum/posts/<id>/commentaires/
+  → Ajouter un commentaire (ou répondre à un commentaire)
+  → Requiert : token JWT
+  → Body : {
+        "commentaire": "Super post !",
+        "commentaire_parent": "<uuid>"  (optionnel — pour répondre)
+    }
+
+PUT    /api/forum/posts/<id>/commentaires/<id_commentaire>/
+  → Modifier son commentaire
+  → Requiert : token JWT + être le créateur
+
+DELETE /api/forum/posts/<id>/commentaires/<id_commentaire>/
+  → Supprimer son commentaire
+  → Requiert : token JWT + être le créateur
+
+POST   /api/forum/posts/<id>/noter/
+  → Liker ou unliker un post (toggle automatique)
+  → Requiert : token JWT
+  → Pas de body nécessaire
+
+GET    /api/forum/enregistrements/
+  → Voir ses publications enregistrées (posts + offres)
+  → Requiert : token JWT
+
+POST   /api/forum/enregistrements/
+  → Enregistrer un post ou une offre
+  → Requiert : token JWT
+  → Body : {
+        "type_publication": "forum_post" ou "offre_emploi",
+        "id_publication": "<uuid>"
+    }
+
+DELETE /api/forum/enregistrements/<id>/supprimer/
+  → Retirer un enregistrement
+  → Requiert : token JWT
+
+========================================
+  JOBS  (/api/jobs/)
+========================================
+
+GET    /api/jobs/offres/
+  → Liste des offres validées, triées par deadline
+  → Requiert : token JWT (exclut les offres des devs bloqués)
+
+POST   /api/jobs/offres/creer/
+  → Créer une offre — l'IA valide automatiquement le contenu
+  → Requiert : token JWT
+  → Body : {
+        "description": "Description du poste...",
+        "nom_poste": "Développeur React Junior",
+        "localisation": "Antananarivo",
+        "type_contrat": "CDI" ou "CDD",
+        "duree": "180 00:00:00",    (obligatoire si CDD — format "jours HH:MM:SS")
+        "competence_requise": "React, TypeScript",
+        "type_travail": "R/S/H",   (Remote/Sur site/Hybride)
+        "deadline": "2027-06-30",
+        "fichier": [fichier],       (optionnel)
+        "lien": "https://..."       (optionnel)
+    }
+  → Réponse si approuvé  : HTTP 201
+  → Réponse si refusé    : HTTP 400 + { "raison": "...", "feu_vert": false, "offre": {...} }
+
+GET    /api/jobs/offres/recherche/?q=<mot_cle>
+  → Rechercher une offre par nom_poste, localisation ou compétence
+  → Requiert : token JWT
+
+GET    /api/jobs/offres/<id>/
+  → Détail d'une offre validée
+  → Requiert : token JWT
+
+PUT    /api/jobs/offres/<id>/
+  → Modifier son offre (repassera en validation IA)
+  → Requiert : token JWT + être le créateur
+
+DELETE /api/jobs/offres/<id>/supprimer/
+  → Supprimer son offre
+  → Requiert : token JWT + être le créateur
+
+POST   /api/jobs/offres/<id>/postuler/
+  → Postuler à une offre
+  → Requiert : token JWT
+  → Type : Multipart Form (si CV) ou JSON
+  → Body : {
+        "lettre_motivation": "...",  (optionnel)
+        "pj": [fichier CV]           (optionnel)
+    }
+
+GET    /api/jobs/offres/<id>/candidatures/
+  → Voir les candidatures reçues pour son offre (recruteur)
+  → Requiert : token JWT + être le créateur
+  → Filtre : ?etat=accepte / ?etat=refuse / ?etat=en_attente
+
+PUT    /api/jobs/offres/<id>/candidatures/<id_candidature>/
+  → Accepter ou refuser une candidature (envoie email + notif au candidat)
+  → Requiert : token JWT + être le créateur
+  → Body : { "etat": "accepte" ou "refuse" }
+
+GET    /api/jobs/mes-candidatures/
+  → Voir toutes ses candidatures envoyées
+  → Requiert : token JWT
+  → Filtre : ?etat=accepte / ?etat=refuse / ?etat=en_attente
+
+========================================
+  MESSAGING  (/api/messaging/)
+========================================
+
+GET    /api/messaging/conversations/
+  → Liste de toutes ses conversations avec dernier message et non lus
+  → Requiert : token JWT
+
+GET    /api/messaging/conversation/<email>/
+  → Voir la conversation avec un dev (marque les messages comme lus)
+  → Requiert : token JWT
+
+POST   /api/messaging/envoyer/
+  → Envoyer un message texte privé
+  → Requiert : token JWT
+  → Body : {
+        "destinataire": "dev@example.com",
+        "contenu": "Bonjour !",
+        "message_parent": "<uuid>"   (optionnel — pour répondre)
+    }
+
+POST   /api/messaging/envoyer-audio/
+  → Envoyer un message audio (max 2min30)
+  → Requiert : token JWT
+  → Type : Multipart Form
+  → Body : {
+        "destinataire": "dev@example.com",
+        "fichier_audio": [fichier audio]
+    }
+
+POST   /api/messaging/envoyer-fichier/
+  → Envoyer un fichier (image, vidéo, PDF, ZIP... max 20Mo, pas d'exécutables)
+  → Requiert : token JWT
+  → Type : Multipart Form
+  → Body : {
+        "destinataire": "dev@example.com",
+        "fichier": [fichier]
+    }
+
+DELETE /api/messaging/<id>/supprimer/
+  → Supprimer son message (affiche "Message supprimé" côté front)
+  → Requiert : token JWT + être l'envoyeur
+
+----------------------------------------
+  SESSIONS AGENT IA
+----------------------------------------
+
+GET    /api/messaging/sessions/
+  → Liste toutes ses sessions (épinglées en premier)
+  → Requiert : token JWT
+
+POST   /api/messaging/sessions/
+  → Créer une nouvelle session de discussion avec l'agent IA
+  → Requiert : token JWT
+  → Body : { "titre": "Ma session React" }   (optionnel)
+
+GET    /api/messaging/sessions/<id>/
+  → Voir une session et tous ses messages
+  → Requiert : token JWT
+
+PUT    /api/messaging/sessions/<id>/
+  → Modifier le titre ou épingler/désépingler une session
+  → Requiert : token JWT
+  → Body : { "titre": "Nouveau titre" }        (optionnel)
+      ou : { "epingle": true ou false }         (optionnel)
+
+DELETE /api/messaging/sessions/<id>/
+  → Supprimer une session et tous ses messages
+  → Requiert : token JWT
+
+POST   /api/messaging/sessions/<id>/discuter/
+  → Envoyer un message à l'agent IA dans une session
+  → L'agent analyse le profil du dev et garde l'historique de la conversation
+  → L'agent répond uniquement aux sujets informatiques
+  → Requiert : token JWT
+  → Body : { "message": "Explique-moi les hooks React" }
+
+========================================
+  GROUPS  (/api/groups/)
+========================================
+
+GET    /api/groups/
+  → Liste ses groupes actifs
+  → Requiert : token JWT
+
+POST   /api/groups/creer/
+  → Créer un groupe (devient automatiquement Admin)
+  → Requiert : token JWT
+  → Type : Multipart Form (si photo) ou JSON
+  → Body : {
+        "nom": "Groupe Django",
+        "motif_creation": "Pour discuter de Django",
+        "photo": [fichier]   (optionnel)
+    }
+
+GET    /api/groups/<id>/
+  → Détail du groupe
+  → Requiert : token JWT + être membre
+
+PUT    /api/groups/<id>/
+  → Modifier nom et photo (Admin ou Modérateur)
+  → Requiert : token JWT
+
+DELETE /api/groups/<id>/
+  → Désactiver le groupe (Admin uniquement)
+  → Requiert : token JWT
+  → Body : { "motif_suppression": "..." }   (optionnel)
+
+DELETE /api/groups/<id>/quitter/
+  → Quitter le groupe (Admin doit transférer son rôle avant)
+  → Requiert : token JWT + être membre
+
+GET    /api/groups/<id>/membres/
+  → Liste des membres du groupe
+  → Requiert : token JWT + être membre
+
+POST   /api/groups/<id>/membres/
+  → Ajouter un membre (Admin ou Modérateur)
+  → Requiert : token JWT
+  → Body : { "email": "dev@example.com" }
+
+DELETE /api/groups/<id>/membres/<email>/
+  → Retirer un membre (Admin ou Modérateur)
+  → Requiert : token JWT
+
+PUT    /api/groups/<id>/membres/<email>/
+  → Changer le rôle d'un membre (Admin uniquement)
+  → Requiert : token JWT
+  → Body : { "type": "M" (Modérateur) ou "MB" (Membre) }
+
+GET    /api/groups/<id>/messages/
+  → Voir les messages du groupe
+  → Requiert : token JWT + être membre
+
+POST   /api/groups/<id>/messages/
+  → Envoyer un message texte dans le groupe
+  → Requiert : token JWT + être membre
+  → Body : {
+        "contenu": "Bonjour à tous !",
+        "message_parent": "<uuid>"   (optionnel)
+    }
+
+POST   /api/groups/<id>/messages/audio/
+  → Envoyer un audio dans le groupe (max 2min30)
+  → Requiert : token JWT + être membre
+  → Type : Multipart Form
+
+POST   /api/groups/<id>/messages/fichier/
+  → Envoyer un fichier dans le groupe
+  → Requiert : token JWT + être membre
+  → Type : Multipart Form
+
+========================================
+  LEARNING  (/api/learning/)
+========================================
+
+GET    /api/learning/competences/
+  → Liste toutes les compétences disponibles
+  → Requiert : token JWT
+  → Filtre : ?domaine=frontend
+
+GET    /api/learning/competences/<id>/
+  → Détail d'une compétence
+  → Requiert : token JWT
+
+GET    /api/learning/apprentissages/
+  → Voir ses apprentissages en cours
+  → Requiert : token JWT
+  → Filtre : ?avancement=en_cours / ?avancement=termine
+
+POST   /api/learning/apprentissages/
+  → Commencer un apprentissage
+  → Requiert : token JWT
+  → Body : { "id_competence": "<uuid>" }
+
+PUT    /api/learning/apprentissages/<id>/
+  → Mettre à jour l'avancement d'un apprentissage
+  → Requiert : token JWT
+  → Body : { "avancement": "en_cours" ou "termine", "date_fin": "2027-06-30" }
+
+DELETE /api/learning/apprentissages/<id>/
+  → Abandonner un apprentissage
+  → Requiert : token JWT
+
+----------------------------------------
+  AGENT ASSISTANT PÉDAGOGIQUE
+----------------------------------------
+
+POST   /api/learning/assistant/question/
+  → Poser une question technique à l'agent IA
+  → Requiert : token JWT
+  → Body : {
+        "question": "Comment fonctionne useEffect ?",
+        "technologie": "react"   (react/vue/angular/django/python/typescript/javascript/nodejs)
+    }
+
+POST   /api/learning/assistant/exercice/
+  → Demander un exercice pratique à l'agent
+  → Requiert : token JWT
+  → Body : {
+        "technologie": "react",
+        "sujet": "hooks useState et useEffect"
+    }
+
+POST   /api/learning/assistant/corriger/
+  → Soumettre son code pour correction pédagogique
+  → Requiert : token JWT
+  → Body : {
+        "code": "function App() { ... }",
+        "enonce": "Crée un compteur avec useState",
+        "technologie": "react"
+    }
+
+POST   /api/learning/assistant/recommander/
+  → Demander des recommandations de compétences à acquérir
+  → Requiert : token JWT
+  → Body : { "domaine": "frontend" }   (optionnel)
+
+========================================
+  MODÉRATION  (/api/moderation/)
+========================================
+
+POST   /api/moderation/signaler/dev/<email>/
+  → Signaler un développeur
+  → Requiert : token JWT
+  → Body : { "motif": "Harcèlement ou intimidation" }
+
+POST   /api/moderation/signaler/post/<id>/
+  → Signaler un post du forum
+  → Requiert : token JWT
+  → Body : { "motif": "Contenu inapproprié" }
+
+POST   /api/moderation/signaler/offre/<id>/
+  → Signaler une offre d'emploi
+  → Requiert : token JWT
+  → Body : { "motif": "Spam ou publicité" }
+
+POST   /api/moderation/signaler/groupe/<id>/
+  → Signaler un groupe
+  → Requiert : token JWT
+  → Body : { "motif": "Discours haineux" }
+
+  Motifs disponibles :
+    - Contenu inapproprié
+    - Spam ou publicité
+    - Harcèlement ou intimidation
+    - Discours haineux
+    - Informations fausses ou trompeuses
+    - Violation de droits d'auteur
+    - Contenu dangereux
+    - Autre (précisez)
+
+  Seuils de pénalité :
+    - Dev    : banni à 10 points
+    - Post   : supprimé (feu_vert=False) à 7 points
+    - Offre  : supprimée (feu_vert=False) à 7 points
+    - Groupe : désactivé à 7 points
+
+========================================
+  AGENTS IA — RÉSUMÉ
+========================================
+
+  Deux agents sont intégrés :
+
+  1. Agent Vérification (automatique)
+     - Vérifie les posts, offres et commentaires avant publication
+     - Utilise Groq (llm : openai/gpt-oss-20b) avec fallback OpenRouter
+     - Résultat : feu_vert=True (approuvé) ou False (refusé + notif)
+
+  2. Agent Assistant pédagogique
+     - Répond aux questions techniques informatiques uniquement
+     - Utilise le RAG (doc officielle via ChromaDB + HuggingFace embeddings)
+     - Garde l'historique dans les sessions (/api/messaging/sessions/)
+     - Adapte ses réponses au niveau du dev (D/I/A)
+

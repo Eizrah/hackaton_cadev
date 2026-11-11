@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+
+from datetime import timedelta
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv()
@@ -28,6 +30,14 @@ DEBUG = os.environ.get('DEBUG','True') == 'True'
 
 ALLOWED_HOSTS = []
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Limites de taille
+MAX_UPLOAD_SIZE_IMAGE = 10 * 1024 * 1024      # 10 Mo
+MAX_UPLOAD_SIZE_FICHIER = 20 * 1024 * 1024    # 20 Mo
+MAX_AUDIO_DURATION = 150                       # 2min30 en secondes
+
 
 # Application definition
 
@@ -38,9 +48,39 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'Accounts',
+    'Forum',
+    'Jobs',
+    'Groups',
+    'Learning',
+    'Moderation',
+    'Messaging',
+
+    'rest_framework',
+    'social_django',
+
+    'rest_framework_simplejwt.token_blacklist',
+
+    'corsheaders',
+
+    
 ]
+AUTH_USER_MODEL = 'Accounts.Developper'
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+}
+
+
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -133,8 +173,83 @@ STATIC_URL = 'static/'
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
+# MAILERS = {
+#     'default': {
+#         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+#     },
+# }
+
 MAILERS = {
     'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
+        'BACKEND': 'django.core.mail.backends.smtp.EmailBackend',
+        'OPTIONS': {
+            'host': os.environ.get('EMAIL_HOST', 'smtp.gmail.com'),
+            'port': int(os.environ.get('EMAIL_PORT', 587)),
+            'username': os.environ.get('EMAIL_HOST_USER', ''),
+            'password': os.environ.get('EMAIL_HOST_PASSWORD', ''),
+            'use_tls': os.environ.get('EMAIL_USE_TLS', 'True') == 'True',
+        }
+    }
 }
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@cadev.com')
+
+
+AUTHENTICATION_BACKENDS = [
+    'social_core.backends.google.GoogleOAuth2',
+    'social_core.backends.github.GithubOAuth2',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.environ.get('GOOGLE_CLIENT_ID')
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
+SOCIAL_AUTH_GITHUB_KEY = os.environ.get('GITHUB_CLIENT_ID')
+SOCIAL_AUTH_GITHUB_SECRET = os.environ.get('GITHUB_CLIENT_SECRET')
+# demande l'accès à l'email même s'il est privé sur GitHub
+SOCIAL_AUTH_GITHUB_SCOPE = ['user:email']
+
+
+SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/api/auth/oauth/token/'
+SOCIAL_AUTH_NEW_USER_REDIRECT_URL = '/api/auth/oauth/token/'
+
+
+SOCIAL_AUTH_USER_MODEL = 'Accounts.Developper'
+
+SOCIAL_AUTH_PIPELINE = (
+    'social_core.pipeline.social_auth.social_details',
+    'social_core.pipeline.social_auth.social_uid',
+    'social_core.pipeline.social_auth.auth_allowed',
+    'social_core.pipeline.social_auth.social_user',
+    'Accounts.pipeline.get_or_create_user',
+    'social_core.pipeline.social_auth.associate_user',
+    'social_core.pipeline.social_auth.load_extra_data',
+)
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'USER_ID_FIELD': 'email',
+    'USER_ID_CLAIM': 'email',
+}
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",   # Vite dev server
+    "http://localhost:3000",   # au cas où
+]
+CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:5173',
+    'http://localhost:8000',
+]
+
+SOCIAL_AUTH_REDIRECT_IS_HTTPS = False
+SOCIAL_AUTH_SANITIZE_REDIRECTS = False
+SOCIAL_AUTH_ALLOW_LOGIN_WITH_GET = True
+# Force social_django à accepter les requêtes GET pour les URLs de login
+SOCIAL_AUTH_GITHUB_AUTH_EXTRA_ARGUMENTS = {}
