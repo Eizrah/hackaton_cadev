@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { publicationApi } from '../../api/publication'
 import { MapPin, Briefcase, Calendar, ExternalLink, Mail, Trash2, Edit3, Users } from 'lucide-react'
+import OfferCandidates from './OfferCandidates'
 
 interface Offre {
   id_publication: string
@@ -29,6 +30,7 @@ export default function MyOffers({ onNavigate }: MyOffersProps) {
   const [offres, setOffres] = useState<Offre[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedOffre, setSelectedOffre] = useState<Offre | null>(null)
 
   useEffect(() => {
     loadOffres()
@@ -61,10 +63,8 @@ export default function MyOffers({ onNavigate }: MyOffersProps) {
     }
   }
 
-  const handleViewCandidates = (id: string) => {
-    if (onNavigate) {
-      onNavigate(`profil/recrutement/${id}`)
-    }
+  const handleViewCandidates = (offre: Offre) => {
+    setSelectedOffre(offre)
   }
 
   const getTypeTravail = (type: string) => {
@@ -135,7 +135,7 @@ export default function MyOffers({ onNavigate }: MyOffersProps) {
                 </span>
               )}
               <button
-                onClick={() => handleViewCandidates(offre.id_publication)}
+                onClick={() => handleViewCandidates(offre)}
                 className="p-2 hover:bg-gray-800 rounded-lg transition"
                 title="Voir les candidatures"
               >
@@ -215,6 +215,20 @@ export default function MyOffers({ onNavigate }: MyOffersProps) {
           </div>
         </div>
       ))}
+
+      {/* Modal de gestion des candidatures */}
+      {selectedOffre && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1a1a2e] rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <OfferCandidates
+              offreId={selectedOffre.id_publication}
+              offreTitre={selectedOffre.nom_poste}
+              onClose={() => setSelectedOffre(null)}
+              onNavigate={onNavigate}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

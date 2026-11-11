@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { publicationApi } from '../../api/publication'
-import { User, Calendar, FileText, Mail, Check, X, Clock } from 'lucide-react'
+import { User, Calendar, FileText, Mail, Check, X, Clock, ExternalLink } from 'lucide-react'
 
 interface Candidature {
   id: number
@@ -17,11 +17,12 @@ interface OfferCandidatesProps {
   offreId: string
   offreTitre: string
   onClose?: () => void
+  onNavigate?: (path: string) => void
 }
 
 type FilterState = 'tous' | 'en_attente' | 'accepte' | 'refuse'
 
-export default function OfferCandidates({ offreId, offreTitre, onClose }: OfferCandidatesProps) {
+export default function OfferCandidates({ offreId, offreTitre, onClose, onNavigate }: OfferCandidatesProps) {
   const [candidatures, setCandidatures] = useState<Candidature[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -206,14 +207,26 @@ export default function OfferCandidates({ offreId, offreTitre, onClose }: OfferC
             >
               {/* Header */}
               <div className="flex items-start justify-between mb-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 rounded-full bg-blue-600/20 flex items-center justify-center">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className="w-12 h-12 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0">
                     <User className="w-6 h-6 text-blue-400" />
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-white">
-                      {candidature.candidat_nom}
-                    </h3>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold text-white">
+                        {candidature.candidat_nom}
+                      </h3>
+                      {candidature.candidat_pseudo && onNavigate && (
+                        <button
+                          onClick={() => onNavigate(`profil/${candidature.candidat_pseudo}`)}
+                          className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600/20 text-blue-400 rounded hover:bg-blue-600/30 transition"
+                          title="Voir le profil"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          Voir profil
+                        </button>
+                      )}
+                    </div>
                     {candidature.candidat_pseudo && (
                       <p className="text-sm text-gray-400">@{candidature.candidat_pseudo}</p>
                     )}
@@ -232,7 +245,9 @@ export default function OfferCandidates({ offreId, offreTitre, onClose }: OfferC
                     </div>
                   </div>
                 </div>
-                {getEtatBadge(candidature.etat)}
+                <div className="flex-shrink-0">
+                  {getEtatBadge(candidature.etat)}
+                </div>
               </div>
 
               {/* Lettre de motivation */}
