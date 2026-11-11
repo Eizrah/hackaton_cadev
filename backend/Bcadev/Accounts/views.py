@@ -14,6 +14,17 @@ from Groups.models import Group
 from .models import Developper,Blocage, Sourdine,Notif
 import os
 from django.db.models import Q
+from django.views import View
+from django.shortcuts import redirect as django_redirect
+from django.middleware.csrf import get_token
+from django.http import JsonResponse
+
+
+class CsrfView(View):
+    def get(self, request):
+        # génère et envoie le cookie CSRF
+        get_token(request)
+        return JsonResponse({'detail': 'CSRF cookie set'})
 
 class InscriptionView(APIView):
     permission_classes = [AllowAny]
@@ -103,7 +114,8 @@ class MotDePasseOublieView(APIView):
             token = default_token_generator.make_token(dev)
             uid = urlsafe_base64_encode(force_bytes(dev.pk))
             frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
-            reset_link = f"{frontend_url}/reset-password/{uid}/{token}/"
+            reset_link = f"{frontend_url}/#reset?uid={uid}&token={token}"
+
 
             # lien que le frontend utilisera pour réinitialiser le mot de passe
             #reset_link = f"http://localhost:3000/reset-password/{uid}/{token}/"
@@ -334,3 +346,168 @@ class SupprimerNotifView(APIView):
 
         notif.delete()
         return Response({'message': 'Notification supprimée.'}, status=status.HTTP_200_OK)
+
+
+
+class OAuthTokenView(View):
+    """
+    Vue appelée après le succès OAuth par social_django.
+    Génère les tokens JWT et redirige vers le frontend.
+    Cette vue accepte GET et POST car social_django peut utiliser les deux.
+    """
+    def get(self, request):
+        return self._handle(request)
+
+    def post(self, request):
+        return self._handle(request)
+
+    def _handle(self, request):
+        if not request.user.is_authenticated:
+            frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+            return django_redirect(f"{frontend_url}/#login?error=auth_failed")
+
+        refresh = RefreshToken.for_user(request.user)
+        frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+        redirect_url = (
+            f"{frontend_url}/#oauth-callback"
+            f"?access={str(refresh.access_token)}"
+            f"&refresh={str(refresh)}"
+            f"&email={request.user.email}"
+        )
+        return django_redirect(redirect_url)
+
+class ModifierInfosView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        # modifier nom, prénom, age, photo — sans mot de passe
+        serializer = DevelopperSerializer(
+            request.user,
+            data=request.data,
+            partial=True
+        )
+        if serializer.is_valid():
+            # empêche la modification d'email et pseudo via cet endpoint
+            for champ_sensible in ['email', 'pseudo']:
+                serializer.validated_data.pop(champ_sensible, None)
+            serializer.save()
+            return Response({
+                'message': 'Profil mis à jour.',
+                'profil': serializer.data
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ModifierEmailPseudoView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        # modifier email ou pseudo — mot de passe requis
+        mot_de_passe = request.data.get('mot_de_passe')
+        if not mot_de_passe:
+            return Response(
+                {'erreur': 'Le mot de passe est requis pour modifier l\'email ou le pseudo.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # vérifie le mot de passe
+        if not request.user.check_password(mot_de_passe):
+            return Response(
+                {'erreur': 'Mot de passe incorrect.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        nouvel_email = request.data.get('email')
+        nouveau_pseudo = request.data.get('pseudo')
+
+        if nouvel_email:
+            # vérifie que le nouvel email n'est pas déjà utilisé
+            if Developper.objects.filter(email=nouvel_email).exclude(
+                email=request.user.email
+            ).exists():
+                return Response(
+                    {'erreur': 'Cet email est déjà utilisé.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            request.user.email = nouvel_email
+
+        if nouveau_pseudo:
+            # vérifie que le pseudo n'est pas déjà pris
+            if Developper.objects.filter(pseudo=nouveau_pseudo).exclude(
+                email=request.user.email
+            ).exists():
+                return Response(
+                    {'erreur': 'Ce pseudo est déjà pris.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            request.user.pseudo = nouveau_pseudo
+
+        request.user.save()
+        return Response({
+            'message': 'Email/pseudo mis à jour.',
+            'email': request.user.email,
+            'pseudo': request.user.pseudo,
+        }, status=status.HTTP_200_OK)
+
+class ChangerMotDePasseView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        # changer le mot de passe — ancien mot de passe requis
+        ancien_mdp = request.data.get('ancien_mot_de_passe')
+        nouveau_mdp = request.data.get('nouveau_mot_de_passe')
+        confirmation = request.data.get('confirmation')
+
+        if not ancien_mdp or not nouveau_mdp or not confirmation:
+            return Response(
+                {'erreur': 'Tous les champs sont obligatoires.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # vérifie l'ancien mot de passe
+        if not request.user.check_password(ancien_mdp):
+            return Response(
+                {'erreur': 'Ancien mot de passe incorrect.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if nouveau_mdp != confirmation:
+            return Response(
+                {'erreur': 'Les nouveaux mots de passe ne correspondent pas.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if len(nouveau_mdp) < 8:
+            return Response(
+                {'erreur': 'Le mot de passe doit contenir au moins 8 caractères.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        request.user.set_password(nouveau_mdp)
+        request.user.save()
+
+        # invalide les tokens existants pour forcer la reconnexion
+        # le frontend devra se reconnecter avec le nouveau mot de passe
+        return Response({
+            'message': 'Mot de passe modifié. Veuillez vous reconnecter.'
+        }, status=status.HTTP_200_OK)
+
+
+class RechercherDevsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = request.query_params.get('q', '').strip()
+        
+        if not query:
+            return Response(
+                {'erreur': 'Paramètre "q" requis.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Recherche par pseudo (insensible à la casse, contient le terme)
+        devs = Developper.objects.filter(
+            pseudo__icontains=query,
+            banne=False  # Exclure les devs bannis
+        ).values('pseudo', 'email')[:10]  # Limiter à 10 résultats
+        
+        return Response(list(devs), status=status.HTTP_200_OK)

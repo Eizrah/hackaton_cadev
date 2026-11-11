@@ -348,10 +348,28 @@ export default function Workspace({
               <ProfileEditor
                 key={route}
                 profile={profile}
-                onSave={(next) => {
-                  setProfile(next);
-                  setNotice(t("Profil mis à jour.", "Profile updated."));
-                  navigate("profil");
+                onSave={async (next) => {
+                  // sauvegarde locale immédiate pour l'UX
+                  setProfile(next)
+                  // envoi au backend
+                  try {
+                    const { authApi } = await import('../api/auth')
+                    const payload: Record<string, unknown> = {
+                      nom: next.lastName,
+                      prenom: next.firstName,
+                      age: Number(next.age) || 0,
+                      niveau: next.level === 'Débutant' ? 'D' : next.level === 'Intermédiaire' ? 'I' : 'A',
+                      pays: next.country,
+                      sexe: 'M',
+                      presentation: next.bio || '',
+                      lien_portfolio: next.portfolio || '',
+                    }
+                    await authApi.updateProfil(payload)
+                    setNotice(t("Profil mis à jour.", "Profile updated."))
+                  } catch {
+                    setNotice(t("Profil enregistré localement. Vérifiez votre connexion.", "Profile saved locally."))
+                  }
+                  navigate("profil")
                 }}
                 onCancel={() => navigate("profil")}
                 onNotice={setNotice}

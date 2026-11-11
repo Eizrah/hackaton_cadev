@@ -26,6 +26,7 @@ class Developper(AbstractUser):
     photoprofil=models.ImageField(upload_to=getProfilDev,blank=True,null=True)
     lien_portfolio=models.URLField(blank=True,null=True)
     lien_github=models.URLField(blank=True,null=True)
+    presentation=models.TextField(blank=True,null=True)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['pseudo', 'nom']
     username=None

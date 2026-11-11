@@ -13,5 +13,6 @@ urlpatterns = [
     path('api/moderation/', include('Moderation.urls')),
     path('api/learning/', include('Learning.urls')),
 
+    #path('social-auth/', include('social_django.urls', namespace='social')),
     path('social-auth/', include('social_django.urls', namespace='social')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

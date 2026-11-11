@@ -102,7 +102,28 @@ function SocialOptions() {
       <div className="register-social-buttons">
         <button
           type="button"
-          disabled
+           onClick={async () => {
+  await fetch('http://localhost:8000/api/auth/csrf/', { credentials: 'include' })
+  const csrfToken = document.cookie
+    .split('; ')
+    .find(c => c.startsWith('csrftoken='))
+    ?.split('=')[1] ?? ''
+
+  const form = document.createElement('form')
+  form.method = 'POST'
+  form.action = 'http://localhost:8000/social-auth/login/google-oauth2/'
+
+  const input = document.createElement('input')
+  input.type = 'hidden'
+  input.name = 'csrfmiddlewaretoken'
+  input.value = csrfToken
+
+  form.appendChild(input)
+  document.body.appendChild(form)
+  form.submit()
+  document.body.removeChild(form)
+}}
+
           aria-label={t(
             "Google, connexion à configurer",
             "Google, sign-in not configured",
@@ -116,7 +137,29 @@ function SocialOptions() {
         </button>
         <button
           type="button"
-          disabled
+      onClick={async () => {
+  // récupère d'abord le cookie CSRF depuis Django
+  await fetch('http://localhost:8000/api/auth/csrf/', { credentials: 'include' })
+  const csrfToken = document.cookie
+    .split('; ')
+    .find(c => c.startsWith('csrftoken='))
+    ?.split('=')[1] ?? ''
+
+  const form = document.createElement('form')
+  form.method = 'POST'
+  form.action = 'http://localhost:8000/social-auth/login/github/'
+
+  const input = document.createElement('input')
+  input.type = 'hidden'
+  input.name = 'csrfmiddlewaretoken'
+  input.value = csrfToken
+
+  form.appendChild(input)
+  document.body.appendChild(form)
+  form.submit()
+  document.body.removeChild(form)
+}}
+
           aria-label={t(
             "GitHub, connexion à configurer",
             "GitHub, sign-in not configured",
@@ -298,25 +341,83 @@ export default function Authentication({
       );
       return;
     }
-    setProfile(
-      completeProfile(
-        personal,
-        experiences.map((e) => ({
-          ...e,
-          position: e.position.trim(),
-          description: e.description.trim(),
-          diploma: e.diploma.trim(),
-          certificate: e.certificate.trim(),
-        })),
-        skills.map((s) => ({ ...s, name: s.name.trim() })),
-        email,
-        documents,
-      ),
-    );
-    setPassword("");
-    setConfirmation("");
-    setDone(true);
-    notify(t("Profil enregistré. Bienvenue dans la communauté DevAfrica !", "Profile saved. Welcome to the DevAfrica community!"));
+const payload = {
+  email: email.trim(),
+  nom: personal.lastName.trim(),
+  prenom: personal.firstName.trim(),
+  pseudo: personal.pseudo.trim(),
+  age: Number(personal.age),
+  niveau: personal.level === "Débutant" ? "D" : personal.level === "Intermédiaire" ? "I" : "A",
+  pays: personal.country,
+  sexe: "M",  // à adapter si tu as un champ sexe dans le formulaire
+  password,
+  password_confirm: confirmation,
+}
+
+if (import.meta.env.VITE_AUTH_MODE === "api") {
+  try {
+    const { authApi } = await import('../api/auth')
+    const response = await authApi.inscription(payload)
+    // stocke les tokens JWT
+    localStorage.setItem('access_token', response.data.tokens.access)
+    localStorage.setItem('refresh_token', response.data.tokens.refresh)
+} catch (err: any) {
+  // récupère les erreurs détaillées du backend
+  const data = err?.response?.data
+
+  if (data) {
+    // extrait le premier message d'erreur trouvé
+    const messages: string[] = []
+
+    if (data.email) messages.push(...data.email)
+    if (data.pseudo) messages.push(...data.pseudo)
+    if (data.nom) messages.push(...data.nom)
+    if (data.password) messages.push(...data.password)
+    if (data.non_field_errors) messages.push(...data.non_field_errors)
+    if (data.detail) messages.push(data.detail)
+
+    if (messages.length > 0) {
+      // traduit les messages backend en messages lisibles
+      const message = messages[0]
+      if (/email.*existe|compte.*existe/i.test(message)) {
+        setError(t("Cette adresse email est déjà utilisée.", "This email address is already in use."))
+      } else if (/pseudo.*unique|pseudo.*pris/i.test(message)) {
+        setError(t("Ce pseudo est déjà pris.", "This username is already taken."))
+      } else if (/mot de passe.*correspondent/i.test(message)) {
+        setError(t("Les mots de passe ne correspondent pas.", "Passwords do not match."))
+      } else {
+        setError(message)
+      }
+      return
+    }
+  }
+
+  setError(t("L'inscription a échoué. Vérifie tes informations et réessaie.", "Registration failed. Check your information and try again."))
+  return
+}
+
+}
+
+setProfile(
+  completeProfile(
+    personal,
+    experiences.map((e) => ({
+      ...e,
+      position: e.position.trim(),
+      description: e.description.trim(),
+      diploma: e.diploma.trim(),
+      certificate: e.certificate.trim(),
+    })),
+    skills.map((s) => ({ ...s, name: s.name.trim() })),
+    email,
+    documents,
+  ),
+);
+setPassword("");
+setConfirmation("");
+setDone(true);
+notify(t("Profil enregistré. Bienvenue dans la communauté DevAfrica !", "Profile saved. Welcome to the DevAfrica community!"));
+
     requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: "instant" });
       heading.current?.focus({ preventScroll: true });

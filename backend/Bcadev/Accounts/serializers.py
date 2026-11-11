@@ -128,6 +128,6 @@ class DevelopperSerializer(serializers.ModelSerializer):
             'email', 'nom', 'prenom', 'pseudo', 'age',
             'niveau', 'pays', 'sexe', 'photoprofil',
             'lien_portfolio', 'lien_github', 'point_penalite',
-            'possessions'
+            'presentation', 'possessions'
         ]
         read_only_fields = ['email', 'point_penalite', 'possessions']

@@ -20,7 +20,7 @@ class Offre_Emploi(Publication):
     duree=models.DurationField(blank=True, null=True)
     competence_requise=models.TextField()
     type_travail=models.CharField(choices=TYPE_TRAVAIL, max_length=1)
-    
+    email=models.EmailField(blank=True,null=True)
     class Meta:
         db_table='offre_emploi'
 

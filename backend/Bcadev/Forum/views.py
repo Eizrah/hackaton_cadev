@@ -26,7 +26,12 @@ class CreerForumPostView(APIView):
         if serializer.is_valid():
             post = serializer.save(developper=request.user)
 
-            # appel direct au service agent (Python 3.12 unique)
+            # validation IA en arrière-plan — le post est d'abord publié
+            # puis l'IA vérifie et peut rétrograder si nécessaire
+            post.feu_vert = True
+            post.save()
+
+            # appel à l'IA pour vérification
             try:
                 from Agents.services.verification_services import verifier_post
                 resultat = verifier_post(
@@ -34,18 +39,10 @@ class CreerForumPostView(APIView):
                     lien=post.lien,
                     email_auteur=request.user.email
                 )
-                if resultat["approuve"]:
-                    # l'IA a approuvé — le post est visible
-                    post.feu_vert = True
+                if not resultat["approuve"]:
+                    # l'IA a refusé — on repasse feu_vert à False
+                    post.feu_vert = False
                     post.save()
-                    return Response({
-                        'message': 'Post créé et validé avec succès.',
-                        'post': ForumPostSerializer(post).data
-                    }, status=status.HTTP_201_CREATED)
-                else:
-                    # l'IA a refusé — on notifie le dev
-                    # le post reste en base avec feu_vert=False
-                    # le dev peut le modifier et le resoumettre
                     raison = resultat["raison"] or "Contenu non conforme aux règles de la plateforme."
                     creer_notif(
                         post.developper,
@@ -59,12 +56,13 @@ class CreerForumPostView(APIView):
                         'post': ForumPostSerializer(post).data
                     }, status=status.HTTP_400_BAD_REQUEST)
             except Exception:
-                # si l'agent IA est indisponible, on laisse feu_vert=False
-                # le post reste en attente sans bloquer le dev
-                return Response({
-                    'message': 'Post créé avec succès. En attente de validation.',
-                    'post': ForumPostSerializer(post).data
-                }, status=status.HTTP_201_CREATED)
+                # si l'IA est indisponible → le post reste visible
+                pass
+
+            return Response({
+                'message': 'Post créé et publié avec succès.',
+                'post': ForumPostSerializer(post).data
+            }, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -72,6 +70,11 @@ class ListeForumPostView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"[FORUM_LIST] Requête GET par {request.user.email}")
+        
         # ne retourne que les posts validés par l'IA (feu_vert=True)
         # triés du plus récent au plus ancien
         # exclut les posts des devs bloqués par le dev connecté
@@ -84,7 +87,25 @@ class ListeForumPostView(APIView):
         ).exclude(
             developper__in=devs_bloques
         ).order_by('-date_publication')
-        serializer = ForumPostListSerializer(posts, many=True)
+        
+        logger.info(f"[FORUM_LIST] Nombre de posts trouvés : {posts.count()}")
+        
+        serializer = ForumPostListSerializer(posts, many=True, context={'request': request})
+        
+        logger.info(f"[FORUM_LIST] Données sérialisées : {len(serializer.data)} posts")
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class MesForumPostsView(APIView):
+    """Retourne tous les posts du dev connecté (validés ou non)"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        posts = Forum_post.objects.filter(
+            developper=request.user
+        ).order_by('-date_publication')
+        
+        serializer = ForumPostListSerializer(posts, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class DetailForumPostView(APIView):
@@ -107,8 +128,8 @@ class DetailForumPostView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     def put(self, request, id_publication):
+        """Modifier un post (propriétaire uniquement)"""
         try:
-            # seul le créateur peut modifier son post
             post = Forum_post.objects.get(
                 id_publication=id_publication,
                 developper=request.user
@@ -118,12 +139,14 @@ class DetailForumPostView(APIView):
                 {'erreur': 'Post introuvable ou vous n\'êtes pas le créateur.'},
                 status=status.HTTP_404_NOT_FOUND
             )
-
+        
         serializer = ForumPostSerializer(post, data=request.data, partial=True)
         if serializer.is_valid():
-            post = serializer.save(feu_vert=False)
-
-            # rappel direct au service agent pour revalider le contenu modifié
+            post = serializer.save()
+            # Revalider avec l'IA après modification
+            post.feu_vert = True
+            post.save()
+            
             try:
                 from Agents.services.verification_services import verifier_post
                 resultat = verifier_post(
@@ -131,26 +154,41 @@ class DetailForumPostView(APIView):
                     lien=post.lien,
                     email_auteur=request.user.email
                 )
-                if resultat["approuve"]:
-                    post.feu_vert = True
+                if not resultat["approuve"]:
+                    post.feu_vert = False
                     post.save()
-                    message_retour = 'Post modifié et revalidé avec succès.'
-                else:
                     creer_notif(
                         post.developper,
                         'post_refuse',
-                        f'Votre post modifié a été refusé : {resultat["raison"]}'
+                        f'Votre post modifié a été refusé : {resultat.get("raison", "Contenu non conforme.")}'
                     )
-                    message_retour = f'Post modifié mais refusé par l\'IA : {resultat["raison"]}'
             except Exception:
-                message_retour = 'Post modifié avec succès. En attente de revalidation.'
-
+                pass
+            
             return Response({
-                'message': message_retour,
+                'message': 'Post modifié avec succès.',
                 'post': ForumPostSerializer(post).data
             }, status=status.HTTP_200_OK)
-
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, id_publication):
+        """Supprimer un post (propriétaire uniquement)"""
+        try:
+            post = Forum_post.objects.get(
+                id_publication=id_publication,
+                developper=request.user
+            )
+        except Forum_post.DoesNotExist:
+            return Response(
+                {'erreur': 'Post introuvable ou vous n\'êtes pas le créateur.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        post.delete()
+        return Response({
+            'message': 'Post supprimé avec succès.'
+        }, status=status.HTTP_200_OK)
 
 
 class SupprimerForumPostView(APIView):

@@ -34,18 +34,28 @@ class ForumPostSerializer(serializers.ModelSerializer):
 
 class ForumPostListSerializer(serializers.ModelSerializer):
     # serializer allégé pour la liste — moins de champs pour ne pas surcharger
+    developper_email = serializers.EmailField(source='developper.email', read_only=True)
     developper_pseudo = serializers.CharField(source='developper.pseudo', read_only=True)
     nombre_notes = serializers.SerializerMethodField()
+    liked_by_me = serializers.SerializerMethodField()
 
     class Meta:
         model = Forum_post
         fields = [
             'id_publication', 'description', 'date_publication',
-            'developper_pseudo', 'nombre_notes'
+            'feu_vert', 'lien', 'fichier',
+            'developper_email', 'developper_pseudo', 'nombre_notes', 'liked_by_me'
         ]
 
     def get_nombre_notes(self, obj):
         return obj.note_set.count()
+    
+    def get_liked_by_me(self, obj):
+        # vérifie si le dev connecté a liké ce post
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.note_set.filter(developper=request.user).exists()
+        return False
 
 class CommentaireSerializer(serializers.ModelSerializer):
     developper_pseudo = serializers.CharField(source='developper.pseudo', read_only=True)

@@ -25,3 +25,6 @@ langgraph
 chromadb
 sentence-transformers
 tiktoken
+
+
+django-cors-headers

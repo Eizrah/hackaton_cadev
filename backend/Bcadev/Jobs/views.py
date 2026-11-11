@@ -358,3 +358,16 @@ class GererCandidaturesView(APIView):
         return Response({
             'message': f'Candidature {nouvel_etat} avec succès.'
         }, status=status.HTTP_200_OK)
+
+
+class MesOffresView(APIView):
+    """Retourne toutes les offres du dev connecté (validées ou non)"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        offres = Offre_Emploi.objects.filter(
+            developper=request.user
+        ).order_by('-date_publication')
+        
+        serializer = OffreEmploiListSerializer(offres, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

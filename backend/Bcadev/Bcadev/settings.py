@@ -61,6 +61,9 @@ INSTALLED_APPS = [
     'social_django',
 
     'rest_framework_simplejwt.token_blacklist',
+
+    'corsheaders',
+
     
 ]
 AUTH_USER_MODEL = 'Accounts.Developper'
@@ -76,6 +79,8 @@ REST_FRAMEWORK = {
 
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -168,12 +173,25 @@ STATIC_URL = 'static/'
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
+# MAILERS = {
+#     'default': {
+#         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+#     },
+# }
+
 MAILERS = {
     'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
+        'BACKEND': 'django.core.mail.backends.smtp.EmailBackend',
+        'OPTIONS': {
+            'host': os.environ.get('EMAIL_HOST', 'smtp.gmail.com'),
+            'port': int(os.environ.get('EMAIL_PORT', 587)),
+            'username': os.environ.get('EMAIL_HOST_USER', ''),
+            'password': os.environ.get('EMAIL_HOST_PASSWORD', ''),
+            'use_tls': os.environ.get('EMAIL_USE_TLS', 'True') == 'True',
+        }
+    }
 }
-
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@cadev.com')
 
 
 AUTHENTICATION_BACKENDS = [
@@ -186,18 +204,24 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.environ.get('GOOGLE_CLIENT_ID')
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
 SOCIAL_AUTH_GITHUB_KEY = os.environ.get('GITHUB_CLIENT_ID')
 SOCIAL_AUTH_GITHUB_SECRET = os.environ.get('GITHUB_CLIENT_SECRET')
+# demande l'accès à l'email même s'il est privé sur GitHub
+SOCIAL_AUTH_GITHUB_SCOPE = ['user:email']
+
+
+SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/api/auth/oauth/token/'
+SOCIAL_AUTH_NEW_USER_REDIRECT_URL = '/api/auth/oauth/token/'
+
+
+SOCIAL_AUTH_USER_MODEL = 'Accounts.Developper'
 
 SOCIAL_AUTH_PIPELINE = (
     'social_core.pipeline.social_auth.social_details',
     'social_core.pipeline.social_auth.social_uid',
     'social_core.pipeline.social_auth.auth_allowed',
     'social_core.pipeline.social_auth.social_user',
-    'social_core.pipeline.user.get_username',
-    'social_core.pipeline.social_auth.associate_by_email',  # ← associe par email
-    'social_core.pipeline.user.create_user',
+    'Accounts.pipeline.get_or_create_user',
     'social_core.pipeline.social_auth.associate_user',
     'social_core.pipeline.social_auth.load_extra_data',
-    'social_core.pipeline.user.changed_details',
 )
 
 SIMPLE_JWT = {
@@ -212,3 +236,20 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     }
 }
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",   # Vite dev server
+    "http://localhost:3000",   # au cas où
+]
+CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:5173',
+    'http://localhost:8000',
+]
+
+SOCIAL_AUTH_REDIRECT_IS_HTTPS = False
+SOCIAL_AUTH_SANITIZE_REDIRECTS = False
+SOCIAL_AUTH_ALLOW_LOGIN_WITH_GET = True
+# Force social_django à accepter les requêtes GET pour les URLs de login
+SOCIAL_AUTH_GITHUB_AUTH_EXTRA_ARGUMENTS = {}
