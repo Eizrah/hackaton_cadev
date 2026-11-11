@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:17-alpine
+    container_name: cadev_db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-cadev_db}
+      POSTGRES_USER: ${DB_USER:-cadev_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-cadev_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-cadev_user} -d ${DB_NAME:-cadev_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cadev_network
+
+  # Django Backend
+  backend:
+    build:
+      context: ./backend/Bcadev
+      dockerfile: Dockerfile
+    container_name: cadev_backend
+    env_file:
+      - ./backend/Bcadev/.env
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/Bcadev:/app
+      - media_files:/app/media
+      - static_files:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - cadev_network
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             python manage.py runserver 0.0.0.0:8000"
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cadev_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - cadev_network
+    environment:
+      - VITE_API_URL=http://localhost:8000
+
+volumes:
+  postgres_data:
+  media_files:
+  static_files:
+
+networks:
+  cadev_network:
+    driver: bridge

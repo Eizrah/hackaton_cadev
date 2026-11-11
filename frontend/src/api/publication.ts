@@ -90,6 +90,9 @@ export const publicationApi = {
   getOffres: () =>
     client.get('/api/jobs/offres/'),
 
+  getMesOffres: () =>
+    client.get('/api/jobs/mes-offres/'),
+
   getOffre: (id: string) =>
     client.get(`/api/jobs/offres/${id}/`),
 
@@ -97,12 +100,13 @@ export const publicationApi = {
     description: string
     nom_poste: string
     localisation: string
-    type_contrat: 'CDI' | 'CDD'
+    type_contrat: 'CDI' | 'CDD' | 'Stage' | 'Freelance'
     duree?: string
     competence_requise: string
     type_travail: 'R' | 'S' | 'H'
     deadline: string
     lien?: string
+    email?: string
     fichier?: File
   }) => {
     if (data.fichier) {

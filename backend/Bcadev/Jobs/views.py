@@ -193,6 +193,13 @@ class PostulerOffreView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        # empêche de postuler à sa propre offre
+        if offre.developper == request.user:
+            return Response(
+                {'erreur': 'Vous ne pouvez pas postuler à votre propre offre.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         # vérifie que le dev n'a pas déjà postulé
         if Candidature.objects.filter(
             developpeur=request.user,

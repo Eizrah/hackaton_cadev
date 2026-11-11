@@ -28,10 +28,10 @@ class OffreEmploiSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, data):
-        # duree est obligatoire si le type de contrat est CDD
-        if data.get('type_contrat') == 'CDD' and not data.get('duree'):
+        # duree est obligatoire si le type de contrat est CDD ou Stage
+        if data.get('type_contrat') in ['CDD', 'Stage'] and not data.get('duree'):
             raise serializers.ValidationError(
-                {'duree': 'La durée est obligatoire pour un contrat CDD.'}
+                {'duree': 'La durée est obligatoire pour un contrat CDD ou Stage.'}
             )
         return data
 
@@ -46,7 +46,9 @@ class OffreEmploiListSerializer(serializers.ModelSerializer):
         fields = [
             'id_publication', 'nom_poste', 'localisation',
             'type_contrat', 'type_travail', 'deadline', 
-            'developper_pseudo', 'developper_email', 'email', 'feu_vert'
+            'developper_pseudo', 'developper_email', 'email', 'feu_vert',
+            'description', 'competence_requise', 'date_publication', 'duree',
+            'lien', 'fichier'
         ]
 
 

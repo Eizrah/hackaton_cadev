@@ -1,5 +1,7 @@
 import SavedPosts from "./SavedPosts";
 import MyPosts from "./MyPosts";
+import MyOffers from "./MyOffers";
+import MyApplications from "./MyApplications";
 import { AttachmentCard } from "../shared/Attachments";
 import { useI18n } from "../../i18n/context";
 import ApplicationDashboard from "./ApplicationDashboard";
@@ -569,9 +571,11 @@ export default function ProfileView({
           profile={profile}
           onNavigate={onNavigate} />
         <ApplicationDashboard profile={profile} />
+        <MyApplications />
         <MyPosts
           profile={profile}
           onNotice={onNotice} />
+        <MyOffers onNavigate={onNavigate} />
         <RecruiterDashboard
           key={focusJob || "all"}
           focusJob={focusJob}

@@ -7,6 +7,8 @@ class Offre_Emploi(Publication):
     TYPE_CONTRACT=[
         ('CDI','CDI'),
         ('CDD','CDD'),
+        ('Stage','Stage'),
+        ('Freelance','Freelance'),
     ]
     TYPE_TRAVAIL=[
         ('R','Remote'),
@@ -15,7 +17,7 @@ class Offre_Emploi(Publication):
     ]
     localisation=models.CharField(max_length=255)
     deadline=models.DateField()
-    type_contrat=models.CharField(choices=TYPE_CONTRACT, max_length=3)
+    type_contrat=models.CharField(choices=TYPE_CONTRACT, max_length=15)
     nom_poste=models.CharField(max_length=255)
     duree=models.DurationField(blank=True, null=True)
     competence_requise=models.TextField()
