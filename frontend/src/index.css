@@ -7,6 +7,9 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  --field-focus: #66839a;
+  --conversation-base: #0c3457;
+  --conversation-background: radial-gradient(ellipse at 50% 45%, #1b619777, transparent 75%), var(--conversation-base);
 }
 * {
   box-sizing: border-box;
@@ -26,9 +29,10 @@ button {
   cursor: pointer;
 }
 button:focus-visible,
-input:focus-visible {
-  outline: 3px solid #33cef8;
-  outline-offset: 3px;
+a:focus-visible,
+input:is([type="radio"], [type="checkbox"]):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
 }
 button:disabled {
   cursor: not-allowed;
@@ -1089,11 +1093,28 @@ textarea,
 select {
   font: inherit;
 }
-textarea:focus-visible,
-select:focus-visible,
-a:focus-visible {
-  outline: 3px solid #33cef8;
-  outline-offset: 3px;
+:is(input:not([type="checkbox"], [type="radio"]), textarea, select):focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1.5px var(--field-focus);
+}
+:is(.onboard-input, .country-search-bar, .recruiter-search-bar, .composer-link,
+    .language-switcher, .offer-search, .catalog-search, .media-search,
+    .history-search, .directory-search, .room-composer-row, .tutor-composer):has(> :is(input, textarea, select):focus-visible) {
+  box-shadow: inset 0 0 0 1.5px var(--field-focus);
+}
+:is(.onboard-input, .country-search-bar, .recruiter-search-bar, .composer-link,
+    .language-switcher, .offer-search, .catalog-search, .media-search,
+    .history-search, .directory-search, .room-search, .room-composer-row, .tutor-composer) > :is(input, textarea, select):focus-visible {
+  box-shadow: none;
+}
+.room-search:has(> input:focus-visible) {
+  border-bottom-color: var(--field-focus);
+}
+@media (forced-colors: active) {
+  :is(input, textarea, select):focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
 }
 .demo-entry {
   text-align: center;

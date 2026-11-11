@@ -5,7 +5,6 @@ import {
   ChartNoAxesColumnIncreasing,
   Code2,
   GraduationCap,
-  MapPin,
   Plus,
   Trash2,
   UserRound,
@@ -111,12 +110,9 @@ export function PersonalFields({
       </label>
       <label>
         {t("Pays", "Country")}
-        <span className="onboard-input">
-          <MapPin size={18} />
-          <CountrySelect
-            value={value.country}
-            onChange={text => update("country", text)} />
-        </span>
+        <CountrySelect
+          value={value.country}
+          onChange={text => update("country", text)} />
       </label>
       <label>
         {t("Pseudo", "Username")}

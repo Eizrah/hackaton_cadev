@@ -4,6 +4,7 @@ import { courses } from "../src/data/learning";
 import { learningSkills, skillCatalog } from "../src/data/skillCatalog";
 import { confirmPasswordReset, expiredResetError, parseResetLink, requestPasswordReset, resetPasswordProblem, verifyRecoveryCode } from "../src/lib/passwordRecovery";
 import { askTutor } from "../src/lib/agents";
+import { searchAfricanCountries } from "../src/lib/countries";
 import { completeProfile, migrateProfile, skillError } from "../src/data/profile";
 import { isSavedBy, migrateGroups, migratePosts, orderedComments, type PostComment } from "../src/data/models";
 import { chatKey, groupAdmin } from "../src/data/chat";
@@ -165,4 +166,21 @@ test("Les nouveaux contrôles et toutes les cartes du catalogue possèdent leur 
     assert.ok(catalogEnglish[course.title], course.title);
     assert.ok(catalogEnglish[course.description], course.id);
   }
+});
+
+test("Les suggestions de pays commencent à la première lettre saisie", () => {
+  assert.deepEqual(searchAfricanCountries("  ", "fr"), []);
+  assert.deepEqual(searchAfricanCountries("Afr", "fr").map(result => result.country), ["Afrique du Sud"]);
+  assert.deepEqual(searchAfricanCountries("A", "fr").map(result => result.country), ["Afrique du Sud", "Algérie", "Angola"]);
+  assert.equal(searchAfricanCountries("egy", "fr")[0]?.label, "Égypte");
+  assert.equal(searchAfricanCountries("sou", "en")[0]?.label, "South Africa");
+  assert.deepEqual(searchAfricanCountries("sud", "fr"), []);
+});
+
+test("L’assistant général propose des réponses de découverte adaptées à la question", async () => {
+  const reply = (content: string) => askTutor([{ role: "user", content }], "fr");
+  assert.match(await reply("C’est quoi HTML ?"), /HyperText Markup Language/);
+  assert.match(await reply("Par quoi commencer en backend ?"), /SQLite/);
+  assert.match(await reply("C’est quoi un dev fullstack ?"), /formulaire.*frontend/);
+  assert.match(await reply("Qu’est-ce qu’un développeur ?"), /conçoit, écrit et teste/);
 });

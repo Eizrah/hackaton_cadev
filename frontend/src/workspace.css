@@ -27,14 +27,6 @@
 .workspace h3 {
   letter-spacing: -0.025em;
 }
-.workspace button:focus-visible,
-.workspace a:focus-visible,
-.workspace input:focus-visible,
-.workspace textarea:focus-visible,
-.workspace select:focus-visible {
-  outline: 3px solid #2bbbe5;
-  outline-offset: 4px;
-}
 .workspace h1:focus {
   outline: none;
 }
@@ -1180,7 +1172,7 @@
   padding: 0 !important;
 }
 .upload-photo:focus-within {
-  outline: 3px solid #2bbbe5;
+  outline: 2px solid var(--field-focus);
 }
 .field-help,
 .field-optional {
@@ -1312,9 +1304,6 @@
   padding: 0;
   color: #3c647d;
   font-size: 12px !important;
-}
-.catalog-search input:focus-visible {
-  outline-offset: 6px;
 }
 .catalog-search input::placeholder {
   color: #a2b4be;
@@ -2108,7 +2097,7 @@
   padding: 0 !important;
 }
 .file-label:focus-within {
-  outline: 3px solid #2bbbe5;
+  outline: 2px solid var(--field-focus);
 }
 .selected-attachment {
   display: flex;
@@ -3332,29 +3321,6 @@
 .applications-empty > p {
   font-size: 11px;
 }
-/* Deux agents : un historique de discussions et une file de modération explicite. */
-.agent-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 22px;
-  flex-wrap: wrap;
-}
-.agent-tabs button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid #d8e6ee;
-  background: #ffffff70;
-  color: #7b9aad;
-  padding: 10px 16px;
-  border-radius: 13px;
-  font-size: 11px;
-}
-.agent-tabs button.active {
-  background: #176caa;
-  color: white;
-  border-color: #176caa;
-}
 .assistant-shell {
   display: grid;
   grid-template-columns: 225px minmax(0, 1fr);
@@ -3365,7 +3331,7 @@
   background: #0d385c;
 }
 .assistant-history {
-  background: linear-gradient(155deg, #124e7d, #0b2f4b);
+  background: linear-gradient(155deg, #124e7d, var(--conversation-base));
   padding: 20px 13px;
   color: #c2d7e8;
   display: flex;
@@ -3458,26 +3424,11 @@
   padding: 10px;
   line-height: 1.8;
 }
-.assistant-history-foot {
-  border-top: 1px solid #ffffff13;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-top: 18px;
-  padding: 18px 7px 0;
-  font-size: 9px;
-  line-height: 1.7;
-  color: #80aac6;
-}
-.assistant-history-foot svg {
-  flex-shrink: 0;
-}
 .assistant-conversation {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background:
-    radial-gradient(ellipse at 50% 45%, #1b619777, transparent 75%), #0c3457;
+  background: var(--conversation-background);
   padding: 0 28px 20px;
 }
 .assistant-conversation > header {
@@ -3493,18 +3444,31 @@
   align-items: center;
   gap: 8px;
   color: #d4e8f7;
-  font-size: 12px;
+  font-size: 15px;
+  font-weight: 600;
 }
 .assistant-conversation > header small {
-  font-size: 8px;
-  color: #86abc9;
+  font-size: 11px;
+  color: #a7c5da;
+  margin-left: auto;
+}
+.assistant-history-toggle {
+  display: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border: 1px solid #ffffff38;
+  border-radius: 12px;
+  background: #ffffff12;
+  color: #d4e8f7;
 }
 .assistant-welcome {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
   text-align: center;
   padding: 45px 0 25px;
 }
@@ -3518,25 +3482,26 @@
   background: #ffffff08;
   color: #83d7ed;
   margin-bottom: 23px;
+  flex-shrink: 0;
 }
 .assistant-welcome h2 {
   color: #e1f1fc;
-  font-size: 29px;
+  font-size: clamp(23px, 2.6vw, 35px);
   font-weight: 450;
   line-height: 1.5;
   margin: 0 0 10px;
 }
 .assistant-welcome > p {
-  font-size: 11px;
-  color: #86acc9;
+  font-size: 14px;
+  color: #a6c6dd;
   line-height: 1.9;
-  max-width: 420px;
+  max-width: 500px;
 }
 .prompt-cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  width: 100%;
+  width: min(100%, 850px);
   margin: 25px 0 5px;
 }
 .prompt-cards button {
@@ -3550,9 +3515,10 @@
   color: #a9cce0;
   border-radius: 12px;
   padding: 16px;
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.7;
 }
+.prompt-cards button:hover { background: #ffffff19; }
 .prompt-cards button > svg {
   color: #65c0e4;
 }
@@ -3577,7 +3543,7 @@
   border: 0;
   background: none;
   color: #395f7a;
-  font-size: 12px !important;
+  font-size: 15px !important;
   outline-offset: 3px;
   padding: 8px;
 }
@@ -3586,8 +3552,8 @@
   padding: 12px;
 }
 .tutor-footnote {
-  font-size: 8px;
-  color: #789fbd;
+  font-size: 10px;
+  color: #a6c6dd;
   text-align: center;
   margin: 11px 0 0;
   line-height: 1.8;
@@ -3601,6 +3567,20 @@
   display: flex;
   flex-direction: column;
   gap: 22px;
+}
+.assistant-conversation .tutor-messages,
+.assistant-conversation .tutor-composer,
+.assistant-conversation .tutor-error {
+  width: min(100%, 980px);
+  align-self: center;
+}
+.assistant-conversation .tutor-composer { flex-shrink: 0; }
+.assistant-conversation .tutor-code-context {
+  flex-shrink: 0;
+  max-height: 30%;
+  overflow: auto;
+  margin-top: 8px;
+  border-radius: 13px;
 }
 .tutor-message {
   display: flex;
@@ -3620,15 +3600,15 @@
 }
 .tutor-message > div {
   min-width: 0;
-  max-width: 95%;
+  max-width: min(95%, 76ch);
   color: #c5dfef;
 }
 .tutor-message small {
-  font-size: 8px;
-  color: #79a6c4;
+  font-size: 11px;
+  color: #a7c5da;
 }
 .tutor-message p {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.9;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -3790,7 +3770,7 @@
   background: #fff;
 }
 .message-directory {
-  background: linear-gradient(170deg, #176caa, #10436b);
+  background: var(--conversation-background);
   padding: 20px 12px;
   color: #d6e9f8;
   min-width: 0;
@@ -4471,8 +4451,7 @@
     padding: 9px 14px;
   }
   .history-search,
-  .history-label,
-  .assistant-history-foot {
+  .history-label {
     display: none;
   }
   .history-list {
@@ -4493,6 +4472,7 @@
   .assistant-conversation > header {
     padding: 18px 0;
   }
+  .assistant-history-toggle { display: grid; }
   .assistant-welcome {
     padding: 35px 0 20px;
   }
@@ -4503,7 +4483,7 @@
     flex-direction: row;
     align-items: center;
     padding: 12px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .prompt-cards button > svg:last-child {
     margin-left: auto;
@@ -4681,13 +4661,6 @@
     max-width: 190px;
     margin-left: auto;
   }
-  .agent-tabs {
-    gap: 6px;
-  }
-  .agent-tabs button {
-    padding: 9px 12px;
-    font-size: 10px;
-  }
   .assistant-shell {
     border-radius: 15px;
   }
@@ -4698,17 +4671,17 @@
     gap: 8px;
   }
   .assistant-conversation > header > span {
-    font-size: 10px;
+    font-size: 13px;
   }
   .assistant-conversation > header small {
-    font-size: 7px;
+    font-size: 10px;
   }
   .tutor-composer {
     padding: 9px 10px;
     border-radius: 17px;
   }
   .tutor-composer textarea {
-    font-size: 11px !important;
+    font-size: 16px !important;
   }
   .tutor-message > div {
     max-width: 100%;

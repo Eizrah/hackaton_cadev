@@ -54,24 +54,24 @@
   .recovery-form input { font-size:16px!important; }
 }
 
-/* Rail gris-bleu et curseur turquoise lumineux, d'après la référence. */
+/* Barre arrondie dans les tons de la conversation. */
 @supports selector(::-webkit-scrollbar) {
   * { scrollbar-width:auto!important;scrollbar-color:auto!important; }
   *::-webkit-scrollbar { width:14px;height:14px; }
   *::-webkit-scrollbar-track {
-    background:#7b8ca3;border-radius:999px;
-    box-shadow:inset 0 1px 2px #53657b55;
+    background:var(--conversation-base);border-radius:999px;
+    box-shadow:inset 0 1px 2px #081d3b66;
   }
   *::-webkit-scrollbar-thumb {
-    min-height:36px;min-width:36px;border:3px solid #7b8ca3;border-radius:999px;
-    background:linear-gradient(180deg,#d3ffff 0%,#8fffff 35%,#4fe3ec 78%,#8cf9ff 100%);
-    box-shadow:inset 0 1px 2px #f0ffff,0 0 5px #68f3ff99;
+    min-height:36px;min-width:36px;border:3px solid var(--conversation-base);border-radius:999px;
+    background:linear-gradient(180deg,#afd1e7,#7aabce 58%,#6494b8);
+    box-shadow:inset 0 1px 2px #d4e8f7aa;
   }
-  *::-webkit-scrollbar-thumb:hover { background:linear-gradient(180deg,#e3ffff,#79fbff 50%,#49d9ef); }
+  *::-webkit-scrollbar-thumb:hover { background:linear-gradient(180deg,#c0def2,#8ab7d7 58%,#74a5c9); }
   *::-webkit-scrollbar-corner { background:transparent; }
 }
 @supports not selector(::-webkit-scrollbar) {
-  * { scrollbar-width:auto!important;scrollbar-color:#73f1f5 #7b8ca3!important; }
+  * { scrollbar-width:auto!important;scrollbar-color:#8ab7d7 var(--conversation-base)!important; }
 }
 @media(forced-colors:active) {
   * { scrollbar-color:auto!important; }

@@ -1,6 +1,6 @@
 import { deleteGroupResult } from "../../data/lifecycle";
 import { useEffect, useRef, useState } from "react";
-import { BellOff, Check, ChevronRight, FileText, Images, Info, Link2, MessageCircle, MoreHorizontal, Pencil, Plus, Search, Send, ShieldCheck, Slash, Smile, Trash2, UserMinus, UserPlus, UsersRound, X } from "lucide-react";
+import { BellOff, Check, ChevronRight, FileText, Images, Info, Link2, MessageCircle, MoreHorizontal, Pencil, Plus, Search, ShieldCheck, Slash, Trash2, UserMinus, UserPlus, UsersRound, X } from "lucide-react";
 import { useLocalData } from "../../lib/storage";
 import { initialGroups, migrateGroups, normalizeText, type ChatMessage, type Group, type GroupMember, type Profile } from "../../data/models";
 import { groupAdmin, chatKey, type ChatPreference } from "../../data/chat";
@@ -13,6 +13,7 @@ import { AttachmentCard, AttachmentPicker } from "../shared/Attachments";
 import { CountryFlag } from "../CountryFlag";
 import ConversationMedia, { type SharedLink } from "./ConversationMedia";
 import Modal from "../Modal";
+import MessageComposer from "./MessageComposer";
 const sampleMessages: ChatMessage[] = [{ id: 101, conversation: "Amina Diallo", text: "Bonjour ! Je serais ravie d’échanger sur nos projets React et Django.", sentAt: "2026-10-31T09:10:00+03:00", author: "Amina Diallo", authorId: "dev-amina", mine: false }, { id: 102, conversation: "Groupe : Python & Django", text: "Bienvenue ! Ici, on partage nos questions et nos découvertes Python.", sentAt: "2026-10-31T09:00:00+03:00", author: "Amina Diallo", authorId: "dev-amina", mine: false }, { id: 103, conversation: "Groupe : Python & Django", text: "Je prépare une petite API Django pour notre prochain projet. Qui veut en discuter ?", sentAt: "2026-10-31T09:05:00+03:00", author: "Tiana Rakoto", authorId: "dev-tiana", mine: false }];
 type UsefulLink = SharedLink & { conversation: string };
 function ChatAvatar({ name, photo, group = false }: { name: string; photo?: StoredAttachment; group?: boolean }) {
@@ -24,8 +25,7 @@ function ChatAvatar({ name, photo, group = false }: { name: string; photo?: Stor
 }
 export default function Messages({ route, profile, onNavigate, onNotice }: { route: string[]; profile: Profile; onNavigate: (path: string) => void; onNotice: (text: string) => void }) {
   const { t, locale } = useI18n(), [groups, setGroups] = useLocalData("groups", migrateGroups(initialGroups), migrateGroups), [messages, setMessages] = useLocalData<ChatMessage[]>("messages", sampleMessages), [links, setLinks] = useLocalData<UsefulLink[]>("chat-links", []), [preferences, setPreferences] = useLocalData<Record<string, ChatPreference>>("chat-preferences", {}), [registry] = usePeople(), [, setNotifications] = useNotifications();
-  const [query, setQuery] = useState(""), [text, setText] = useState(""), [filter, setFilter] = useState("all"), [messageQuery, setMessageQuery] = useState(""), [showSearch, setShowSearch] = useState(false), [showInfo, setShowInfo] = useState(false), [menuOpen, setMenuOpen] = useState(false), [emoji, setEmoji] = useState(false), [attachments, setAttachments] = useState<StoredAttachment[]>([]), [uploadCount, setUploadCount] = useState(0), [memberQuery, setMemberQuery] = useState("");
-  const uploading = uploadCount > 0;
+  const [query, setQuery] = useState(""), [filter, setFilter] = useState("all"), [messageQuery, setMessageQuery] = useState(""), [showSearch, setShowSearch] = useState(false), [showInfo, setShowInfo] = useState(false), [menuOpen, setMenuOpen] = useState(false), [memberQuery, setMemberQuery] = useState("");
   const [modal, setModal] = useState<"create" | "description" | "link" | "members" | "clear" | "delete-group" | null>(null), [media, setMedia] = useState<"photos" | "files" | "links" | null>(null);
   const menu = useRef<HTMLDivElement>(null), roomLog = useRef<HTMLDivElement>(null), menuTrigger = useRef<HTMLButtonElement>(null);
   const availableGroups = groups.filter(g => !g.deletedAt), currentGroup = route[0] === "groupe" ? availableGroups.find(g => g.id === Number(route[1])) : route[0] === "groupes" ? availableGroups.find(g => g.members?.some(m => m.id === profile.id)) || availableGroups[0] : undefined;
@@ -38,10 +38,22 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
   const sharedLinks: SharedLink[] = [...links.filter(l => chatKey(l.conversation, groups) === key && !preference.hiddenLinks?.includes(String(l.id))), ...currentMessages.flatMap(m => (m.text.match(/https?:\/\/[^\s<>]+/g) || []).flatMap((url, index) => { const safe = safePortfolio(url.replace(/[).,!?;]+$/, "")); return safe ? [{ id: `message-${m.id}-${index}`, url: safe, title: safe }] : []; }))].filter((l, index, all) => all.findIndex(other => other.url === l.url) === index);
   useEffect(() => { roomLog.current?.scrollTo({ top: roomLog.current.scrollHeight, behavior: "smooth" }); }, [key, currentMessages.length]);
   useEffect(() => { if (!menuOpen) return; const outside = (e: MouseEvent) => { if (!menu.current?.contains(e.target as Node)) setMenuOpen(false); }, escape = (e: KeyboardEvent) => { if (e.key === "Escape") { setMenuOpen(false); menuTrigger.current?.focus(); } }; document.addEventListener("mousedown", outside); document.addEventListener("keydown", escape); return () => { document.removeEventListener("mousedown", outside); document.removeEventListener("keydown", escape); }; }, [menuOpen]);
-  function navigate(path: string) { setText(""); setAttachments([]); setMessageQuery(""); setShowSearch(false); setShowInfo(false); setMenuOpen(false); setModal(null); setMedia(null); onNavigate(path); }
+  function navigate(path: string) { setMessageQuery(""); setShowSearch(false); setShowInfo(false); setMenuOpen(false); setModal(null); setMedia(null); onNavigate(path); }
   function updatePreference(next: Partial<ChatPreference>) { setPreferences(current => ({ ...current, [prefKey]: { ...current[prefKey], ...next } })); setMenuOpen(false); }
   function join() { if (!currentGroup || joined) return; setGroups(current => current.map(g => g.id === currentGroup.id ? { ...g, joined: true, members: [...(g.members || []), { id: profile.id, name: profile.name, country: profile.country, photo: profile.photo }] } : g)); onNotice(t("Tu as rejoint le groupe.", "You joined the group.")); }
-  function send() { if ((!text.trim() && !attachments.length) || !canWrite || uploading) return; setMessages(current => [...current, { id: Date.now(), conversation: key, text: text.trim(), attachments, sentAt: new Date().toISOString(), author: profile.name, authorId: profile.id, mine: true }]); setText(""); setAttachments([]); setEmoji(false); }
+  function send(text: string, attachments: StoredAttachment[]) {
+    if (!canWrite) return;
+    setMessages(current => [...current, {
+      id: Date.now(),
+      conversation: key,
+      text,
+      attachments,
+      sentAt: new Date().toISOString(),
+      author: profile.name,
+      authorId: profile.id,
+      mine: true,
+    }]);
+  }
   function removeMember(member: GroupMember) { if (!admin || !currentGroup || member.id === currentGroup.adminId) return; setGroups(current => current.map(g => g.id === currentGroup.id ? { ...g, members: (g.members || []).filter(m => m.id !== member.id) } : g)); setNotifications(current => [notification({ id: `group-removed:${currentGroup.id}:${member.id}:${Date.now()}`, recipientId: member.id, title: "Participation au groupe modifiée", text: `Tu as été retiré du groupe ${currentGroup.name}.`, textEn: `You were removed from ${currentGroup.name}.`, target: "messages/groupes", kind: "group" }), ...current]); onNotice(t("Membre retiré du groupe.", "Member removed from the group.")); }
   function deleteGroup() { if (!currentGroup) return; const result = deleteGroupResult(currentGroup, profile.id); if (!result) return; setGroups(current => current.map(g => g.id === result.group.id ? result.group : g)); setNotifications(current => [...result.notifications, ...current]); onNotice(t("Groupe supprimé. Les membres ont été informés.", "Group deleted. Members have been notified.")); navigate("messages/groupes"); }
 
@@ -208,7 +220,7 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
                 {state.muted && <BellOff size={12} />}
               </strong>
               <small>
-                {last?.text || (last?.attachments?.length ? t("Pièce jointe", "Attachment") : c.group?.description || t("Démarrer la discussion", "Start a conversation"))}
+                {last?.text || (last?.attachments?.length ? (last.attachments.some(file => file.type.startsWith("audio/")) ? t("Message vocal", "Voice message") : t("Pièce jointe", "Attachment")) : c.group?.description || t("Démarrer la discussion", "Start a conversation"))}
               </small>
             </span>
             {c.group && !c.group.members?.some(m => m.id === profile.id) && <Plus size={14} />}
@@ -255,11 +267,6 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
               aria-label={t("Rechercher dans les messages", "Search within messages")}
               onClick={() => setShowSearch(!showSearch)}>
               <Search size={19} />
-            </button>
-            <button
-              aria-label={t("Ouvrir les médias partagés", "Open shared media")}
-              onClick={() => setMedia("photos")}>
-              <Images size={19} />
             </button>
             <div
               className="conversation-menu"
@@ -383,53 +390,7 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
             onClick={join}>
             {t("Rejoindre le groupe", "Join group")}
           </button>
-        </div> : <form
-          className="room-composer"
-          onSubmit={e => { e.preventDefault(); send(); }}>
-          {attachments.length > 0 && <div className="chat-draft-files">
-            {attachments.map(file => <AttachmentCard
-              key={file.id}
-              preview={false}
-              file={file}
-              onRemove={() => setAttachments(current => current.filter(f => f.id !== file.id))} />)}
-          </div>}
-          {emoji && <div className="emoji-choices">
-            {["👋", "✨", "🚀", "👍", "😊", "💻"].map(symbol => <button
-              type="button"
-              key={symbol}
-              onClick={() => { setText(value => value + symbol); setEmoji(false); }}>
-              {symbol}
-            </button>)}
-          </div>}
-          <div className="room-composer-row">
-            <AttachmentPicker
-              key={key}
-              label={t("Joindre un fichier", "Attach a file")}
-              multiple
-              onBusy={busy => setUploadCount(n => Math.max(0, n + (busy ? 1 : -1)))}
-              onAdd={selected => setAttachments(current => [...current, ...selected].slice(0, 5))} />
-            <button
-              type="button"
-              className="room-emoji"
-              aria-label={t("Ajouter un emoji", "Add an emoji")}
-              onClick={() => setEmoji(!emoji)}>
-              <Smile size={20} />
-            </button>
-            <input
-              value={text}
-              maxLength={10000}
-              onChange={e => setText(e.target.value)}
-              placeholder={t("Écrire un message…", "Write a message…")}
-              aria-label={t("Écrire un message", "Write a message")} />
-            <button
-              type="submit"
-              className="send-message"
-              disabled={uploading || (!text.trim() && !attachments.length)}
-              aria-label={t("Envoyer le message", "Send message")}>
-              <Send size={21} />
-            </button>
-          </div>
-        </form>}
+        </div> : <MessageComposer key={prefKey} onSend={send} />}
       </>}
     </section>
     {!unavailable && info}

@@ -40,7 +40,8 @@ export function AttachmentPicker({ onAdd, label, accept, multiple = false, onBus
 }
 export function AttachmentCard({ file, onRemove, preview = true }: { file: StoredAttachment; onRemove?: () => void; preview?: boolean }) {
   const { t } = useI18n(), { url, loading } = useAttachmentState(file);
-  return <div className={`attachment-card ${file.type.startsWith("image/") && preview ? "with-image" : ""}`}>
+  const audio = preview && file.type.startsWith("audio/");
+  return <div className={`attachment-card ${file.type.startsWith("image/") && preview ? "with-image" : ""} ${audio ? "with-audio" : ""}`}>
     {file.type.startsWith("image/") && preview && url ? <a
       href={url}
       target="_blank"
@@ -63,6 +64,7 @@ export function AttachmentCard({ file, onRemove, preview = true }: { file: Store
         {fileSize(file.size)}
         {!url && ` · ${loading ? t("Chargement du fichier…", "Loading file…") : t("Fichier indisponible sur cet appareil", "File unavailable on this device")}`}
       </small>
+      {audio && url && <audio controls preload="metadata" src={url} aria-label={file.name} />}
     </div>
     {onRemove && <button
       className="quiet"

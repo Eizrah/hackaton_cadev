@@ -40,23 +40,7 @@
   cursor: not-allowed;
   transform: none;
 }
-.registration-page button:focus-visible,
-.registration-page input:focus-visible,
-.registration-page select:focus-visible,
-.registration-page textarea:focus-visible,
-.registration-page a:focus-visible {
-  outline: 3px solid #85a6ff;
-  outline-offset: 4px;
-}
 .registration-page h1:focus {
-  outline: none;
-}
-.registration-page .onboard-input:focus-within {
-  outline: 2px solid #85a6ff;
-  outline-offset: 2px;
-}
-.registration-page .onboard-input > input:focus-visible,
-.registration-page .onboard-input > select:focus-visible {
   outline: none;
 }
 .registration-header {

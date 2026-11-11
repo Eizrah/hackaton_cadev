@@ -151,7 +151,7 @@ Le catalogue garde 23 fiches ; 22 parcours détaillés distincts sont réutilis�
 - Programme : GET /api/learning/courses/{course_id}/.
 - Progression : GET /api/learning/progress/me/ et PUT /api/learning/courses/{course_id}/progress/.
 - Brouillons : GET/PUT /api/learning/drafts/{draft_id}/, avec propriétaire déduit de la session.
-- Agent apprentissage déjà préparé : POST /api/agents/learning/chat/ avec messages, language et context facultatif ; réponse answer. Activer VITE_AGENT_MODE=api avec un endpoint fonctionnel.
+- L’assistant et l’aide des cours utilisent `POST /api/agents/learning/chat/` avec `messages`, `language` et `context` facultatif. La réponse contient `answer`. Activer `VITE_AGENT_MODE=api` avec un endpoint fonctionnel. Pour une discussion sans contexte de cours, l’assistant guide sur les métiers, les parcours et les questions de développement.
 - Le contexte de code possède courseId, courseTitle, level, lessonTitle, file, code, explanation et returnPath.
 - Le robot ouvre une discussion flottante près du code. Le point d’interrogation général est présent uniquement dans Apprentissage pour expliquer les mots et phrases de la leçon active.
 - Pour ce second usage, context contient kind: lesson, courseId, courseTitle, level, lessonTitle, explanation et returnPath ; il ne contient pas de fichier ni de code. L’agent connecté doit adapter sa réponse à ce contexte pédagogique.

@@ -23,6 +23,17 @@ export async function saveAttachment(file: File): Promise<StoredAttachment> {
     return attachment;
   } finally { db.close(); }
 }
+export async function discardAttachment(id: string): Promise<void> {
+  const db = await openFiles();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction("files", "readwrite");
+      tx.objectStore("files").delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onabort = () => reject(tx.error);
+    });
+  } finally { db.close(); }
+}
 export async function readAttachment(id: string): Promise<Blob | undefined> {
   const db = await openFiles();
   try { return await new Promise((resolve, reject) => { const request = db.transaction("files", "readonly").objectStore("files").get(id); request.onsuccess = () => resolve(request.result instanceof Blob ? request.result : undefined); request.onerror = () => reject(request.error); }); }

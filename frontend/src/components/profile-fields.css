@@ -52,10 +52,6 @@
 .onboard-input > select:invalid {
   color: #93a5c7;
 }
-.onboard-input:focus-within {
-  border-color: #6d92fb;
-  box-shadow: 0 0 0 3px #497fff0e;
-}
 .personal-fields .field-help {
   font-size: 9px;
   font-weight: 400;

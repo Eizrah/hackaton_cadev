@@ -2,7 +2,7 @@ import { blockedPostNotice } from "../../data/lifecycle";
 import { useNotifications } from "../../data/notifications";
 import { usePeople } from "../../data/people";
 import { createLocalId } from "../../lib/format";
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   ArrowRight,
   ArrowLeft,
@@ -12,6 +12,7 @@ import {
   CheckCheck,
   FileText,
   Flag,
+  History,
   LoaderCircle,
   MessageSquare,
   Plus,
@@ -25,7 +26,7 @@ import {
 import { useI18n } from "../../i18n/context";
 import { useLocalData } from "../../lib/storage";
 import { askTutor, type TutorMessage } from "../../lib/agents";
-import { readLearningCodeContext, tutorCodeQuestion, type LearningCodeContext } from "../../lib/learningTutorContext";
+import { isLessonContext, readLearningCodeContext, tutorCodeQuestion, type LearningCodeContext, type LearningTutorContext } from "../../lib/learningTutorContext";
 import { checkContent, useReviews, type Review } from "../../data/workflow";
 import { initialPosts, migratePosts, initialJobs, migrateJobs } from "../../data/models";
 import "../learning/learning-enhancements.css";
@@ -34,7 +35,7 @@ type TutorThread = {
   title: string;
   messages: TutorMessage[];
   createdAt: string;
-  context?: LearningCodeContext;
+  context?: LearningTutorContext;
 };
 function Reply({ content }: { content: string }) {
   const parts = content.split(/```(?:[a-zA-Z0-9]+)?\n?/);
@@ -59,41 +60,24 @@ export default function Assistant({
   route: string[];
   onNavigate: (path: string) => void;
 }) {
-  const { t } = useI18n();
-  const moderation = route[0] === "moderation";
-  return (
-    <div className="agents-page">
-      <div
-        className="agent-tabs"
-        role="group"
-        aria-label={t("Choisir un agent", "Choose an agent")}
-      >
-        <button
-          className={!moderation ? "active" : ""}
-          onClick={() => onNavigate("ia")}
-        >
-          <BookOpen size={18} />
-          {t("Agent apprentissage", "Learning agent")}
-        </button>
-        <button
-          className={moderation ? "active" : ""}
-          onClick={() => onNavigate("ia/moderation")}
-        >
-          <ShieldCheck size={18} />
-          {t("Agent modérateur", "Moderation agent")}
-        </button>
-      </div>
-      {moderation ? <ModerationAgent /> : <LearningAgent key={route[0] || "accueil"} initialContext={route[0] === "code" ? readLearningCodeContext() : undefined} onNavigate={onNavigate} />}
-    </div>
-  );
+  if (route[0] === "moderation") return <ModerationQueue />;
+  return <div className="agents-page">
+    <AssistantConversation
+      key={route[0] || "accueil"}
+      initialContext={route[0] === "code" ? readLearningCodeContext() : undefined}
+      onNavigate={onNavigate} />
+  </div>;
 }
-function LearningAgent({ initialContext, onNavigate }: { initialContext?: LearningCodeContext; onNavigate: (path: string) => void }) {
+function AssistantConversation({ initialContext, onNavigate }: { initialContext?: LearningCodeContext; onNavigate: (path: string) => void }) {
   const { t, language } = useI18n();
   const [threads, setThreads] = useLocalData<TutorThread[]>(
     "tutor-threads",
     [],
   );
   const [selected, setSelected] = useState<number | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyId = useId();
+  const log = useRef<HTMLDivElement>(null);
   const [attachedContext, setAttachedContext] = useState(initialContext);
   const [question, setQuestion] = useState(() => initialContext ? tutorCodeQuestion(initialContext, language === "en") : ""),
     [search, setSearch] = useState(""),
@@ -101,6 +85,13 @@ function LearningAgent({ initialContext, onNavigate }: { initialContext?: Learni
     [error, setError] = useState("");
   const thread = threads.find((h) => h.id === selected);
   const context = thread ? thread.context : attachedContext;
+  const codeContext = context && !isLessonContext(context) ? context : undefined;
+  const messageCount = thread?.messages.length ?? 0;
+
+  useEffect(() => {
+    if (log.current) log.current.scrollTop = log.current.scrollHeight;
+  }, [selected, messageCount, busy]);
+
   async function send(override?: string) {
     const content = (override ?? question).trim();
     if (!content || busy) return;
@@ -146,8 +137,8 @@ function LearningAgent({ initialContext, onNavigate }: { initialContext?: Learni
     } catch {
       setError(
         t(
-          "L’agent est indisponible. Vérifie le serveur Django ou repasse en mode démo.",
-          "The agent is unavailable. Check Django or switch back to demo mode.",
+          "L’assistant est indisponible. Vérifie la connexion au serveur Django puis réessaie.",
+          "The assistant is unavailable. Check the connection to Django and try again.",
         ),
       );
     } finally {
@@ -156,7 +147,7 @@ function LearningAgent({ initialContext, onNavigate }: { initialContext?: Learni
   }
   return (
     <div className="assistant-shell">
-      <aside className="assistant-history">
+      <aside id={historyId} className={`assistant-history${historyOpen ? " open" : ""}`}>
         <button
           className="new-discussion"
           onClick={() => {
@@ -164,6 +155,7 @@ function LearningAgent({ initialContext, onNavigate }: { initialContext?: Learni
             setQuestion("");
             setAttachedContext(undefined);
             setError("");
+            setHistoryOpen(false);
           }}
           disabled={busy}
         >
@@ -193,6 +185,7 @@ function LearningAgent({ initialContext, onNavigate }: { initialContext?: Learni
                     setSelected(h.id);
                     setQuestion("");
                     setError("");
+                    setHistoryOpen(false);
                   }}
                 >
                   <MessageSquare size={15} />
@@ -222,33 +215,29 @@ function LearningAgent({ initialContext, onNavigate }: { initialContext?: Learni
             </p>
           )}
         </div>
-        <div className="assistant-history-foot">
-          <Bot size={19} />
-          <span>
-            {t(
-              "Un compagnon pour comprendre et construire.",
-              "A companion for understanding and building.",
-            )}
-          </span>
-        </div>
       </aside>
       <section className="assistant-conversation">
         <header>
           <span>
             <Sparkles size={17} />
-            {t("Agent apprentissage", "Learning agent")}
+            {t("Assistant IA", "AI assistant")}
           </span>
           <small>
             {import.meta.env.VITE_AGENT_MODE === "api"
-              ? t("Mode API Django", "Django API mode")
+              ? t("Connecté au serveur", "Server mode")
               : t("Mode démo · réponses locales", "Demo mode · local replies")}
           </small>
+          <button type="button" className="assistant-history-toggle"
+            aria-controls={historyId} aria-expanded={historyOpen}
+            aria-label={t("Historique des conversations", "Chat history")}
+            title={t("Historique des conversations", "Chat history")}
+            onClick={() => setHistoryOpen(open => !open)}><History size={20} /></button>
         </header>
         {context && (
-          <aside className="tutor-code-context" aria-label={t("Code joint à la conversation", "Code attached to this conversation")}>
-            <div><Bot size={20} /><span><strong>{context.courseTitle} · {context.lessonTitle}</strong><small>{context.file} · {t("Le code et le passage du cours accompagnent ta question.", "The code and lesson excerpt accompany your question.")}</small></span></div>
+          <aside className="tutor-code-context" aria-label={t("Contexte de la conversation", "Conversation context")}>
+            <div><Bot size={20} /><span><strong>{context.courseTitle} · {context.lessonTitle}</strong>{codeContext && <small>{codeContext.file}</small>}</span></div>
             <button type="button" onClick={() => onNavigate(context.returnPath)}><ArrowLeft size={15} />{t("Revenir au cours ou à l’atelier", "Return to the course or studio")}</button>
-            <details><summary>{t("Voir le code joint", "View attached code")}</summary><pre><code>{context.code}</code></pre></details>
+            {codeContext && <details><summary>{t("Voir le code joint", "View attached code")}</summary><pre><code>{codeContext.code}</code></pre></details>}
           </aside>
         )}
         {!thread ? (
@@ -258,27 +247,21 @@ function LearningAgent({ initialContext, onNavigate }: { initialContext?: Learni
             </span>
             <h2>
               {t(
-                "Par quoi veux-tu commencer ?",
-                "Where would you like to start?",
+                "Que veux-tu apprendre sur le développement ?",
+                "What would you like to learn about development?",
               )}
             </h2>
             <p>
               {t(
-                "Une notion, un langage, un morceau de code. On avance ensemble.",
-                "A concept, a language, a piece of code. Let’s work through it.",
+                "Découvre les métiers du web, choisis un parcours ou pose une question sur ton code.",
+                "Explore web development roles, choose a learning path or ask about your code.",
               )}
             </p>
             <div className="prompt-cards">
               {[
-                t(
-                  "Explique-moi frontend et backend",
-                  "Explain frontend and backend",
-                ),
-                t(
-                  "Comment fonctionne useState dans React ?",
-                  "How does useState work in React?",
-                ),
-                t("Montre-moi une boucle Python", "Show me a Python loop"),
+                t("C’est quoi HTML ?", "What is HTML?"),
+                t("Par quoi commencer en backend ?", "How do I start with backend development?"),
+                t("C’est quoi un dev fullstack ?", "What is a full-stack developer?"),
               ].map((q) => (
                 <button key={q} disabled={busy} onClick={() => send(q)}>
                   <BookOpen size={18} />
@@ -291,8 +274,9 @@ function LearningAgent({ initialContext, onNavigate }: { initialContext?: Learni
         ) : (
           <div
             className="tutor-messages"
+            ref={log}
             role="log"
-            aria-label={t("Discussion avec l’agent", "Agent conversation")}
+            aria-label={t("Discussion avec l’assistant", "Conversation with the assistant")}
           >
             {thread.messages.map((m, i) => (
               <article className={`tutor-message ${m.role}`} key={i}>
@@ -304,7 +288,7 @@ function LearningAgent({ initialContext, onNavigate }: { initialContext?: Learni
                 <div>
                   <small>
                     {m.role === "assistant"
-                      ? import.meta.env.VITE_AGENT_MODE === "api" ? t("Agent apprentissage", "Learning agent") : t("Agent apprentissage · démo", "Learning agent · demo")
+                      ? t("Assistant IA", "AI assistant")
                       : t("Toi", "You")}
                   </small>
                   <Reply content={m.content} />
@@ -338,7 +322,7 @@ function LearningAgent({ initialContext, onNavigate }: { initialContext?: Learni
               "Ask a question or paste your code…",
             )}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 void send();
               }
@@ -347,7 +331,7 @@ function LearningAgent({ initialContext, onNavigate }: { initialContext?: Learni
           <button
             className="btn-primary"
             disabled={!question.trim() || busy}
-            aria-label={t("Envoyer à l’agent", "Send to the agent")}
+            aria-label={t("Envoyer à l’assistant", "Send to the assistant")}
           >
             {busy ? (
               <LoaderCircle size={20} className="spinning" />
@@ -358,15 +342,15 @@ function LearningAgent({ initialContext, onNavigate }: { initialContext?: Learni
         </form>
         <p className="tutor-footnote">
           {t(
-            "Entrée pour envoyer · Maj + Entrée pour une nouvelle ligne. Les exemples ne sont pas exécutés.",
-            "Enter to send · Shift + Enter for a new line. Examples are not executed.",
+            "Entrée pour envoyer · Maj + Entrée pour une nouvelle ligne.",
+            "Enter to send · Shift + Enter for a new line.",
           )}
         </p>
       </section>
     </div>
   );
 }
-function ModerationAgent() {
+function ModerationQueue() {
   const { t } = useI18n();
   const [reviews, setReviews] = useReviews();
   const [posts, setPosts] = useLocalData("posts", initialPosts, migratePosts);
@@ -414,14 +398,14 @@ function ModerationAgent() {
         <div>
           <h2>
             {t(
-              "Un espace pour veiller sur la communauté.",
-              "A space to look after the community.",
+              "Modération",
+              "Moderation",
             )}
           </h2>
           <p>
             {t(
-              "Publications, offres et signalements. Cette interface simule la file de travail de l’agent modérateur ; les droits et décisions réels seront gérés par Django.",
-              "Posts, jobs and reports. This interface simulates the moderation queue; real permissions and decisions will be handled by Django.",
+              "Publications, offres et signalements à vérifier dans la démo.",
+              "Posts, jobs and reports to review in the demo.",
             )}
           </p>
         </div>
