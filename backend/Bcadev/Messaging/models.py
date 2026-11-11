@@ -55,3 +55,14 @@ class Session(models.Model):
 
     class Meta:
         db_table='session'
+
+
+class ConversationSupprimee(models.Model):
+    """Marque qu'un dev a supprimé une conversation privée (seulement pour lui)"""
+    dev = models.ForeignKey('Accounts.Developper', on_delete=models.CASCADE, related_name='conversations_supprimees')
+    autre_dev = models.ForeignKey('Accounts.Developper', on_delete=models.CASCADE, related_name='+')
+    date_suppression = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'conversation_supprimee'
+        unique_together = ('dev', 'autre_dev')

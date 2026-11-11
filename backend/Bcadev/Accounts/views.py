@@ -9,7 +9,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
-from .serializers import InscriptionSerializer, ConnexionSerializer, DevelopperSerializer
+from .serializers import InscriptionSerializer, ConnexionSerializer, DevelopperSerializer, NotifSerializer
 from Groups.models import Group
 from .models import Developper,Blocage, Sourdine,Notif
 import os
@@ -511,3 +511,58 @@ class RechercherDevsView(APIView):
         ).values('pseudo', 'email')[:10]  # Limiter à 10 résultats
         
         return Response(list(devs), status=status.HTTP_200_OK)
+
+
+class MesNotifsView(APIView):
+    """Retourne toutes les notifications du dev connecté"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        notifications = Notif.objects.filter(destinataire=request.user)
+        serializer = NotifSerializer(notifications, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class MarquerNotifLueView(APIView):
+    """Marquer une notification comme lue"""
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, notif_id):
+        try:
+            notif = Notif.objects.get(
+                id=notif_id,
+                destinataire=request.user
+            )
+        except Notif.DoesNotExist:
+            return Response(
+                {'erreur': 'Notification introuvable.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        notif.lu = True
+        notif.save()
+        return Response({'message': 'Notification marquée comme lue.'}, status=status.HTTP_200_OK)
+
+
+class MarquerToutesNotifsLuesView(APIView):
+    """Marquer toutes les notifications comme lues"""
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        Notif.objects.filter(
+            destinataire=request.user,
+            lu=False
+        ).update(lu=True)
+        return Response({'message': 'Toutes les notifications ont été marquées comme lues.'}, status=status.HTTP_200_OK)
+
+
+class CompterNotifsNonLuesView(APIView):
+    """Compter les notifications non lues"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        count = Notif.objects.filter(
+            destinataire=request.user,
+            lu=False
+        ).count()
+        return Response({'count': count}, status=status.HTTP_200_OK)

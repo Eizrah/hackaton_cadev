@@ -113,8 +113,13 @@ class Notif(models.Model):
         ('post_refuse', 'Post refusé'),
         ('post_supprime', 'Post supprimé'),
         ('commentaire', 'Nouveau commentaire'),
+        ('reponse_commentaire', 'Réponse à commentaire'),
+        ('like', 'Like sur publication'),
         ('candidature', 'Candidature reçue'),
         ('candidature_reponse', 'Réponse à candidature'),
+        ('groupe_invitation', 'Invitation à un groupe'),
+        ('groupe_acceptation', 'Invitation acceptée'),
+        ('groupe_refus', 'Invitation refusée'),
         ('groupe_supprime', 'Groupe supprimé'),
         ('point_penalite', 'Point de pénalité reçu'),
         ('bannissement', 'Compte banni'),
@@ -128,6 +133,12 @@ class Notif(models.Model):
     message = models.TextField()
     lu = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
+    
+    # Références pour la navigation
+    post_id = models.UUIDField(null=True, blank=True)  # ID de la publication concernée (UUID)
+    commentaire_id = models.UUIDField(null=True, blank=True)  # ID du commentaire concerné (UUID)
+    offre_id = models.UUIDField(null=True, blank=True)  # ID de l'offre d'emploi concernée (UUID)
+    groupe_id = models.UUIDField(null=True, blank=True)  # ID du groupe concerné (UUID)
 
     class Meta:
         db_table = 'notif'

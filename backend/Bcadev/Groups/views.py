@@ -3,9 +3,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
-from .models import Group, Membre
-from .serializers import GroupSerializer, GroupListSerializer, MembreSerializer
+from django.utils import timezone
+from .models import Group, Membre, InvitationGroupe
+from .serializers import GroupSerializer, GroupListSerializer, MembreSerializer, InvitationSerializer
 from Accounts.models import Developper
+from Accounts.utils import creer_notif
 from Messaging.models import Message
 from Messaging.serializers import MessageSerializer, AudioSerializer, FichierSerializer
 
@@ -35,7 +37,7 @@ class CreerGroupeView(APIView):
         if request.user.banne:
             return Response({'erreur': 'Votre compte est banni.'}, status=status.HTTP_403_FORBIDDEN)
 
-        serializer = GroupSerializer(data=request.data)
+        serializer = GroupSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             groupe = serializer.save()
             # le créateur devient automatiquement Admin
@@ -44,9 +46,11 @@ class CreerGroupeView(APIView):
                 id_personne=request.user,
                 type='A'
             )
+            # Re-sérialiser avec le contexte pour avoir l'URL complète
+            result_serializer = GroupSerializer(groupe, context={'request': request})
             return Response({
                 'message': 'Groupe créé avec succès.',
-                'groupe': GroupSerializer(groupe).data
+                'groupe': result_serializer.data
             }, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -60,7 +64,7 @@ class ListeGroupesView(APIView):
             membre__id_personne=request.user,
             actif=True
         )
-        serializer = GroupListSerializer(groupes, many=True)
+        serializer = GroupListSerializer(groupes, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class DetailGroupeView(APIView):
@@ -76,7 +80,7 @@ class DetailGroupeView(APIView):
         if not get_membre(request.user, groupe):
             return Response({'erreur': 'Vous n\'êtes pas membre de ce groupe.'}, status=status.HTTP_403_FORBIDDEN)
 
-        serializer = GroupSerializer(groupe)
+        serializer = GroupSerializer(groupe, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, request, id_group):
@@ -89,12 +93,14 @@ class DetailGroupeView(APIView):
         if not est_admin_ou_moderateur(request.user, groupe):
             return Response({'erreur': 'Permission insuffisante.'}, status=status.HTTP_403_FORBIDDEN)
 
-        serializer = GroupSerializer(groupe, data=request.data, partial=True)
+        serializer = GroupSerializer(groupe, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
+            # Re-sérialiser avec le contexte pour avoir l'URL complète
+            result_serializer = GroupSerializer(groupe, context={'request': request})
             return Response({
                 'message': 'Groupe modifié.',
-                'groupe': serializer.data
+                'groupe': result_serializer.data
             }, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -138,7 +144,7 @@ class MembreView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request, id_group):
-        # ajouter un membre — admin ou modérateur
+        # Inviter un membre — admin ou modérateur
         try:
             groupe = Group.objects.get(id_group=id_group, actif=True)
         except Group.DoesNotExist:
@@ -153,11 +159,47 @@ class MembreView(APIView):
         except Developper.DoesNotExist:
             return Response({'erreur': 'Développeur introuvable.'}, status=status.HTTP_404_NOT_FOUND)
 
+        # Vérifier si déjà membre
         if get_membre(dev, groupe):
             return Response({'erreur': 'Ce dev est déjà membre du groupe.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        Membre.objects.create(id_groupe=groupe, id_personne=dev, type='MB')
-        return Response({'message': f'{dev.pseudo} ajouté au groupe.'}, status=status.HTTP_201_CREATED)
+        # Vérifier si invitation en attente
+        invitation_existante = InvitationGroupe.objects.filter(
+            groupe=groupe,
+            invite=dev,
+            statut='P'
+        ).first()
+
+        if invitation_existante:
+            return Response({'erreur': 'Une invitation est déjà en attente pour ce développeur.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Supprimer les anciennes invitations (acceptées ou refusées)
+        InvitationGroupe.objects.filter(
+            groupe=groupe,
+            invite=dev,
+            statut__in=['A', 'R']
+        ).delete()
+
+        # Créer l'invitation
+        invitation = InvitationGroupe.objects.create(
+            groupe=groupe,
+            inviteur=request.user,
+            invite=dev
+        )
+
+        # Créer notification pour l'invité
+        creer_notif(
+            dev,
+            'groupe_invitation',
+            f'{request.user.pseudo} vous invite à rejoindre le groupe {groupe.nom}.',
+            groupe_id=groupe.id_group,
+            envoyeur=request.user
+        )
+
+        return Response({
+            'message': f'Invitation envoyée à {dev.pseudo}.',
+            'invitation': InvitationSerializer(invitation, context={'request': request}).data
+        }, status=status.HTTP_201_CREATED)
 
 class GererMembreView(APIView):
     permission_classes = [IsAuthenticated]
@@ -339,3 +381,98 @@ class EnvoyerFichierGroupeView(APIView):
 
         message.delete()
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ─── Invitations de groupe ───────────────────────────────────────────────────
+
+class MesInvitationsView(APIView):
+    """Liste des invitations reçues en attente"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        invitations = InvitationGroupe.objects.filter(
+            invite=request.user,
+            statut='P',
+            groupe__actif=True
+        ).order_by('-date_invitation')
+
+        serializer = InvitationSerializer(invitations, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class AccepterInvitationView(APIView):
+    """Accepter une invitation et rejoindre le groupe"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id_invitation):
+        try:
+            invitation = InvitationGroupe.objects.get(
+                id_invitation=id_invitation,
+                invite=request.user,
+                statut='P'
+            )
+        except InvitationGroupe.DoesNotExist:
+            return Response({'erreur': 'Invitation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Vérifier que le groupe est toujours actif
+        if not invitation.groupe.actif:
+            return Response({'erreur': 'Ce groupe n\'existe plus.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Marquer l'invitation comme acceptée
+        invitation.statut = 'A'
+        invitation.date_reponse = timezone.now()
+        invitation.save()
+
+        # Ajouter comme membre du groupe
+        Membre.objects.create(
+            id_groupe=invitation.groupe,
+            id_personne=request.user,
+            type='MB'  # Membre de base
+        )
+
+        # Notifier l'inviteur
+        creer_notif(
+            invitation.inviteur,
+            'groupe_acceptation',
+            f'{request.user.pseudo} a accepté votre invitation au groupe {invitation.groupe.nom}.',
+            groupe_id=invitation.groupe.id_group,
+            envoyeur=request.user
+        )
+
+        return Response({
+            'message': f'Vous avez rejoint le groupe {invitation.groupe.nom}.',
+            'groupe': GroupSerializer(invitation.groupe).data
+        }, status=status.HTTP_200_OK)
+
+
+class RefuserInvitationView(APIView):
+    """Refuser une invitation"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id_invitation):
+        try:
+            invitation = InvitationGroupe.objects.get(
+                id_invitation=id_invitation,
+                invite=request.user,
+                statut='P'
+            )
+        except InvitationGroupe.DoesNotExist:
+            return Response({'erreur': 'Invitation introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Marquer l'invitation comme refusée
+        invitation.statut = 'R'
+        invitation.date_reponse = timezone.now()
+        invitation.save()
+
+        # Optionnel : Notifier l'inviteur
+        creer_notif(
+            invitation.inviteur,
+            'groupe_refus',
+            f'{request.user.pseudo} a refusé votre invitation au groupe {invitation.groupe.nom}.',
+            groupe_id=invitation.groupe.id_group,
+            envoyeur=request.user
+        )
+
+        return Response({
+            'message': 'Invitation refusée.'
+        }, status=status.HTTP_200_OK)

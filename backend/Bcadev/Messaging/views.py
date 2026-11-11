@@ -84,6 +84,13 @@ class EnvoyerAudioView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # vérifie que l'envoyeur n'est pas bloqué par le destinataire
+        if Blocage.objects.filter(bloqueur=destinataire, bloque=request.user).exists():
+            return Response(
+                {'erreur': 'Vous ne pouvez pas envoyer de message à ce développeur.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         serializer = AudioSerializer(data=request.data)
         if serializer.is_valid():
             audio = serializer.save(
@@ -123,6 +130,13 @@ class EnvoyerFichierView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # vérifie que l'envoyeur n'est pas bloqué par le destinataire
+        if Blocage.objects.filter(bloqueur=destinataire, bloque=request.user).exists():
+            return Response(
+                {'erreur': 'Vous ne pouvez pas envoyer de message à ce développeur.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         # crée d'abord le message vide qui contiendra le fichier
         message = Message.objects.create(
             envoyeur=request.user,
@@ -158,11 +172,26 @@ class ConversationView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        # Vérifier si l'utilisateur a supprimé cette conversation
+        from .models import ConversationSupprimee
+        conversation_supprimee = ConversationSupprimee.objects.filter(
+            dev=request.user,
+            autre_dev=autre_dev
+        ).first()
+
         # récupère tous les messages entre les deux devs dans les deux sens
-        messages = Message.objects.filter(
+        messages_query = Message.objects.filter(
             Q(envoyeur=request.user, destinataire=autre_dev) |
             Q(envoyeur=autre_dev, destinataire=request.user)
-        ).order_by('date_envoie')
+        )
+
+        # Si la conversation a été supprimée, ne montrer que les messages après la suppression
+        if conversation_supprimee:
+            messages_query = messages_query.filter(
+                date_envoie__gt=conversation_supprimee.date_suppression
+            )
+
+        messages = messages_query.order_by('date_envoie')
 
         # marque les messages reçus comme lus
         messages.filter(
@@ -179,6 +208,12 @@ class ListeConversationsView(APIView):
     def get(self, request):
         # récupère le dernier message de chaque conversation
         from django.db.models import Max
+        from .models import ConversationSupprimee
+
+        # Récupérer les conversations supprimées par l'utilisateur avec leur date
+        conversations_supprimees_dict = {}
+        for conv_supp in ConversationSupprimee.objects.filter(dev=request.user):
+            conversations_supprimees_dict[conv_supp.autre_dev.email] = conv_supp.date_suppression
 
         # trouve tous les devs avec qui on a échangé
         conversations = Message.objects.filter(
@@ -200,18 +235,36 @@ class ListeConversationsView(APIView):
                 devs_vus.add(autre_email)
                 try:
                     autre_dev = Developper.objects.get(email=autre_email)
-                    # dernier message de cette conversation
-                    dernier = Message.objects.filter(
+                    
+                    # Vérifier si la conversation a été supprimée
+                    date_suppression = conversations_supprimees_dict.get(autre_email)
+                    
+                    # Dernier message de cette conversation
+                    dernier_query = Message.objects.filter(
                         Q(envoyeur=request.user, destinataire=autre_dev) |
                         Q(envoyeur=autre_dev, destinataire=request.user)
-                    ).order_by('-date_envoie').first()
+                    )
+                    
+                    # Si supprimée, ne considérer que les messages après la suppression
+                    if date_suppression:
+                        dernier_query = dernier_query.filter(date_envoie__gt=date_suppression)
+                    
+                    dernier = dernier_query.order_by('-date_envoie').first()
+                    
+                    # Si aucun message après suppression, ignorer cette conversation
+                    if not dernier:
+                        continue
 
-                    # nombre de messages non lus
-                    non_lus = Message.objects.filter(
+                    # nombre de messages non lus (après suppression si applicable)
+                    non_lus_query = Message.objects.filter(
                         envoyeur=autre_dev,
                         destinataire=request.user,
                         etat='envoye'
-                    ).count()
+                    )
+                    if date_suppression:
+                        non_lus_query = non_lus_query.filter(date_envoie__gt=date_suppression)
+                    
+                    non_lus = non_lus_query.count()
 
                     result.append({
                         'dev': {
@@ -385,4 +438,29 @@ class DiscuterAgentView(APIView):
 
         return Response({
             'reponse': reponse
+        }, status=status.HTTP_200_OK)
+
+
+class SupprimerConversationView(APIView):
+    """Supprimer une conversation privée (soft delete - seulement pour l'utilisateur)"""
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, email):
+        try:
+            autre_dev = Developper.objects.get(email=email)
+        except Developper.DoesNotExist:
+            return Response(
+                {'erreur': 'Développeur introuvable.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Créer ou récupérer la marque de suppression
+        from .models import ConversationSupprimee
+        ConversationSupprimee.objects.get_or_create(
+            dev=request.user,
+            autre_dev=autre_dev
+        )
+
+        return Response({
+            'message': 'Conversation supprimée.'
         }, status=status.HTTP_200_OK)

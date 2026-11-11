@@ -41,3 +41,46 @@ export const authApi = {
   rechercherDevs: (query: string) =>
     client.get(`/api/auth/rechercher/?q=${encodeURIComponent(query)}`),
 }
+
+
+// ─── Notifications ────────────────────────────────────────────────────────
+
+export const notifApi = {
+  // Récupérer toutes les notifications
+  getMesNotifications: () =>
+    client.get('/api/auth/notifications/'),
+
+  // Compter les notifications non lues
+  compterNonLues: () =>
+    client.get('/api/auth/notifications/count/'),
+
+  // Marquer une notification comme lue
+  marquerLue: (notifId: number) =>
+    client.put(`/api/auth/notifications/${notifId}/marquer/`),
+
+  // Marquer toutes comme lues
+  marquerToutesLues: () =>
+    client.put('/api/auth/notifications/marquer-toutes/'),
+}
+
+
+
+// ─── Blocage & Sourdine ───────────────────────────────────────────────────
+
+export const blocageApi = {
+  // Bloquer un développeur
+  bloquer: (email: string) =>
+    client.post(`/api/auth/bloquer/${email}/`),
+
+  // Débloquer un développeur
+  debloquer: (email: string) =>
+    client.delete(`/api/auth/bloquer/${email}/`),
+
+  // Mettre en sourdine (personne ou groupe)
+  mettreEnSourdine: (data: { email?: string; id_group?: string }) =>
+    client.post('/api/auth/sourdine/', data),
+
+  // Retirer la sourdine
+  retirerSourdine: (data: { email?: string; id_group?: string }) =>
+    client.delete('/api/auth/sourdine/', { data }),
+}

@@ -158,7 +158,8 @@ export const publicationApi = {
     client.put(`/api/jobs/offres/${idOffre}/candidatures/${idCandidature}/`, { etat }),
 
   // ─── Signalement ──────────────────────────────────────────────────────────
-
+  // Note: Les fonctions de signalement sont maintenant dans api/moderation.ts
+  // Gardées ici pour compatibilité avec le code existant
   signalerPost: (id: string, motif: string) =>
     client.post(`/api/moderation/signaler/post/${id}/`, { motif }),
 
