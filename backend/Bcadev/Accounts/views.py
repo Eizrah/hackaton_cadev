@@ -158,6 +158,24 @@ class SupprimerCompteView(APIView):
 
     def delete(self, request):
         dev = request.user
+        
+        # ── vérification du mot de passe (obligatoire pour la sécurité) ────────
+        password = request.data.get('password')
+        
+        if not password:
+            return Response(
+                {'erreur': 'Le mot de passe est requis pour supprimer votre compte.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # vérifie que le mot de passe est correct
+        if not dev.check_password(password):
+            return Response(
+                {'erreur': 'Mot de passe incorrect.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        # ────────────────────────────────────────────────────────────────────────
+        
         # on déconnecte le dev en invalidant son refresh token s'il est fourni
         refresh_token = request.data.get('refresh')
         if refresh_token:
@@ -169,8 +187,13 @@ class SupprimerCompteView(APIView):
 
         # la suppression du dev déclenchera automatiquement le signal post_delete
         # qui supprimera la photo de profil du disque
+        email = dev.email  # Sauvegarde pour le log
         dev.delete()
-        return Response({'message': 'Compte supprimé avec succès.'}, status=status.HTTP_200_OK)
+        
+        return Response({
+            'message': 'Compte supprimé avec succès.',
+            'email': email
+        }, status=status.HTTP_200_OK)
 
 class RechercheDeveloppeurView(APIView):
     permission_classes = [IsAuthenticated]

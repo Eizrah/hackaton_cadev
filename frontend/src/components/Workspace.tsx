@@ -338,7 +338,7 @@ export default function Workspace({
           {active.id === "communaute" && (
             <Community
               profile={profile}
-              focusPostId={parts[1] === "publication" ? Number(parts[2]) : undefined}
+              focusPostId={parts[1] === "publication" ? parts[2] : undefined}
               onNavigate={navigate}
               onNotice={setNotice}
             />

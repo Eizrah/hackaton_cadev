@@ -1,230 +1,1121 @@
 import {
   lesson,
   levelColors,
-  projectExample,
   quiz,
   section,
 } from "./courseAuthoring";
-import { swiftApp, swiftPath } from "./swiftAuthoring";
-import { swiftAdvancedProjects } from "./swiftAdvancedProjects";
 import {
-  swiftBasics,
+  swiftAdvancedProjects,
   swiftBeginnerProjects,
   swiftIntermediateProjects,
 } from "./swiftProjects";
 import type { WebLevel } from "./webCourseTypes";
 
-const [profile, points] = swiftBeginnerProjects;
-const [todo, expenses] = swiftIntermediateProjects;
-const [crypto, journal] = swiftAdvancedProjects;
-const appleDocs = "https://developer.apple.com/documentation/";
-const swiftBook =
-  "https://docs.swift.org/swift-book/documentation/the-swift-programming-language/";
+const [profile, counter] = swiftBeginnerProjects;
+const [todo, cart] = swiftIntermediateProjects;
+const [weather] = swiftAdvancedProjects;
+const docs = "https://developer.apple.com/documentation/swiftui/";
+const swiftDocs = "https://docs.swift.org/swift-book/";
 
 const beginner: WebLevel["chapters"] = [
   {
-    id: "swift-xcode-et-syntaxe",
-    title: "Xcode et premières lignes en Swift",
+    id: "installation-swift",
+    title: "Installation et configuration Swift/SwiftUI",
     description:
-      "Lance un projet iOS et essaie séparément les bases du langage.",
+      "Installe Xcode, configure ton environnement et comprends ce qui rend SwiftUI unique pour le développement iOS/macOS.",
     lessons: [
       lesson({
-        id: "ouvrir-xcode-ios",
-        title: "Ouvrir un projet et choisir un simulateur",
-        minutes: 18,
+        id: "introduction-swift",
+        title: "Qu'est-ce que Swift et SwiftUI ?",
+        minutes: 30,
         summary:
-          "Xcode réunit le compilateur Swift, les outils Apple et le simulateur iOS. Le point d’entrée DevAfricaApp ouvre la vue principale.",
+          "Swift est le langage de programmation d'Apple pour iOS, macOS, watchOS et tvOS. SwiftUI est le framework déclaratif moderne pour créer des interfaces utilisateur.",
         sections: [
           section(
-            "Distinguer un projet iOS et un essai Swift",
-            "Sur Mac, ouvre DevAfrica.xcodeproj avec Xcode 16 ou plus récent. Choisis le schéma DevAfrica et un simulateur sous iOS 17 ou plus récent, puis clique sur Run.",
+            "Swift : Le langage d'Apple",
+            "Swift est un langage moderne, rapide et sûr développé par Apple en 2014 pour remplacer Objective-C.",
             [
-              "Dans DevAfricaApp.swift, @main désigne le point d’entrée. WindowGroup contient ContentView.",
-              "Un Playground permet d’expérimenter avec quelques lignes Swift et d’observer les résultats.",
-              "Avec Swift installé, tu peux lancer swift Exemples/Bases.swift dans le dossier extrait sur Windows, Mac ou Linux. Les vues SwiftUI se lancent avec Xcode sur Mac.",
+              "Swift est open-source : disponible sur GitHub, communauté active, utilisable hors de l'écosystème Apple.",
+              "Performance native : Swift compile en code machine avec LLVM, aussi rapide que C++.",
+              "Sécurité : Swift élimine les classes d'erreurs courantes (null pointers, buffer overflows) via son système de types strict.",
+              "Modernité : Inférence de type, closures, génériques, pattern matching, programmation fonctionnelle.",
+              "Plateformes : iOS (iPhone/iPad), macOS (Mac), watchOS (Apple Watch), tvOS (Apple TV), et même serveur (Vapor).",
+            ],
+          ),
+          section(
+            "SwiftUI : Framework UI déclaratif",
+            "SwiftUI révolutionne le développement UI Apple avec une approche déclarative inspirée de React.",
+            [
+              "Déclaratif : Tu décris CE QUE tu veux afficher, pas COMMENT le construire. SwiftUI gère les mises à jour.",
+              "Multiplateforme : UN code SwiftUI pour iOS, macOS, watchOS et tvOS avec adaptations automatiques.",
+              "Preview en temps réel : Xcode affiche tes changements instantanément sans recompiler l'app.",
+              "Intégration totale : SwiftUI s'intègre parfaitement avec UIKit (ancien framework) et les APIs Apple.",
+              "Binding bidirectionnel : Les données et l'UI sont automatiquement synchronisées avec @State et @Binding.",
+              "Composable : Crée des vues réutilisables qui se combinent comme des LEGO.",
+            ],
+          ),
+          section(
+            "Prérequis système pour développer en Swift",
+            "Le développement iOS/macOS nécessite un Mac avec Xcode. Pas d'alternative officielle sur Windows/Linux.",
+            [
+              "Mac obligatoire : Xcode ne fonctionne QUE sur macOS. Tu dois avoir un Mac (MacBook, iMac, Mac mini).",
+              "macOS : Version 13 Ventura ou supérieure recommandée pour Xcode 15+.",
+              "Espace disque : Minimum 30 GB libres (Xcode + simulateurs iOS prennent beaucoup de place).",
+              "RAM : 8 GB minimum, 16 GB fortement recommandés pour les simulateurs.",
+              "Processeur : Apple Silicon (M1/M2/M3) ou Intel, Apple Silicon beaucoup plus rapide.",
+            ],
+          ),
+          section(
+            "Installation de Xcode",
+            "Xcode est l'IDE officiel d'Apple, gratuit et obligatoire pour développer en Swift.",
+            [
+              "App Store : Cherche 'Xcode' dans l'App Store et clique sur 'Obtenir' (téléchargement lourd : 10-15 GB).",
+              "Première ouverture : Xcode installe automatiquement les outils de ligne de commande (Command Line Tools).",
+              "Simulateurs : Xcode inclut des simulateurs pour iPhone, iPad, Apple Watch et Apple TV.",
+              "Xcode Server (optionnel) : Intégration continue pour builds automatisés.",
+              "Vérification : Ouvre Terminal et tape swift --version pour vérifier l'installation.",
+            ],
+          ),
+          section(
+            "Premier projet SwiftUI",
+            "Crée ton premier projet SwiftUI et explore la structure standard d'une application iOS.",
+            [
+              "Créer un projet : Ouvre Xcode > File > New > Project > iOS > App. Choisis 'SwiftUI' comme interface.",
+              "Nom et identifiant : Donne un nom (MonApp) et un Bundle Identifier unique (com.tonnom.MonApp).",
+              "Structure générée : ContentView.swift (vue principale), MonAppApp.swift (point d'entrée), Assets (images/couleurs).",
+              "Preview : Le canvas à droite montre un aperçu interactif de ton UI. Clique sur 'Resume' si pas visible.",
+              "Simulateur : Clique sur Play (⌘R) pour lancer l'app dans le simulateur iPhone.",
+              "Devices : Change le simulateur avec le menu déroulant en haut (iPhone 15, iPad, etc.).",
+            ],
+          ),
+          section(
+            "Structure d'un projet SwiftUI",
+            "Comprends l'organisation des fichiers d'un projet SwiftUI typique.",
+            [
+              "MonAppApp.swift : Point d'entrée avec @main. Contient la structure App et la scène principale.",
+              "ContentView.swift : Vue racine de l'application. C'est ici que tu construis ton UI.",
+              "Assets.xcassets : Catalogue d'assets (images, couleurs, icônes d'app).",
+              "Preview Content : Données de preview uniquement utilisées dans Xcode, pas incluses dans l'app finale.",
+              "Info.plist : Configuration de l'app (permissions, orientations supportées). Souvent édité via Target Settings maintenant.",
             ],
           ),
         ],
-        files: projectExample(profile, swiftApp),
-        task: "Repère la vue appelée par WindowGroup. Sur Mac, lance la carte sur un simulateur. Pour pratiquer la syntaxe en console, ouvre Exemples/Bases.swift.",
+        files: profile.files,
+        task: "Installe Xcode depuis l'App Store. Crée un nouveau projet iOS App avec SwiftUI. Lance-le dans le simulateur iPhone 15. Modifie le texte dans ContentView et observe le preview se mettre à jour.",
         takeaway:
-          "Le projet Xcode organise la compilation de l’application. Le script Bases.swift permet de pratiquer le langage seul.",
+          "Swift est le langage moderne d'Apple. SwiftUI est le framework déclaratif pour créer des UI sur iOS, macOS, watchOS et tvOS. Xcode est obligatoire et inclut simulateurs et preview en temps réel.",
         quiz: quiz(
-          "Quel fichier appelle la vue principale au lancement de ce projet ?",
-          ["README.md", "DevAfricaApp.swift", "Bases.swift"],
-          1,
-          "Le type annoté @main installe ContentView dans WindowGroup.",
+          "Sur combien de plateformes Apple SwiftUI peut-il compiler ?",
+          ["1 (iOS seulement)", "2 (iOS et macOS)", "4 (iOS, macOS, watchOS, tvOS)"],
+          2,
+          "SwiftUI compile sur 4 plateformes Apple : iOS, macOS, watchOS et tvOS avec le même code.",
         ),
-        link: appleDocs + "xcode/running-your-app-in-simulator-or-on-a-device",
+        link: docs,
+      }),
+    ],
+  },
+  {
+    id: "swift-variables-types",
+    title: "Variables, types et optionals en Swift",
+    description:
+      "Maîtrise les fondamentaux de Swift : variables, types, optionals et nil safety.",
+    lessons: [
+      lesson({
+        id: "swift-let-var",
+        title: "Variables avec var et constantes avec let",
+        minutes: 25,
+        summary:
+          "Swift distingue clairement les variables mutables (var) et constantes immuables (let). Préfère let par défaut pour la sécurité.",
+        sections: [
+          section(
+            "Déclaration avec let et var",
+            "Swift force à choisir entre mutabilité (var) et immuabilité (let) pour éviter les bugs.",
+            [
+              "let : Constante, valeur assignée UNE FOIS et ne change JAMAIS. Exemple : let nom = 'Alice'. Swift génère une erreur si tu essaies de modifier.",
+              "var : Variable, peut être réassignée. Exemple : var age = 25; age = 26; (OK)",
+              "Préfère let : Apple recommande let par défaut. Utilise var SEULEMENT si la valeur DOIT changer.",
+              "Erreur de compilation : let score = 100; score = 200; → ERREUR. Swift t'empêche de modifier une constante.",
+              "Performance : let permet au compilateur d'optimiser (valeur figée = optimisations possibles).",
+            ],
+          ),
+          section(
+            "Inférence de type automatique",
+            "Swift déduit automatiquement le type d'une variable depuis sa valeur initiale.",
+            [
+              "Inférence : let nom = 'Alice' crée un String automatiquement. Pas besoin de spécifier le type.",
+              "Exemples : let age = 25 (Int), let taille = 1.75 (Double), let estActif = true (Bool).",
+              "Annotation de type explicite : let prenom: String = 'Bob'. Utile pour forcer un type spécifique.",
+              "Double par défaut : let nombre = 3.14 crée un Double (pas Float). Pour Float : let nombre: Float = 3.14.",
+            ],
+          ),
+          section(
+            "Types de base en Swift",
+            "Swift fournit des types fondamentaux pour les données courantes.",
+            [
+              "String : Chaînes de caractères. Exemple : let message = 'Bonjour'.",
+              "Int : Nombres entiers (42, -10, 0). Swift choisit Int64 sur plateformes 64-bit.",
+              "Double : Nombres décimaux haute précision (3.14159). Type par défaut pour les décimaux.",
+              "Float : Nombres décimaux précision simple (moins précis que Double). Rarement utilisé.",
+              "Bool : Booléens true ou false. Exemple : let estConnecte = true.",
+              "Type safety : Swift refuse de mélanger les types. let resultat = 5 + '10' → ERREUR de compilation.",
+            ],
+          ),
+        ],
+        files: profile.files,
+        task: "Crée un fichier Swift, déclare des constantes avec let (nom, dateNaissance) et une variable avec var (score). Essaie de modifier une constante pour voir l'erreur de compilation.",
+        takeaway:
+          "Swift distingue let (immuable) et var (mutable). Préfère let par défaut. L'inférence de type déduit automatiquement le type. Swift est type-safe : pas de mélange de types.",
+        quiz: quiz(
+          "Quel mot-clé utilises-tu pour une valeur qui ne doit JAMAIS changer ?",
+          ["var", "let", "const"],
+          1,
+          "let crée une constante immuable. var permet de réassigner la valeur.",
+        ),
+        link: swiftDocs + "LanguageGuide/TheBasics.html",
       }),
       lesson({
-        id: "variables-et-optionnels-swift",
-        title: "Variables, structures et valeurs optionnelles",
+        id: "swift-optionals",
+        title: "Optionals : gérer l'absence de valeur en sécurité",
+        minutes: 28,
+        summary:
+          "Les optionals sont LA fonctionnalité signature de Swift pour gérer nil en toute sécurité et éliminer les crashs NullPointerException.",
+        sections: [
+          section(
+            "Pourquoi les optionals ?",
+            "En Swift, une variable normale ne peut JAMAIS être nil. Pour représenter l'absence de valeur, utilise un optional.",
+            [
+              "Type non-optional : let nom: String = 'Alice'. nom ne peut JAMAIS être nil.",
+              "Type optional : let email: String? = nil. Le ? indique que email peut contenir une String OU nil.",
+              "Sécurité : Swift force à gérer explicitement les nil, éliminant les crashs à l'exécution.",
+              "Syntaxe : Type? signifie 'optional de Type'. String? = optional String, Int? = optional Int.",
+            ],
+          ),
+          section(
+            "Unwrapping sécurisé avec if let",
+            "Pour utiliser la valeur d'un optional, tu dois d'abord vérifier qu'il n'est pas nil avec if let.",
+            [
+              "Syntaxe : if let valeur = optional { /* utilise valeur */ } else { /* optional était nil */ }",
+              "Exemple : if let emailValide = email { print(emailValide) } else { print('Pas d\\'email') }",
+              "Unwrapping réussit : Si l'optional contient une valeur, elle est extraite et utilisable dans le bloc if.",
+              "Unwrapping échoue : Si l'optional est nil, le bloc else s'exécute.",
+              "Plusieurs unwraps : if let nom = nom, let age = age { /* les deux sont non-nil */ }",
+            ],
+          ),
+          section(
+            "Guard let : sortir tôt si nil",
+            "guard let est l'inverse de if let : il continue SEULEMENT si la valeur n'est pas nil, sinon il sort de la fonction.",
+            [
+              "Syntaxe : guard let valeur = optional else { return }. Sort de la fonction si nil.",
+              "Exemple : func afficher(email: String?) { guard let emailValide = email else { return }; print(emailValide) }",
+              "Valeur disponible après : Après guard let, la valeur unwrappée est disponible dans TOUT le reste de la fonction.",
+              "Lisibilité : guard réduit l'imbrication. Le 'chemin heureux' reste à gauche, les erreurs sortent tôt.",
+            ],
+          ),
+          section(
+            "Nil coalescing : valeur par défaut",
+            "L'opérateur ?? fournit une valeur par défaut si l'optional est nil.",
+            [
+              "Syntaxe : let resultat = optional ?? valeurParDefaut",
+              "Exemple : let affichage = email ?? 'Non renseigné'. Si email est nil, utilise 'Non renseigné'.",
+              "Retourne non-optional : Le résultat n'est PLUS un optional (type garanti non-nil).",
+              "Chaînage : let nom = prenom ?? surnom ?? 'Anonyme' (essaie prenom, puis surnom, puis défaut).",
+            ],
+          ),
+          section(
+            "Optional chaining et force unwrapping",
+            "Accède aux propriétés d'un optional en toute sécurité avec ? ou de force avec ! (dangereux).",
+            [
+              "Optional chaining (?) : user?.nom retourne nil si user est nil, sinon retourne nom. Safe.",
+              "Force unwrapping (!) : email! extrait la valeur SANS vérifier. Si nil → CRASH. DANGEREUX, évite-le.",
+              "Exemple safe : let longueur = email?.count (longueur est Int? : nil si email est nil).",
+              "Exemple dangereux : let longueur = email!.count Si email est nil, l'app CRASH.",
+              "Règle d'or : N'utilise JAMAIS ! sauf si tu es à 100% sûr que la valeur n'est pas nil.",
+            ],
+          ),
+        ],
+        files: profile.files,
+        task: "Déclare un String? avec une valeur, puis un avec nil. Utilise if let pour unwrap le premier, ?? pour fournir un défaut au second. Affiche les résultats.",
+        takeaway:
+          "Les optionals représentent l'absence de valeur. Type? peut être une valeur OU nil. if let unwrap en sécurité, guard let sort tôt si nil, ?? fournit un défaut. Évite force unwrapping (!) !",
+        quiz: quiz(
+          "Quel opérateur fournit une valeur par défaut si l'optional est nil ?",
+          ["!", "??", "?."],
+          1,
+          "L'opérateur ?? (nil coalescing) retourne la valeur de gauche si non-nil, sinon la valeur de droite.",
+        ),
+        link: swiftDocs + "LanguageGuide/TheBasics.html#ID330",
+      }),
+    ],
+  },
+  {
+    id: "swift-conditions-boucles",
+    title: "Conditions et boucles en Swift",
+    description:
+      "Contrôle le flux d'exécution avec if/else, switch et les boucles for/while.",
+    lessons: [
+      lesson({
+        id: "swift-if-else",
+        title: "Conditions if, else, et opérateurs",
         minutes: 22,
         summary:
-          "let crée une valeur non réassignable et var permet de la modifier. Un type suivi de ? représente une valeur qui peut être présente ou absente.",
+          "Exécute du code conditionnellement avec if/else et les opérateurs de comparaison et logiques.",
         sections: [
           section(
-            "Lire le profil dans Bases.swift",
-            "La structure Profil regroupe un nom, un domaine et une adresse de portfolio optionnelle. Le programme utilise switch pour adapter son message au niveau.",
+            "Structure if/else",
+            "Swift utilise if/else comme la plupart des langages, mais les parenthèses autour de la condition sont optionnelles.",
             [
-              "String décrit du texte et Int un entier. Swift peut souvent déduire le type à partir de la valeur initiale.",
-              "if let extrait la valeur présente et permet un else pour le cas nil.",
-              "guard let traite l’absence au début d’une fonction. Le bloc else doit quitter la portée, par exemple avec return.",
+              "Syntaxe : if condition { /* code */ } else { /* code */ }. Pas besoin de parenthèses autour de condition.",
+              "Exemple : if age >= 18 { print('Majeur') } else { print('Mineur') }",
+              "Accolades obligatoires : Les { } sont TOUJOURS obligatoires en Swift, même pour une ligne.",
+              "else if : if score >= 90 { 'A' } else if score >= 80 { 'B' } else { 'C' }",
             ],
           ),
-        ],
-        files: projectExample(profile, swiftBasics),
-        task: "Remplace nil par l’adresse d’un portfolio de démonstration. Exécute le script pour vérifier le message affiché.",
-        takeaway:
-          "Les optionnels obligent à envisager le cas où une donnée manque.",
-        quiz: quiz(
-          "Quel type indique que l’adresse de portfolio peut être absente ?",
-          ["String", "Int", "String?"],
-          2,
-          "Le point d’interrogation indique un Optional qui peut valoir nil.",
-        ),
-        link: swiftBook + "thebasics/",
-      }),
-    ],
-  },
-  {
-    id: "vues-swiftui-et-stacks",
-    title: "Vues déclaratives et disposition",
-    description:
-      "Assemble des composants et compose une carte à plusieurs couches.",
-    lessons: [
-      lesson({
-        id: "protocole-view-swiftui",
-        title: "Décrire un écran avec le protocole View",
-        minutes: 20,
-        summary:
-          "Une vue SwiftUI décrit le contenu à afficher. Une struct conforme à View fournit la propriété body qui assemble d’autres vues.",
-        sections: [
           section(
-            "Des éléments simples aux cartes",
-            "Text présente un texte. Image(systemName:) charge une icône SF Symbols. Label associe une icône et du texte.",
+            "Opérateurs de comparaison et logiques",
+            "Swift fournit les opérateurs standards pour comparer et combiner des conditions.",
             [
-              "Button associe une action à un appui. TextField peut se lier à un texte modifiable.",
-              "Les modificateurs font évoluer une vue. Dans la carte, font change le rôle typographique et foregroundStyle choisit la couleur.",
-              "Garde un intitulé visible pour l’action. Un portrait décoratif peut être masqué pour VoiceOver quand le nom est déjà annoncé.",
+              "Comparaison : == (égal), != (différent), > (supérieur), < (inférieur), >= (sup ou égal), <= (inf ou égal).",
+              "Logique : && (ET), || (OU), ! (NON). Exemple : if age >= 18 && estInscrit { 'Accès autorisé' }",
+              "Ternaire : condition ? valeurSiVrai : valeurSiFaux. Exemple : let statut = age >= 18 ? 'Majeur' : 'Mineur'",
             ],
           ),
         ],
         files: profile.files,
-        task: "Change le nom et le métier de la carte. Ajoute un Label avec une icône qui représente ton domaine.",
+        task: "Crée une fonction categoriserAge(_ age: Int) -> String qui retourne 'Enfant', 'Ado', 'Adulte' ou 'Senior' avec if/else.",
         takeaway:
-          "Le corps d’une vue décrit son contenu à partir des données disponibles.",
+          "if/else contrôle le flux. Les opérateurs de comparaison (==, >, <) et logiques (&&, ||, !) créent des conditions. Le ternaire (? :) est concis.",
         quiz: quiz(
-          "Quelle propriété décrit ce qu’affiche une View ?",
-          ["body", "id", "scenePhase"],
-          0,
-          "SwiftUI lit body pour construire l’arbre des vues.",
-        ),
-        link: appleDocs + "swiftui/view",
-      }),
-      lesson({
-        id: "stacks-et-modificateurs-swiftui",
-        title: "Aligner et superposer avec VStack, HStack et ZStack",
-        minutes: 20,
-        summary:
-          "Les piles décrivent comment les vues se positionnent. La carte place son fond derrière une pile verticale centrée.",
-        sections: [
-          section(
-            "Choisir le bon axe",
-            "VStack empile les vues verticalement. HStack les aligne sur une ligne. ZStack superpose les éléments, en commençant par l’arrière-plan.",
-            [
-              "padding ajoute de l’espace autour d’une vue. frame peut limiter la largeur de la carte ou faire occuper l’espace disponible.",
-              "L’ordre des modificateurs compte. Applique padding avant background pour que le fond englobe la marge.",
-              "Le ScrollView laisse le texte s’étendre quand la taille d’affichage augmente.",
-            ],
-          ),
-        ],
-        files: profile.files,
-        task: "Change le dégradé puis ajoute une HStack de deux libellés. Teste la carte avec une grande taille de texte.",
-        takeaway:
-          "La pile définit la position et les modificateurs précisent le rendu.",
-        quiz: quiz(
-          "Quelle pile place un dégradé derrière un bloc de contenu ?",
-          ["HStack", "ZStack", "VStack"],
+          "Les parenthèses autour de la condition dans if sont-elles obligatoires en Swift ?",
+          ["Oui, toujours", "Non, optionnelles", "Seulement pour les expressions complexes"],
           1,
-          "Les enfants d’une ZStack occupent des couches superposées.",
+          "En Swift, les parenthèses autour de la condition sont optionnelles. if age >= 18 { } est valide.",
         ),
-        link: appleDocs + "swiftui/building-layouts-with-stack-views",
+        link: swiftDocs + "LanguageGuide/ControlFlow.html",
+      }),
+      lesson({
+        id: "swift-switch",
+        title: "Switch exhaustif et pattern matching",
+        minutes: 25,
+        summary:
+          "Swift a le switch le plus puissant de tous les langages avec pattern matching, ranges et exhaustivité obligatoire.",
+        sections: [
+          section(
+            "Switch exhaustif",
+            "En Swift, switch DOIT couvrir TOUS les cas possibles. Le compilateur vérifie l'exhaustivité.",
+            [
+              "Syntaxe : switch valeur { case pattern1: /* code */ case pattern2: /* code */ default: /* cas par défaut */ }",
+              "Pas de break : Swift NE TRAVERSE PAS les cases suivants automatiquement. Pas besoin de break.",
+              "Exhaustivité : Swift force à gérer TOUS les cas ou ajouter default.",
+              "Exemple : switch jour { case 1: 'Lundi' case 2: 'Mardi' default: 'Autre' }",
+            ],
+          ),
+          section(
+            "Patterns avancés : ranges, tuples, where",
+            "Swift permet des patterns très expressifs dans switch.",
+            [
+              "Ranges : case 0..<18: 'Mineur' case 18...64: 'Adulte' case 65...: 'Senior'",
+              "Plusieurs valeurs : case 1, 2, 3: 'Trimestre 1' case 4, 5, 6: 'Trimestre 2'",
+              "Tuples : switch (x, y) { case (0, 0): 'Origine' case (_, 0): 'Sur axe X' case (0, _): 'Sur axe Y' default: 'Ailleurs' }",
+              "where clause : case let x where x % 2 == 0: 'Pair' case let x where x % 2 != 0: 'Impair'",
+            ],
+          ),
+        ],
+        files: profile.files,
+        task: "Crée une fonction evaluerNote(_ note: Int) -> String avec switch qui retourne 'A' (90+), 'B' (80-89), 'C' (70-79), 'D' (60-69), 'F' (<60). Utilise des ranges.",
+        takeaway:
+          "Swift switch est exhaustif (tous les cas couverts), pas de fallthrough automatique. Les patterns avancés (ranges, tuples, where) le rendent très puissant.",
+        quiz: quiz(
+          "En Swift, que se passe-t-il si ton switch ne couvre pas tous les cas ?",
+          ["Erreur de compilation", "Warning seulement", "Comportement par défaut"],
+          0,
+          "Swift génère une erreur de compilation si le switch n'est pas exhaustif. Tu dois couvrir tous les cas ou ajouter default.",
+        ),
+        link: swiftDocs + "LanguageGuide/ControlFlow.html#ID127",
+      }),
+      lesson({
+        id: "swift-boucles",
+        title: "Boucles for-in, while et repeat-while",
+        minutes: 20,
+        summary:
+          "Répète des opérations avec for-in (collections/ranges), while (condition préalable) et repeat-while (condition finale).",
+        sections: [
+          section(
+            "Boucle for-in",
+            "for-in parcourt des collections (Array, Dictionary, Set) ou des ranges de nombres.",
+            [
+              "Syntaxe : for element in collection { /* code */ }",
+              "Range : for i in 0..<5 { print(i) } affiche 0, 1, 2, 3, 4 (..< exclut la borne supérieure).",
+              "Range inclusif : for i in 0...5 { print(i) } affiche 0, 1, 2, 3, 4, 5 (... inclut la borne).",
+              "Array : for fruit in fruits { print(fruit) } parcourt tous les éléments.",
+              "Ignorer la valeur : for _ in 1...3 { print('Go!') } si tu n'utilises pas la variable.",
+            ],
+          ),
+          section(
+            "Boucles while et repeat-while",
+            "while vérifie la condition AVANT chaque itération. repeat-while vérifie APRÈS (équivalent do-while).",
+            [
+              "while : while condition { /* code */ }. S'exécute TANT QUE condition est vraie. Peut ne jamais s'exécuter.",
+              "repeat-while : repeat { /* code */ } while condition. S'exécute AU MOINS UNE FOIS, puis vérifie condition.",
+              "Exemple while : var i = 0; while i < 5 { print(i); i += 1 }",
+              "Exemple repeat : var i = 0; repeat { print(i); i += 1 } while i < 5",
+            ],
+          ),
+        ],
+        files: profile.files,
+        task: "Crée un tableau de nombres [1, 2, 3, 4, 5], utilise for-in pour afficher les carrés, puis for-in avec un range pour afficher les nombres de 10 à 1 en ordre décroissant.",
+        takeaway:
+          "for-in parcourt collections et ranges. while vérifie la condition avant, repeat-while après. Les ranges ..< et ... contrôlent l'inclusion.",
+        quiz: quiz(
+          "Quelle boucle s'exécute AU MOINS UNE FOIS avant de vérifier la condition ?",
+          ["for-in", "while", "repeat-while"],
+          2,
+          "repeat-while exécute le bloc une fois, PUIS vérifie la condition. while vérifie avant chaque itération.",
+        ),
+        link: swiftDocs + "LanguageGuide/ControlFlow.html#ID121",
       }),
     ],
   },
   {
-    id: "reagir-avec-state",
-    title: "État local et interactions",
+    id: "swiftui-vues-base",
+    title: "Premières vues SwiftUI : Text, Image, Button",
     description:
-      "Connecte des actions à un état et anime la mise à jour de l’écran.",
+      "Crée tes premières interfaces avec les composants de base de SwiftUI.",
     lessons: [
       lesson({
-        id: "state-score-swiftui",
-        title: "Faire réagir une vue avec @State",
-        minutes: 19,
+        id: "swiftui-text-styling",
+        title: "Text et styling : fonts, colors, modifiers",
+        minutes: 25,
         summary:
-          "Le score appartient à la vue du compteur. @State permet à SwiftUI de conserver cette valeur et de réévaluer l’affichage lorsqu’elle change.",
+          "Text affiche du texte stylisé. Les modifiers (.font, .foregroundColor, .bold) permettent une personnalisation complète.",
         sections: [
           section(
-            "Un état et plusieurs lectures",
-            "score commence à 0. Le texte lit cette valeur et les deux boutons appellent change(by:) avec un entier.",
+            "Text : afficher du texte",
+            "Text est le composant de base pour afficher du texte dans SwiftUI.",
             [
-              "Utilise @State private pour un petit état que la vue possède, comme un score ou une saisie.",
-              "Le symbole $ produit une liaison. Dans un TextField, text: $title relie la saisie à la variable title.",
-              "Calcule l’affichage à partir de l’état. Évite une deuxième variable qui recopie le score sous forme de texte.",
+              "Syntaxe : Text('Bonjour SwiftUI') affiche le texte brut.",
+              "Interpolation : Text('Mon nom est \\(nom)') insère des variables.",
+              "Multi-ligne : Text supporte automatiquement le multi-ligne si le texte est long.",
+            ],
+          ),
+          section(
+            "Modifiers de font et style",
+            "Les modifiers ajoutent du style à Text : fonts, poids, couleurs.",
+            [
+              ".font() : .font(.title), .font(.headline), .font(.caption) pour les tailles prédéfinies.",
+              ".font(.system(size: 24)) : Taille personnalisée.",
+              ".fontWeight() : .fontWeight(.bold), .fontWeight(.light), .fontWeight(.semibold).",
+              ".bold() : Raccourci pour .fontWeight(.bold).",
+              ".italic() : Texte en italique.",
+              ".foregroundColor() : .foregroundColor(.blue), .foregroundColor(.red) pour la couleur.",
+            ],
+          ),
+          section(
+            "Modifiers de layout",
+            "Contrôle l'alignement, le padding et les limites de lignes.",
+            [
+              ".multilineTextAlignment() : .multilineTextAlignment(.center), .leading, .trailing pour l'alignement.",
+              ".lineLimit() : .lineLimit(2) limite à 2 lignes, ajoute '...' si dépassement.",
+              ".padding() : Ajoute de l'espace autour. .padding(20) pour valeur personnalisée.",
             ],
           ),
         ],
-        files: points.files,
-        task: "Ajoute un bouton Remettre à zéro et vérifie que le texte central réagit.",
+        files: profile.files,
+        task: "Crée une vue avec 3 Text : un titre avec .font(.largeTitle).bold(), un sous-titre avec .font(.headline).foregroundColor(.gray), et un corps avec .font(.body).lineLimit(3).",
         takeaway:
-          "Une modification de @State suffit pour actualiser les éléments qui lisent cette valeur.",
+          "Text affiche du texte. Les modifiers (.font, .foregroundColor, .bold, .padding) stylisent les composants. Les modifiers se chaînent : Text('Hello').font(.title).bold().foregroundColor(.blue).",
         quiz: quiz(
-          "À quel endroit placer un score local que la vue doit observer ?",
-          [
-            "Dans un commentaire",
-            "Dans le nom du simulateur",
-            "Dans une propriété @State",
-          ],
-          2,
-          "SwiftUI observe la valeur d’état et réévalue les vues qui en dépendent.",
+          "Comment appliques-tu plusieurs modifiers à un composant SwiftUI ?",
+          ["En les séparant par des virgules", "En les chaînant avec des points", "En les imbriquant"],
+          1,
+          "Les modifiers se chaînent avec des points : Text('Hello').font(.title).bold().foregroundColor(.blue)",
         ),
-        link: appleDocs + "swiftui/state",
+        link: docs + "text",
       }),
       lesson({
-        id: "actions-et-transition-compteur",
-        title: "Organiser les boutons et animer le score",
-        minutes: 20,
+        id: "swiftui-image-button",
+        title: "Image et Button : afficher des images et réagir aux clics",
+        minutes: 28,
         summary:
-          "Les boutons du compteur partagent une méthode. La transition numérique rend le changement de valeur plus facile à suivre.",
+          "Image affiche des images système (SF Symbols) ou custom. Button déclenche des actions au clic.",
         sections: [
           section(
-            "Relier une action au rendu",
-            "La HStack regroupe Ajouter et Soustraire. withAnimation encadre le changement du score, puis contentTransition(.numericText()) définit l’effet du texte.",
+            "Image : afficher des images",
+            "Image affiche des images depuis les assets, SF Symbols (icônes système Apple) ou le web.",
             [
-              "Le paramètre by décrit le signe de la modification. Une seule fonction applique la règle.",
-              "L’environnement accessibilityReduceMotion indique quand limiter les mouvements.",
-              "Les libellés d’accessibilité expliquent le sens des boutons +1 et −1.",
+              "SF Symbols : Image(systemName: 'star.fill') affiche une icône système. Gratuit, 5000+ icônes.",
+              "Assets : Image('monImage') charge depuis Assets.xcassets.",
+              "Modifiers : .resizable() pour redimensionner, .frame(width: 100, height: 100) pour taille fixe.",
+              ".aspectRatio(contentMode: .fit) : Garde les proportions. .fill remplit l'espace.",
+              ".foregroundColor() : Change la couleur des SF Symbols.",
+            ],
+          ),
+          section(
+            "Button : déclencher des actions",
+            "Button déclenche une action quand l'utilisateur clique/tape dessus.",
+            [
+              "Syntaxe : Button(action: { /* action */ }) { /* contenu */ }",
+              "Exemple simple : Button(action: { print('Cliqué!') }) { Text('Cliquez-moi') }",
+              "Avec icône : Button(action: { /* action */ }) { Label('Valider', systemImage: 'checkmark') }",
+              "Styling : Button applique automatiquement un style bleu. Personnalise avec .buttonStyle().",
+              ".disabled() : Button(action: {}).disabled(isButtonDisabled) désactive le bouton conditionnellement.",
+            ],
+          ),
+          section(
+            "Combiner Image et Button",
+            "Crée des boutons avec des icônes pour des interfaces modernes.",
+            [
+              "Exemple : Button(action: { likes += 1 }) { Image(systemName: 'heart.fill').foregroundColor(.red).font(.title) }",
+              "Label : Label('Sauvegarder', systemImage: 'square.and.arrow.down') combine texte + icône automatiquement.",
             ],
           ),
         ],
-        files: points.files,
-        task: "Ajoute deux points puis retire-en un. Active Réduire les animations et répète les mêmes actions.",
+        files: counter.files,
+        task: "Crée une vue avec une Image SF Symbol (star.fill) de 80pt en jaune, et un Button qui change la couleur de l'étoile entre jaune et gris à chaque clic (utilise @State).",
         takeaway:
-          "Une transition anime le changement d’une valeur. Le score reste la source de l’affichage.",
+          "Image affiche des SF Symbols (systemName) ou assets. Button déclenche des actions. Label combine texte + icône. Les modifiers (.resizable, .frame, .foregroundColor) personnalisent.",
         quiz: quiz(
-          "Que fait withAnimation autour de score += amount ?",
-          [
-            "Il anime la mise à jour visuelle liée au score",
-            "Il remet le score à zéro",
-            "Il enregistre le score sur disque",
-          ],
-          0,
-          "Le bloc transmet une animation au changement d’état et aux vues qui le représentent.",
+          "Comment affiches-tu une icône système Apple (SF Symbol) ?",
+          ["Image('star')", "Image(systemName: 'star')", "Icon('star')"],
+          1,
+          "Image(systemName: 'nomDeLIcone') affiche un SF Symbol. Image('nom') charge depuis les assets.",
         ),
-        link: appleDocs + "swiftui/withanimation(_:_:)",
+        link: docs + "image",
+      }),
+    ],
+  },
+  {
+    id: "swiftui-layout",
+    title: "Layout : VStack, HStack, ZStack",
+    description:
+      "Organise tes vues avec les stacks pour créer des interfaces complexes.",
+    lessons: [
+      lesson({
+        id: "swiftui-stacks",
+        title: "VStack, HStack et ZStack : organiser les vues",
+        minutes: 30,
+        summary:
+          "Les stacks sont les conteneurs de base pour organiser les vues en colonnes (VStack), lignes (HStack) ou couches (ZStack).",
+        sections: [
+          section(
+            "VStack : disposition verticale",
+            "VStack empile les vues VERTICALEMENT (de haut en bas).",
+            [
+              "Syntaxe : VStack { Text('Un'); Text('Deux'); Text('Trois') } empile 3 textes verticalement.",
+              "spacing : VStack(spacing: 20) ajoute 20pt d'espace entre chaque vue.",
+              "alignment : VStack(alignment: .leading) aligne à gauche. .center (défaut), .trailing (droite).",
+            ],
+          ),
+          section(
+            "HStack : disposition horizontale",
+            "HStack empile les vues HORIZONTALEMENT (de gauche à droite).",
+            [
+              "Syntaxe : HStack { Text('Un'); Text('Deux'); Text('Trois') } empile horizontalement.",
+              "spacing et alignment : Mêmes paramètres que VStack. alignment : .top, .center, .bottom.",
+            ],
+          ),
+          section(
+            "ZStack : superposition de vues",
+            "ZStack empile les vues en PROFONDEUR (l'une sur l'autre).",
+            [
+              "Syntaxe : ZStack { Rectangle().fill(Color.blue); Text('Au-dessus') } superpose texte sur rectangle.",
+              "alignment : ZStack(alignment: .topLeading) positionne les vues. .center (défaut), .bottomTrailing, etc.",
+              "Use cases : Badges sur icônes, overlays, backgrounds.",
+            ],
+          ),
+          section(
+            "Spacer et Divider",
+            "Spacer crée un espace flexible, Divider trace une ligne séparatrice.",
+            [
+              "Spacer() : Pousse les vues aux extrémités. HStack { Text('Gauche'); Spacer(); Text('Droite') } sépare au max.",
+              "Divider() : Ligne de séparation. VStack { Text('Un'); Divider(); Text('Deux') } trace une ligne horizontale.",
+            ],
+          ),
+        ],
+        files: profile.files,
+        task: "Crée une carte de visite avec un VStack principal contenant : un HStack avec une Image et un VStack (nom + titre), un Divider, puis un VStack d'infos de contact.",
+        takeaway:
+          "VStack empile verticalement, HStack horizontalement, ZStack en profondeur. spacing, alignment et Spacer contrôlent la disposition. Divider trace des séparations.",
+        quiz: quiz(
+          "Quel stack utilises-tu pour superposer des vues l'une sur l'autre ?",
+          ["VStack", "HStack", "ZStack"],
+          2,
+          "ZStack empile les vues en profondeur, l'une sur l'autre. VStack empile verticalement, HStack horizontalement.",
+        ),
+        link: docs + "vstack",
+      }),
+    ],
+  },
+  {
+    id: "swiftui-state",
+    title: "Gestion d'état avec @State",
+    description:
+      "Gère l'état local de tes vues avec @State et rends-les interactives.",
+    lessons: [
+      lesson({
+        id: "swiftui-state-binding",
+        title: "@State : état local et réactivité",
+        minutes: 32,
+        summary:
+          "@State crée une variable d'état locale à la vue. Quand elle change, SwiftUI reconstruit automatiquement la vue.",
+        sections: [
+          section(
+            "Pourquoi @State ?",
+            "Les vues SwiftUI sont des structs immuables. @State permet de modifier des valeurs et de déclencher un re-render.",
+            [
+              "Struct immuable : struct ContentView: View { var count = 0 } Tu ne peux PAS modifier count dans body.",
+              "@State rend mutable : @State private var count = 0 permet de modifier count.",
+              "Réactivité : Quand count change, SwiftUI reconstruit AUTOMATIQUEMENT la vue avec la nouvelle valeur.",
+              "Local : @State est PRIVÉ à la vue. Utilise @Binding ou @StateObject pour partager.",
+            ],
+          ),
+          section(
+            "Déclarer et utiliser @State",
+            "Déclare @State en tant que propriété de la struct, toujours private.",
+            [
+              "Syntaxe : @State private var count = 0 déclare un entier d'état.",
+              "Lecture : Text('\\(count)') affiche la valeur actuelle.",
+              "Modification : Button('Incrémenter') { count += 1 } modifie l'état.",
+              "Re-render automatique : Quand count change, Text se met à jour automatiquement.",
+            ],
+          ),
+          section(
+            "@State avec Bool, String, Array",
+            "@State fonctionne avec tous les types : Bool, String, Array, struct custom, etc.",
+            [
+              "Bool : @State private var isOn = false. Parfait pour toggle : isOn.toggle().",
+              "String : @State private var texte = ''. Lié à TextField avec $texte.",
+              "Array : @State private var items: [String] = []. Modifie avec .append(), .remove(), etc.",
+            ],
+          ),
+          section(
+            "Le $ : Binding bidirectionnel",
+            "$ crée un Binding : synchronisation bidirectionnelle entre @State et un composant.",
+            [
+              "Syntaxe : TextField('Nom', text: $nom) lie le champ à la variable nom.",
+              "Lecture ET écriture : Le TextField LIT nom pour afficher, ÉCRIT dans nom quand l'utilisateur tape.",
+              "Automatique : SwiftUI synchronise les deux directions sans code supplémentaire.",
+              "Autres usages : Toggle('Actif', isOn: $isActive), Slider(value: $volume, in: 0...100).",
+            ],
+          ),
+        ],
+        files: counter.files,
+        task: "Crée un compteur avec @State private var count = 0. Affiche-le avec Text, ajoute deux boutons pour incrémenter et décrémenter. Change la couleur du texte en fonction du signe (vert si positif, rouge si négatif).",
+        takeaway:
+          "@State crée un état local mutable. Quand il change, SwiftUI reconstruit la vue automatiquement. $ crée un Binding bidirectionnel pour TextField, Toggle, etc.",
+        quiz: quiz(
+          "Que fait le préfixe $ devant une variable @State ?",
+          ["La rend constante", "Crée un Binding bidirectionnel", "La rend globale"],
+          1,
+          "$ crée un Binding qui lie une variable @State à un composant avec synchronisation bidirectionnelle.",
+        ),
+        link: docs + "state",
+      }),
+    ],
+  },
+  {
+    id: "swift-fonctions-closures",
+    title: "Fonctions et closures",
+    description:
+      "Crée des fonctions réutilisables et maîtrise les closures, le cœur du style Swift.",
+    lessons: [
+      lesson({
+        id: "swift-fonctions",
+        title: "Fonctions : paramètres, labels et retour",
+        minutes: 28,
+        summary:
+          "Les fonctions en Swift utilisent des labels explicites pour les paramètres, rendant les appels très lisibles. Les valeurs par défaut et les paramètres variadiques offrent une grande flexibilité.",
+        sections: [
+          section(
+            "Déclarer une fonction",
+            "func nomFonction(label param: Type) -> TypeRetour définit une fonction. Le label est utilisé à l'appel, le param dans le corps.",
+            [
+              "func saluer(nom: String) -> String { return 'Bonjour \\(nom)' }",
+              "Appel : saluer(nom: 'Alice') – le label rend l'appel lisible.",
+              "_ pour supprimer le label : func add(_ a: Int, _ b: Int) -> Int",
+              "Appel sans label : add(3, 5)",
+              "Valeur par défaut : func saluer(nom: String = 'monde')",
+              "@discardableResult pour ignorer la valeur de retour sans warning.",
+            ]
+          ),
+          section(
+            "Retours multiples avec tuples",
+            "Swift permet de retourner plusieurs valeurs en une seule fonction grâce aux tuples.",
+            [
+              "func minMax(_ arr: [Int]) -> (min: Int, max: Int)",
+              "Accès : let r = minMax([3,1,4]); r.min, r.max",
+              "Optionnel : -> (min: Int, max: Int)? si le tableau peut être vide.",
+            ]
+          ),
+          section(
+            "Paramètres variadiques et inout",
+            "Une fonction peut accepter un nombre variable d'arguments ou modifier ses paramètres.",
+            [
+              "Variadique : func somme(_ nums: Int...) -> Int",
+              "nums est un [Int] à l'intérieur de la fonction.",
+              "inout : func doubler(_ x: inout Int) modifie la variable originale.",
+              "Appel inout : doubler(&monInt) – & indique la modification.",
+            ]
+          ),
+        ],
+        files: {
+          html: "",
+          css: "",
+          entry: `// Fonctions Swift
+
+// Fonction simple avec label
+func saluer(nom: String) -> String {
+    return "Bonjour \\(nom) !"
+}
+print(saluer(nom: "Alice"))
+
+// Plusieurs paramètres, label externe différent du param interne
+func calculerAire(largeur l: Double, hauteur h: Double) -> Double {
+    return l * h
+}
+let aire = calculerAire(largeur: 10, hauteur: 5)
+print("Aire : \\(aire)")
+
+// _ pour supprimer le label
+func additionner(_ a: Int, _ b: Int) -> Int {
+    return a + b
+}
+print(additionner(3, 7))
+
+// Retour multiple avec tuple
+func minMax(_ tableau: [Int]) -> (min: Int, max: Int)? {
+    guard !tableau.isEmpty else { return nil }
+    return (tableau.min()!, tableau.max()!)
+}
+
+if let resultat = minMax([4, 2, 8, 1, 9]) {
+    print("Min: \\(resultat.min), Max: \\(resultat.max)")
+}
+
+// Valeur par défaut
+func connexion(hote: String, port: Int = 8080) {
+    print("Connexion à \\(hote):\\(port)")
+}
+connexion(hote: "localhost")
+connexion(hote: "api.dev", port: 3000)
+
+// Variadique
+func somme(_ nombres: Int...) -> Int {
+    return nombres.reduce(0, +)
+}
+print("Somme : \\(somme(1, 2, 3, 4, 5))")`,
+        },
+        task: "Crée une fonction calculerIMC(poids: Double, taille: Double) -> (imc: Double, categorie: String) qui retourne l'IMC et sa catégorie (maigre/normal/surpoids). Teste avec plusieurs valeurs.",
+        takeaway:
+          "Les labels de paramètres Swift rendent les appels lisibles. Les tuples permettent des retours multiples. inout modifie les variables originales.",
+        quiz: quiz(
+          "Comment supprimer le label d'un paramètre à l'appel ?",
+          ["En utilisant var", "En préfixant avec _", "En ajoutant @noLabel"],
+          1,
+          "func add(_ a: Int, _ b: Int) supprime les labels. L'appel devient add(3, 5) au lieu de add(a: 3, b: 5)."
+        ),
+        link: swiftDocs + "documentation/the-swift-programming-language/functions",
+      }),
+      lesson({
+        id: "swift-closures",
+        title: "Closures : fonctions anonymes et trailing syntax",
+        minutes: 30,
+        summary:
+          "Les closures sont des blocs de code anonymes utilisés partout en Swift : map, filter, sort, les callbacks SwiftUI. La trailing closure syntax rend le code très fluide.",
+        sections: [
+          section(
+            "Qu'est-ce qu'une closure ?",
+            "Une closure est une fonction sans nom qu'on peut stocker dans une variable ou passer en paramètre.",
+            [
+              "Syntaxe : { (params) -> ReturnType in instructions }",
+              "Court : { param in instruction } – inférence de type.",
+              "Ultra-court : { $0 + $1 } – paramètres numérotés $0, $1...",
+              "Capturing : une closure 'capture' les variables de son contexte.",
+            ]
+          ),
+          section(
+            "Trailing closure syntax",
+            "Quand le dernier paramètre est une closure, on peut la placer APRÈS les parenthèses.",
+            [
+              "Normal : nombres.sorted(by: { $0 < $1 })",
+              "Trailing : nombres.sorted { $0 < $1 }",
+              "Multiple trailing (Swift 5.3+) : URLSession.shared.dataTask(with: url) { data, response, error in ... }",
+            ]
+          ),
+          section(
+            "map, filter, reduce",
+            "Les opérations fonctionnelles sur les collections utilisent des closures.",
+            [
+              "map : transforme chaque élément. [1,2,3].map { $0 * 2 } → [2,4,6]",
+              "filter : garde les éléments qui passent le test. [1,2,3,4].filter { $0 % 2 == 0 } → [2,4]",
+              "reduce : combine tous les éléments. [1,2,3,4].reduce(0, +) → 10",
+              "compactMap : map + filtre les nil. Utile avec les optionals.",
+            ]
+          ),
+        ],
+        files: {
+          html: "",
+          css: "",
+          entry: `// Closures Swift
+
+// Closure stockée dans une variable
+let multiplier = { (a: Int, b: Int) -> Int in
+    return a * b
+}
+print(multiplier(4, 5))  // 20
+
+// Inférence de type (plus court)
+let doubler: (Int) -> Int = { $0 * 2 }
+print(doubler(7))  // 14
+
+// Trailing closure avec sort
+let noms = ["Charlie", "Alice", "Bob", "Diana"]
+let nomsTries = noms.sorted { $0 < $1 }
+print(nomsTries)  // ["Alice", "Bob", "Charlie", "Diana"]
+
+// map : transformer
+let nombres = [1, 2, 3, 4, 5]
+let carres = nombres.map { $0 * $0 }
+print("Carrés : \\(carres)")
+
+// filter : filtrer
+let pairs = nombres.filter { $0 % 2 == 0 }
+print("Pairs : \\(pairs)")
+
+// reduce : combiner
+let somme = nombres.reduce(0) { $0 + $1 }
+print("Somme : \\(somme)")
+
+// Chaîner les opérations
+let resultat = (1...10)
+    .filter { $0 % 2 != 0 }  // Impairs
+    .map { $0 * $0 }          // Carré
+    .reduce(0, +)             // Somme
+print("Somme des carrés impairs : \\(resultat)")
+
+// @escaping : closure qui outlive la fonction
+func chargerDonnees(completion: @escaping (String) -> Void) {
+    DispatchQueue.global().async {
+        let data = "Données chargées"
+        DispatchQueue.main.async { completion(data) }
+    }
+}`,
+        },
+        task: "À partir d'un tableau de températures en Celsius [0, 10, 20, 30, 40], utilise map pour convertir en Fahrenheit (F = C * 9/5 + 32), filter pour garder celles > 70°F, puis reduce pour calculer la moyenne.",
+        takeaway:
+          "Les closures sont omniprésentes en Swift. La trailing syntax et $0/$1 rendent le code compact. map/filter/reduce transforment les collections de façon fonctionnelle.",
+        quiz: quiz(
+          "Que fait [1,2,3,4].filter { $0 % 2 == 0 } ?",
+          ["Retourne [2, 4]", "Retourne [1, 3]", "Retourne [1, 2, 3, 4]"],
+          0,
+          "filter garde les éléments pour lesquels la closure retourne true. Ici, les nombres pairs (divisibles par 2)."
+        ),
+        link: swiftDocs + "documentation/the-swift-programming-language/closures",
+      }),
+    ],
+  },
+  {
+    id: "swift-structs-classes",
+    title: "Structs, classes et protocoles",
+    description:
+      "Modélise tes données avec des structs (valeur) et tes services avec des classes (référence). Utilise les protocoles comme contrats.",
+    lessons: [
+      lesson({
+        id: "swift-struct-class",
+        title: "Struct vs Class : valeur vs référence",
+        minutes: 32,
+        summary:
+          "En Swift, les structs sont copiées (valeur) et les classes sont partagées (référence). SwiftUI préfère les structs pour les vues et les données. Les classes pour les services partagés.",
+        sections: [
+          section(
+            "Struct : type valeur",
+            "Quand tu assignes ou passes une struct, Swift en crée une COPIE. Chaque variable a sa propre copie indépendante.",
+            [
+              "struct Point { var x: Double; var y: Double }",
+              "let p1 = Point(x: 1, y: 2); var p2 = p1 → p2 est une copie indépendante.",
+              "Modifier p2 ne change PAS p1.",
+              "Initialiseur memberwise automatique : Point(x: 1, y: 2) sans rien écrire.",
+              "mutating func : nécessaire pour modifier un attribut depuis une méthode.",
+              "Préférer struct par défaut en Swift !",
+            ]
+          ),
+          section(
+            "Class : type référence",
+            "Quand tu assignes ou passes une classe, Swift partage la MÊME instance. Toutes les références voient les changements.",
+            [
+              "class Compteur { var valeur = 0 }",
+              "let c1 = Compteur(); let c2 = c1 → c1 et c2 pointent sur le MÊME objet.",
+              "Modifier c2.valeur change aussi c1.valeur !",
+              "Héritage : class Enfant: Parent { }",
+              "deinit : destructeur appelé quand l'instance est libérée.",
+              "Utiliser class pour services partagés, ObservableObject, singletons.",
+            ]
+          ),
+          section(
+            "Protocoles : contrats Swift",
+            "Un protocole définit des méthodes et propriétés qu'un type doit implémenter. Comme une interface Java.",
+            [
+              "protocol Descriptible { var description: String { get } }",
+              "struct Livre: Descriptible { var description: String { ... } }",
+              "Un type peut adopter plusieurs protocoles.",
+              "Protocoles standards importants : Identifiable, Hashable, Codable, Comparable.",
+              "protocol + extension = fonctionnalité par défaut.",
+            ]
+          ),
+        ],
+        files: {
+          html: "",
+          css: "",
+          entry: `// Struct vs Class en Swift
+
+// === STRUCT (type valeur) ===
+struct Point {
+    var x: Double
+    var y: Double
+    
+    // mutating car modifie self
+    mutating func deplacer(dx: Double, dy: Double) {
+        x += dx
+        y += dy
+    }
+    
+    var description: String {
+        "Point(\\(x), \\(y))"
+    }
+}
+
+var p1 = Point(x: 0, y: 0)
+var p2 = p1          // Copie !
+p2.x = 10
+print(p1.description)  // Point(0.0, 0.0) – non modifié
+print(p2.description)  // Point(10.0, 0.0)
+
+// === CLASS (type référence) ===
+class Compteur {
+    var valeur = 0
+    
+    func incrementer() { valeur += 1 }
+    
+    deinit { print("Compteur libéré") }
+}
+
+let c1 = Compteur()
+let c2 = c1          // Référence partagée !
+c2.incrementer()
+c2.incrementer()
+print(c1.valeur)     // 2 – c1 et c2 partagent le même objet
+
+// === PROTOCOLE ===
+protocol Animal {
+    var nom: String { get }
+    func parler() -> String
+}
+
+struct Chien: Animal {
+    var nom: String
+    func parler() -> String { "\\(nom) dit : Woof!" }
+}
+
+struct Chat: Animal {
+    var nom: String
+    func parler() -> String { "\\(nom) dit : Miaou!" }
+}
+
+let animaux: [any Animal] = [Chien(nom: "Rex"), Chat(nom: "Whiskers")]
+for animal in animaux {
+    print(animal.parler())
+}`,
+        },
+        task: "Crée une struct Produit (nom, prix, quantite) avec un protocole Affichable qui impose var resume: String. Crée un tableau de 3 produits et affiche un résumé de chacun.",
+        takeaway:
+          "Struct = copie (valeur), class = partage (référence). SwiftUI préfère les structs. Les protocoles définissent des contrats. Préfère struct par défaut sauf besoin de partage.",
+        quiz: quiz(
+          "Que se passe-t-il quand on assigne une struct à une nouvelle variable ?",
+          ["Les deux variables partagent la même instance", "Une copie indépendante est créée", "Une erreur de compilation"],
+          1,
+          "Les structs sont des types valeur. L'assignation crée une copie. Modifier l'une ne change pas l'autre."
+        ),
+        link: swiftDocs + "documentation/the-swift-programming-language/structures-and-classes",
+      }),
+    ],
+  },
+  {
+    id: "swift-collections",
+    title: "Collections : Array, Dictionary, Set",
+    description:
+      "Stocke et manipule des groupes de données avec les trois collections fondamentales de Swift.",
+    lessons: [
+      lesson({
+        id: "swift-array-dict-set",
+        title: "Array, Dictionary et Set",
+        minutes: 30,
+        summary:
+          "Swift propose trois collections principales : Array (tableaux ordonnés), Dictionary (paires clé-valeur), Set (éléments uniques non ordonnés). Toutes sont génériques et type-safe.",
+        sections: [
+          section(
+            "Array : collection ordonnée",
+            "Un Array est une liste ordonnée d'éléments du même type. Le type le plus utilisé en Swift.",
+            [
+              "Déclaration : var fruits = [\"pomme\", \"banane\", \"cerise\"]",
+              "Type explicite : var notes: [Int] = []",
+              "Accès : fruits[0] → 'pomme'. fruits.first, fruits.last.",
+              "Modification : fruits.append('kiwi'), fruits.insert('mangue', at: 1)",
+              "Suppression : fruits.remove(at: 0), fruits.removeAll()",
+              "Itération : for fruit in fruits { print(fruit) }",
+              "Vérification : fruits.contains('pomme'), fruits.count, fruits.isEmpty",
+            ]
+          ),
+          section(
+            "Dictionary : paires clé-valeur",
+            "Un Dictionary associe des clés uniques à des valeurs. L'accès retourne un Optional.",
+            [
+              "Déclaration : var ages = [\"Alice\": 25, \"Bob\": 30]",
+              "Accès : ages[\"Alice\"] → Optional(25). Toujours Optional !",
+              "Avec défaut : ages[\"Alice\", default: 0]",
+              "Ajout/modification : ages[\"Charlie\"] = 22",
+              "Suppression : ages[\"Bob\"] = nil",
+              "Itération : for (nom, age) in ages { }",
+            ]
+          ),
+          section(
+            "Set : éléments uniques",
+            "Un Set stocke des éléments uniques sans ordre garanti. Très rapide pour vérifier la présence.",
+            [
+              "Déclaration : var langages: Set = [\"Swift\", \"Python\", \"Kotlin\"]",
+              "Ajout : langages.insert(\"Rust\")",
+              "Vérification : langages.contains(\"Swift\") → true",
+              "Pas de doublons : insert d'un doublon ignoré.",
+              "Opérations ensemblistes : union, intersection, subtracting.",
+              "Utiliser Set pour une recherche O(1) et garantir l'unicité.",
+            ]
+          ),
+        ],
+        files: {
+          html: "",
+          css: "",
+          entry: `// Collections Swift
+
+// === ARRAY ===
+var scores = [85, 92, 78, 96, 88]
+print("Scores : \\(scores)")
+print("Moyenne : \\(Double(scores.reduce(0, +)) / Double(scores.count))")
+
+scores.append(100)
+scores.sort()
+print("Triés : \\(scores)")
+
+// Filtrage et transformation
+let excellents = scores.filter { $0 >= 90 }
+let bonus = scores.map { $0 + 5 }
+print("Excellents : \\(excellents)")
+
+// === DICTIONARY ===
+var contacts: [String: String] = [
+    "Alice": "+33612345678",
+    "Bob": "+33698765432"
+]
+
+contacts["Charlie"] = "+33611223344"
+
+if let tel = contacts["Alice"] {
+    print("Alice : \\(tel)")
+}
+
+// Itération
+for (nom, numero) in contacts.sorted(by: { $0.key < $1.key }) {
+    print("\\(nom) → \\(numero)")
+}
+
+// Comptage de fréquences avec Dictionary
+let texte = "swift swift kotlin java swift kotlin"
+let mots = texte.split(separator: " ")
+var frequences: [String: Int] = [:]
+for mot in mots {
+    frequences[String(mot), default: 0] += 1
+}
+print("Fréquences : \\(frequences)")
+
+// === SET ===
+var langagesMaitrise: Set = ["Swift", "Python", "Swift"]  // Swift en double
+print("Langages (uniques) : \\(langagesMaitrise.count)")  // 2
+
+let objectif: Set = ["Swift", "Kotlin", "Rust"]
+let aApprendre = objectif.subtracting(langagesMaitrise)
+print("À apprendre : \\(aApprendre)")`,
+        },
+        task: "Crée un programme qui lit une liste de mots et affiche : le nombre de mots uniques (Set), la fréquence de chaque mot (Dictionary), et les 3 mots les plus fréquents (Array trié).",
+        takeaway:
+          "Array pour l'ordre, Dictionary pour clé-valeur, Set pour l'unicité et la rapidité. L'accès à un Dictionary retourne toujours un Optional !",
+        quiz: quiz(
+          "Quel est le type retourné par ages[\"Alice\"] sur un Dictionary [String: Int] ?",
+          ["Int", "Int?", "String"],
+          1,
+          "L'accès à un Dictionary retourne toujours un Optional car la clé pourrait ne pas exister."
+        ),
+        link: swiftDocs + "documentation/the-swift-programming-language/collection-types",
+      }),
+    ],
+  },
+  {
+    id: "swift-exercice-debutant",
+    title: "Exercice final débutant",
+    description:
+      "Construis une app de profil interactif qui combine tous les fondamentaux Swift et SwiftUI appris.",
+    lessons: [
+      lesson({
+        id: "swift-projet-profil",
+        title: "Projet : App de profil personnel interactif",
+        minutes: 90,
+        summary:
+          "Crée une application SwiftUI complète avec un profil utilisateur modifiable, un compteur de skills, et un mini quiz. Combine Swift (structs, closures, collections) et SwiftUI (@State, stacks, List).",
+        sections: [
+          section(
+            "Objectif du projet",
+            "Une app avec 3 vues : profil, skills et quiz. Toutes les données sont en mémoire avec @State.",
+            [
+              "Vue Profil : nom, bio, avatar avec emoji picker, bouton Modifier.",
+              "Vue Skills : liste de compétences avec niveau (1-5 étoiles), ajout/suppression.",
+              "Vue Quiz : 5 questions sur Swift, score affiché à la fin.",
+              "Navigation : TabView avec 3 onglets.",
+            ]
+          ),
+          section(
+            "Concepts utilisés",
+            "Ce projet combine tous les fondamentaux du niveau débutant.",
+            [
+              "✅ Variables/constantes (let/var, optionals)",
+              "✅ Conditions et switch",
+              "✅ Boucles et ForEach",
+              "✅ Fonctions avec paramètres",
+              "✅ Struct pour les modèles (Skill, Question)",
+              "✅ Array et Dictionary",
+              "✅ Closures (map, filter)",
+              "✅ @State et Binding",
+              "✅ VStack, HStack, List, TabView",
+            ]
+          ),
+          section(
+            "Structure suggérée",
+            "Organise ton code en modèles, vues et logique séparés.",
+            [
+              "struct Skill: Identifiable { id, nom, niveau: Int }",
+              "struct Question: Identifiable { id, texte, options: [String], reponseCorrecte: Int }",
+              "ProfilView : @State var profil = Profil()",
+              "SkillsView : @State var skills = [Skill]() avec ajout/suppression",
+              "QuizView : @State var questionIndex = 0, @State var score = 0",
+            ]
+          ),
+        ],
+        files: profile.files,
+        task: "Implémente les 3 vues complètes de l'application. Assure-toi que l'ajout/suppression de skills fonctionne, que le quiz calcule bien le score, et que la navigation par onglets est fluide.",
+        takeaway:
+          "Bravo ! Tu maîtrises maintenant les fondamentaux Swift et SwiftUI : types, optionals, collections, closures, @State et les composants de base. Le niveau intermédiaire t'attend !",
+        quiz: quiz(
+          "Quel composant SwiftUI utilise-t-on pour une navigation par onglets ?",
+          ["NavigationView", "TabView", "GroupBox"],
+          1,
+          "TabView crée une barre d'onglets en bas avec .tabItem { Label(...) } pour chaque vue."
+        ),
+        link: docs + "tabview",
       }),
     ],
   },
@@ -232,216 +1123,372 @@ const beginner: WebLevel["chapters"] = [
 
 const intermediate: WebLevel["chapters"] = [
   {
-    id: "listes-et-identifiants-ios",
-    title: "List, modèles et identifiants",
+    id: "swiftui-listes",
+    title: "Listes dynamiques avec List et ForEach",
     description:
-      "Présente des données dynamiques et retrouve le bon élément après un changement.",
+      "Affiche des collections de données avec List, le composant le plus utilisé de SwiftUI.",
     lessons: [
       lesson({
-        id: "modeles-identifiables-swift",
-        title: "Identifier les éléments d’une List",
-        minutes: 20,
+        id: "swiftui-list-foreach",
+        title: "List et ForEach : afficher des tableaux",
+        minutes: 28,
         summary:
-          "Une List affiche les lignes d’une collection. Identifiable fournit un id stable à chaque élément, même quand son libellé ressemble à celui d’un autre.",
+          "List affiche des collections scrollables. ForEach génère des vues depuis un tableau, performant et idiomatique en SwiftUI.",
         sections: [
           section(
-            "Modéliser une tâche",
-            "TodoTask contient un UUID, un titre et un état de progression. La vue s’appuie sur ForEach pour créer une ligne par tâche.",
+            "List : listes scrollables",
+            "List est le composant SwiftUI pour afficher des listes scrollables avec style natif iOS.",
             [
-              "Crée l’UUID une seule fois à la création du modèle. L’identifiant sert à suivre cet objet à travers les mises à jour.",
-              "Deux tâches peuvent avoir le même titre. Leurs UUID les distinguent.",
-              "La suppression reçoit des index de la collection affichée. Parcours-les à l’envers pour garder les index valides.",
+              "Syntaxe statique : List { Text('Item 1'); Text('Item 2'); Text('Item 3') } crée une liste de 3 items.",
+              "Syntaxe dynamique : List(items) { item in Text(item.nom) } génère une ligne par élément du tableau.",
+              "Style natif : List adopte automatiquement le style iOS (séparateurs, swipe actions, etc.).",
+              "Identifiable : Le type de données DOIT être Identifiable ou utiliser id: \\.self pour les types simples.",
             ],
           ),
-        ],
-        files: projectExample(todo, `${swiftPath}/TodoTask.swift`),
-        task: "Ajoute deux tâches de même titre, puis termine l’une d’elles. Vérifie qu’une seule ligne change.",
-        takeaway:
-          "Un identifiant stable permet de relier un changement à la bonne ligne.",
-        quiz: quiz(
-          "Pourquoi choisir un UUID par tâche ?",
-          [
-            "Pour trier toujours par titre",
-            "Pour définir la couleur de la ligne",
-            "Pour identifier la même tâche après une mise à jour",
-          ],
-          2,
-          "SwiftUI et le ViewModel peuvent suivre cet élément grâce à son identifiant.",
-        ),
-        link: appleDocs + "swift/identifiable",
-      }),
-      lesson({
-        id: "construire-list-swiftui",
-        title: "Construire et modifier une liste SwiftUI",
-        minutes: 21,
-        summary:
-          "List réunit des sections, des champs et des lignes répétées. L’ajout et la suppression modifient le tableau qui alimente la vue.",
-        sections: [
           section(
-            "Assembler le formulaire et les lignes",
-            "La première section du gestionnaire contient un champ de titre. La deuxième crée ses lignes à partir de model.tasks.",
+            "ForEach : génération dynamique",
+            "ForEach génère des vues depuis un tableau, utilisable dans List, VStack, HStack, etc.",
             [
-              "ForEach instancie chaque ligne selon le modèle. Section donne du contexte au formulaire et à la liste.",
-              "onDelete reçoit les positions supprimées. EditButton active le mode d’édition de la liste.",
-              "Affiche un message lorsque la collection est vide. Teste les saisies composées seulement d’espaces.",
+              "Dans List : List { ForEach(items) { item in Text(item.nom) } } génère des lignes.",
+              "Hors List : VStack { ForEach(0..<5) { i in Text('Ligne \\(i)') } } dans n'importe quel conteneur.",
+              "Identifiable requis : ForEach(items) nécessite Identifiable. Ou ForEach(items, id: \\.self) pour types simples.",
+              "Performance : ForEach ne recrée QUE les vues modifiées (diffing intelligent).",
+            ],
+          ),
+          section(
+            "Protocole Identifiable",
+            "Identifiable fournit un id unique pour chaque élément, nécessaire pour ForEach et List.",
+            [
+              "struct TodoItem: Identifiable { let id = UUID(); var title: String }",
+              "id : UUID : Génère un identifiant unique automatiquement.",
+              "Alternative : ForEach(items, id: \\.self) pour types simples comme String, Int (moins performant).",
+            ],
+          ),
+          section(
+            "Swipe actions et suppression",
+            "List supporte nativement les actions de swipe et la suppression.",
+            [
+              ".onDelete : List { ForEach(items) { ... }.onDelete(perform: deleteItem) } active swipe-to-delete.",
+              "func deleteItem(at offsets: IndexSet) { items.remove(atOffsets: offsets) } gère la suppression.",
+              ".swipeActions : Ajoute des boutons personnalisés au swipe.",
             ],
           ),
         ],
         files: todo.files,
-        task: "Crée une tâche, active le mode d’édition et supprime-la. Vérifie qu’une autre tâche reste visible.",
+        task: "Crée une liste de tâches avec struct TodoItem: Identifiable { let id = UUID(); var title: String }. Affiche-les avec List et ForEach. Ajoute .onDelete pour supprimer au swipe.",
         takeaway:
-          "L’interface suit le tableau observé et lui transmet les actions utilisateur.",
+          "List affiche des listes scrollables natives. ForEach génère dynamiquement des vues depuis un tableau. Le type doit être Identifiable. .onDelete active swipe-to-delete.",
         quiz: quiz(
-          "Quel modificateur relie un geste de suppression à une action ?",
-          ["onDelete", "padding", "navigationTitle"],
-          0,
-          "onDelete transmet les index des lignes sélectionnées.",
+          "Quel protocole ton type de données doit implémenter pour ForEach ?",
+          ["Codable", "Identifiable", "Equatable"],
+          1,
+          "ForEach nécessite que le type soit Identifiable pour identifier chaque élément de manière unique.",
         ),
-        link: appleDocs + "swiftui/list",
+        link: docs + "list",
       }),
     ],
   },
   {
-    id: "etat-et-mvvm-swiftui",
-    title: "MVVM et données observables",
+    id: "swiftui-navigation",
+    title: "Navigation entre écrans",
     description:
-      "Garde la logique dans un ViewModel et l’affichage dans la vue.",
+      "Navigue entre plusieurs écrans avec NavigationView et NavigationLink.",
     lessons: [
       lesson({
-        id: "stateobject-published-swiftui",
-        title: "Créer et observer un ViewModel",
-        minutes: 22,
+        id: "swiftui-navigationview",
+        title: "NavigationView et NavigationLink",
+        minutes: 30,
         summary:
-          "Le ViewModel expose les données que la vue affiche et les méthodes qu’elle appelle. @Published rend les modifications observables.",
+          "NavigationView crée une pile de navigation. NavigationLink pousse un nouvel écran sur la pile avec transition automatique.",
         sections: [
           section(
-            "Répartir les responsabilités",
-            "TodoViewModel adopte ObservableObject. La liste crée son instance avec @StateObject. Le détail reçoit cette même instance avec @ObservedObject.",
+            "NavigationView : conteneur de navigation",
+            "NavigationView est le conteneur racine qui gère la pile de navigation et la barre de titre.",
             [
-              "Le modèle TodoTask décrit la donnée. Le ViewModel gère les opérations d’ajout et de modification.",
-              "private(set) permet de lire tasks depuis l’interface. Les changements passent par les méthodes du ViewModel.",
-              "@MainActor place les modifications qui pilotent l’interface sur l’acteur principal.",
+              "Entoure ta vue : NavigationView { ContentView() } active la navigation.",
+              ".navigationTitle : .navigationTitle('Mon App') définit le titre dans la barre de navigation.",
+              ".navigationBarTitleDisplayMode : .large (gros titre) ou .inline (petit titre centré).",
+              "Barre de navigation : NavigationView ajoute automatiquement le bouton retour sur les écrans enfants.",
+            ],
+          ),
+          section(
+            "NavigationLink : pousser un écran",
+            "NavigationLink pousse un nouvel écran sur la pile avec animation automatique.",
+            [
+              "Syntaxe : NavigationLink(destination: DetailView()) { Text('Voir détails') } navigue au clic.",
+              "destination : La vue à afficher quand on clique.",
+              "label : Le contenu cliquable (texte, image, vue custom).",
+              "Retour automatique : Le bouton '< Retour' est ajouté automatiquement en haut à gauche.",
+            ],
+          ),
+          section(
+            "Passer des données entre écrans",
+            "Passe des données à la vue destination via son constructeur.",
+            [
+              "Exemple : NavigationLink(destination: DetailView(item: selectedItem)) { Text('Voir \\(selectedItem.nom)') }",
+              "DetailView : struct DetailView: View { let item: Item; var body: some View { Text(item.nom) } }",
             ],
           ),
         ],
-        files: projectExample(todo, `${swiftPath}/TodoViewModel.swift`),
-        task: "Repère qui crée le ViewModel et qui le reçoit. Ajoute une méthode qui remet une tâche à faire.",
+        files: todo.files,
+        task: "Crée une liste d'items dans NavigationView. Chaque item a un NavigationLink vers un DetailView qui affiche le titre et la description. Ajoute .navigationTitle sur les deux écrans.",
         takeaway:
-          "La vue propriétaire crée le ViewModel. Les autres vues observent l’instance transmise.",
+          "NavigationView active la navigation. NavigationLink pousse un nouvel écran. .navigationTitle définit le titre. Passe des données via le constructeur de la vue destination.",
         quiz: quiz(
-          "Quel attribut utilise la vue qui crée son ViewModel ?",
-          ["@Query", "@StateObject", "@Model"],
+          "Quel composant entoure ta vue racine pour activer la navigation ?",
+          ["NavigationLink", "NavigationView", "NavigationStack"],
           1,
-          "@StateObject conserve l’instance observable pendant la vie de la vue propriétaire.",
+          "NavigationView entoure la vue racine et gère la pile de navigation. NavigationLink pousse des écrans enfants.",
         ),
-        link: appleDocs + "swiftui/stateobject",
-      }),
-      lesson({
-        id: "total-calcule-swift",
-        title: "Calculer un total à partir de la liste",
-        minutes: 20,
-        summary:
-          "Une propriété calculée peut dériver un résultat des données existantes. Le total des dépenses s’obtient en additionnant les montants de la collection.",
-        sections: [
-          section(
-            "Valider, ajouter et recalculer",
-            "ExpenseBook refuse un libellé vide et un montant hors de la plage de l’atelier. expenses est la liste publiée et total la calcule avec reduce.",
-            [
-              "Le formulaire conserve le texte saisi avec @State et convertit le montant en Int.",
-              "Ici, les montants sont des entiers en ariary. Une valeur valide est ajoutée au tableau avec son libellé.",
-              "Après une suppression, total repart du tableau mis à jour et affiche directement le nouveau résultat.",
-            ],
-          ),
-        ],
-        files: projectExample(expenses, `${swiftPath}/ExpenseBook.swift`),
-        task: "Ajoute 1 200 Ar et 800 Ar. Retire la première ligne puis vérifie que le total vaut 800 Ar.",
-        takeaway:
-          "Une valeur dérivée de la liste reste cohérente avec son contenu.",
-        quiz: quiz(
-          "D’où provient le total affiché ?",
-          [
-            "D’une constante",
-            "Du texte du dernier champ",
-            "De la somme des montants du tableau",
-          ],
-          2,
-          "La propriété calculée additionne les éléments présents dans expenses.",
-        ),
-        link: swiftBook + "properties/",
+        link: docs + "navigationview",
       }),
     ],
   },
   {
-    id: "navigation-et-details-ios",
-    title: "Navigation iOS et détails partagés",
+    id: "swiftui-formulaires",
+    title: "Formulaires et saisie utilisateur",
     description:
-      "Passe d’une liste à son détail et préserve la cohérence entre les écrans.",
+      "Collecte des données utilisateur avec TextField, Toggle, Picker et Form.",
     lessons: [
       lesson({
-        id: "navigationstack-et-liens-ios",
-        title: "Ouvrir un détail avec NavigationStack",
-        minutes: 22,
+        id: "swiftui-textfield-form",
+        title: "TextField, Toggle, Picker et Form",
+        minutes: 32,
         summary:
-          "NavigationStack gère la pile d’écrans. Un NavigationLink peut transmettre une valeur, puis une destination choisit la vue qui correspond à son type.",
+          "TextField pour saisir du texte, Toggle pour on/off, Picker pour sélection, Form pour grouper des champs avec style natif.",
         sections: [
           section(
-            "Transmettre l’identifiant de la tâche",
-            "NavigationLink(value: task.id) ajoute l’identifiant au parcours. navigationDestination(for: UUID.self) construit TaskDetail avec cet identifiant.",
+            "TextField : saisie de texte",
+            "TextField permet à l'utilisateur de saisir du texte, lié à une variable @State avec Binding.",
             [
-              "navigationTitle définit le titre de la barre de navigation.",
-              "Le système fournit l’action Retour lorsque le détail est ouvert dans la pile.",
-              "Utilise le type de valeur attendu par navigationDestination et garde la destination en dehors du contenu recyclé de List.",
+              "Syntaxe : TextField('Placeholder', text: $nom) lie le champ à nom.",
+              "$nom : Binding bidirectionnel. Le TextField LIT et ÉCRIT dans nom.",
+              "Placeholder : Le texte affiché quand le champ est vide.",
+              ".textFieldStyle : .textFieldStyle(.roundedBorder) pour un style avec bordure.",
+              ".keyboardType : .keyboardType(.emailAddress), .numberPad pour clavier spécialisé.",
+            ],
+          ),
+          section(
+            "Toggle : interrupteur on/off",
+            "Toggle affiche un interrupteur pour activer/désactiver une option, lié à un Bool.",
+            [
+              "Syntaxe : Toggle('Notifications', isOn: $isEnabled) lie à isEnabled.",
+              "$isEnabled : Bool @State. true = activé, false = désactivé.",
+              "Interactif : L'utilisateur tape pour basculer, la variable change automatiquement.",
+            ],
+          ),
+          section(
+            "Picker : sélection parmi des options",
+            "Picker permet de choisir une valeur parmi plusieurs options.",
+            [
+              "Syntaxe : Picker('Catégorie', selection: $selectedCategory) { Text('Tech').tag('tech'); Text('Sport').tag('sport') }",
+              "$selectedCategory : Variable @State qui stocke la valeur sélectionnée.",
+              ".tag() : Associe une valeur à chaque option.",
+              "Style : .pickerStyle(.segmented) pour segmented control, .menu pour menu déroulant.",
+            ],
+          ),
+          section(
+            "Form : grouper des champs",
+            "Form groupe des champs avec le style natif iOS (sections, séparateurs, labels).",
+            [
+              "Syntaxe : Form { Section('Infos') { TextField('Nom', text: $nom); TextField('Email', text: $email) } }",
+              "Section : Group des champs avec titre optionnel.",
+              "Style natif : Form adopte automatiquement le style iOS Settings.",
+              "Scrollable : Form scroll automatiquement si contenu trop grand.",
             ],
           ),
         ],
         files: todo.files,
-        task: "Ouvre successivement deux tâches. Vérifie que chaque titre correspond à la ligne d’origine puis reviens à la liste.",
+        task: "Crée un formulaire d'inscription avec Form : TextField pour nom et email, Toggle pour 'Recevoir la newsletter', Picker pour choisir un pays. Affiche les valeurs sélectionnées sous le formulaire.",
         takeaway:
-          "Le lien transmet une valeur. La destination décide comment l’afficher.",
+          "TextField saisit du texte, Toggle active/désactive, Picker sélectionne parmi des options. Form groupe les champs avec style natif. $ crée le Binding bidirectionnel.",
         quiz: quiz(
-          "Quelle valeur la liste envoie-t-elle à la destination ?",
-          [
-            "L’UUID de la tâche",
-            "Le contenu du fichier Swift entier",
-            "Le nombre de sections",
-          ],
-          0,
-          "L’identifiant permet au détail de retrouver la tâche courante.",
-        ),
-        link: appleDocs + "swiftui/navigationstack",
-      }),
-      lesson({
-        id: "detail-observe-meme-etat",
-        title: "Modifier une tâche depuis son détail",
-        minutes: 21,
-        summary:
-          "Le détail lit l’état actuel de la tâche dans le ViewModel partagé. Un appui change la donnée, puis les deux écrans observent la nouvelle valeur.",
-        sections: [
-          section(
-            "Partager une source de vérité",
-            "TaskDetail conserve l’UUID et observe le ViewModel reçu. Il appelle toggle(id) après une action.",
-            [
-              "Cherche la tâche par id plutôt que de garder la position de sa ligne.",
-              "Prévois une vue de repli si la tâche n’est plus disponible.",
-              "Après Retour, la liste utilise la même instance. Elle affiche donc l’état modifié dans le détail.",
-            ],
-          ),
-        ],
-        files: todo.files,
-        task: "Termine une tâche depuis son détail, reviens à la liste et ouvre-la une nouvelle fois.",
-        takeaway:
-          "Les vues partagent un objet observable et transmettent leurs actions à ses méthodes.",
-        quiz: quiz(
-          "Pourquoi le détail reçoit-il le même ViewModel que la liste ?",
-          [
-            "Pour modifier la couleur d’arrière-plan",
-            "Pour lire et modifier les mêmes tâches",
-            "Pour relancer le simulateur",
-          ],
+          "Quel composant utilises-tu pour grouper des champs avec style natif iOS ?",
+          ["VStack", "Form", "List"],
           1,
-          "Une instance commune permet de partager les changements entre les écrans.",
+          "Form groupe des champs de formulaire avec le style natif iOS (séparateurs, labels, sections).",
         ),
-        link: appleDocs + "swiftui/observedobject",
+        link: docs + "form",
+      }),
+    ],
+  },
+  {
+    id: "swiftui-animations",
+    title: "Animations et transitions",
+    description:
+      "Donne vie à tes interfaces avec des animations fluides, des transitions entre vues et des effets visuels.",
+    lessons: [
+      lesson({
+        id: "swiftui-animation",
+        title: "Animations implicites et explicites",
+        minutes: 30,
+        summary:
+          "SwiftUI propose des animations implicites (withAnimation) et explicites (.animation()). Les animations sont déclaratives : tu décris le début et la fin, SwiftUI gère l'interpolation.",
+        sections: [
+          section(
+            "withAnimation : animer un changement d'état",
+            "Entoure le changement d'état avec withAnimation pour l'animer automatiquement.",
+            [
+              "withAnimation { isExpanded.toggle() } – anime tous les changements liés à isExpanded.",
+              "Courbes : .linear, .easeIn, .easeOut, .easeInOut, .spring()",
+              "Durée : withAnimation(.easeInOut(duration: 0.5))",
+              "Spring : withAnimation(.spring(response: 0.4, dampingFraction: 0.6))",
+            ]
+          ),
+          section(
+            ".animation() : modifier d'animation",
+            "Applique une animation à une vue spécifique via le modifier .animation().",
+            [
+              ".animation(.easeInOut, value: isVisible) – anime quand isVisible change.",
+              "Le paramètre value est requis depuis iOS 15 pour éviter les animations involontaires.",
+              ".scaleEffect(isPressed ? 1.1 : 1.0).animation(.spring(), value: isPressed)",
+            ]
+          ),
+          section(
+            "Transitions entre vues",
+            "Les transitions animent l'apparition et la disparition des vues dans la hiérarchie.",
+            [
+              ".transition(.slide) – glisse de/vers le bord.",
+              ".transition(.scale) – grossit/rétrécit.",
+              ".transition(.opacity) – fondu.",
+              ".transition(.asymmetric(insertion: .slide, removal: .opacity)) – différent en entrée/sortie.",
+              "if isVisible { MaVue().transition(.scale) } dans withAnimation.",
+            ]
+          ),
+        ],
+        files: todo.files,
+        task: "Ajoute à une liste d'items : une animation spring quand on coche un item (scale + opacity), une transition .slide pour l'ajout, et une transition .opacity pour la suppression.",
+        takeaway:
+          "withAnimation anime les changements d'état. .transition() anime l'apparition/disparition. .spring() donne des animations naturelles. SwiftUI gère toute l'interpolation.",
+        quiz: quiz(
+          "Comment animer un changement de @State en SwiftUI ?",
+          ["state.animate()", "withAnimation { state = nouvelleValeur }", "@AnimatedState"],
+          1,
+          "withAnimation { } entoure le changement d'état pour l'animer. SwiftUI détecte les changements et anime les vues affectées."
+        ),
+        link: docs + "animation(_:value:)",
+      }),
+    ],
+  },
+  {
+    id: "swiftui-persistance",
+    title: "Persistance des données",
+    description:
+      "Sauvegarde les données entre les sessions avec @AppStorage, UserDefaults et la gestion de fichiers.",
+    lessons: [
+      lesson({
+        id: "swiftui-appstorage",
+        title: "@AppStorage et UserDefaults",
+        minutes: 28,
+        summary:
+          "@AppStorage lie une vue directement à UserDefaults. Les données persistent entre les lancements de l'app. Idéal pour les préférences, réglages et petites données.",
+        sections: [
+          section(
+            "@AppStorage : persistance simple",
+            "@AppStorage est un wrapper qui synchronise automatiquement une valeur avec UserDefaults.",
+            [
+              "@AppStorage(\"nomUtilisateur\") var nom = \"\" – valeur par défaut si rien en mémoire.",
+              "Types supportés : Bool, Int, Double, String, URL, Data.",
+              "La vue se reconstruit quand la valeur change, comme @State.",
+              "Accès depuis n'importe quelle vue avec la même clé.",
+              "UserDefaults.standard.set(valeur, forKey: \"cle\") en code non-SwiftUI.",
+            ]
+          ),
+          section(
+            "Cas d'usage de @AppStorage",
+            "Utilise @AppStorage pour les préférences utilisateur et les réglages simples.",
+            [
+              "Thème sombre/clair : @AppStorage(\"darkMode\") var darkMode = false",
+              "Première ouverture : @AppStorage(\"hasSeenOnboarding\") var hasSeenOnboarding = false",
+              "Préférences : langue, notifications, unités.",
+              "⚠️ Pas pour les données complexes (liste de modèles). Utiliser SwiftData pour ça.",
+            ]
+          ),
+          section(
+            "Encoder/décoder avec JSON",
+            "Pour persister des tableaux et objets complexes dans UserDefaults.",
+            [
+              "Encoder : JSONEncoder().encode(tableau) → Data",
+              "Sauvegarder : UserDefaults.standard.set(data, forKey: \"cle\")",
+              "Décoder : JSONDecoder().decode([MonType].self, from: data)",
+              "Struct doit être Codable.",
+            ]
+          ),
+        ],
+        files: cart.files,
+        task: "Modifie une app de liste de tâches pour que les tâches persistent après fermeture. Utilise @AppStorage avec un tableau encodé en JSON (Codable). Teste en fermant et rouvrant l'app.",
+        takeaway:
+          "@AppStorage synchronise une valeur avec UserDefaults automatiquement. Simple et déclaratif pour les préférences. Pour des modèles complexes, utilise SwiftData.",
+        quiz: quiz(
+          "Quel est l'avantage de @AppStorage vs @State ?",
+          ["@AppStorage est plus rapide", "@AppStorage persiste entre les sessions", "@AppStorage est thread-safe"],
+          1,
+          "@AppStorage lie la vue à UserDefaults. La valeur est sauvegardée sur le disque et persiste entre les lancements de l'app."
+        ),
+        link: docs + "appstorage",
+      }),
+    ],
+  },
+  {
+    id: "swiftui-exercice-intermediaire",
+    title: "Exercice final intermédiaire",
+    description:
+      "Construis une app de gestion de tâches complète avec liste, navigation, formulaire, animations et persistance.",
+    lessons: [
+      lesson({
+        id: "swift-projet-todo",
+        title: "Projet : App Todo complète avec persistance",
+        minutes: 120,
+        summary:
+          "Crée une app Todo multi-vues avec liste animée, formulaire d'ajout, vue détail, filtrage et persistance UserDefaults. Combine tout ce que tu as appris au niveau intermédiaire.",
+        sections: [
+          section(
+            "Fonctionnalités",
+            "Une app Todo complète qui ressemble à une vraie application iOS.",
+            [
+              "Liste principale : toutes les tâches avec statut, priorité et date.",
+              "Swipe actions : swipe left pour supprimer, swipe right pour compléter.",
+              "Formulaire d'ajout : TextField pour le titre, Picker pour la priorité, DatePicker.",
+              "Vue détail : tous les détails d'une tâche, modification en place.",
+              "Filtres : toutes/actives/complétées avec Picker segmenté.",
+              "Animations : spring pour l'ajout, opacity pour la suppression.",
+              "Persistance : @AppStorage + JSON pour sauvegarder entre sessions.",
+            ]
+          ),
+          section(
+            "Modèle de données",
+            "Une struct Tache bien conçue au cœur de l'application.",
+            [
+              "struct Tache: Identifiable, Codable { id, titre, detail, priorite, dateEcheance, estComplete }",
+              "enum Priorite: String, Codable, CaseIterable { case faible, normale, haute }",
+              "class TacheStore: ObservableObject { @Published var taches = [Tache]() }",
+              "Le store gère la persistance avec @AppStorage.",
+            ]
+          ),
+          section(
+            "Concepts validés",
+            "Ce projet couvre tous les concepts du niveau intermédiaire.",
+            [
+              "✅ List avec ForEach et swipeActions",
+              "✅ NavigationStack avec NavigationLink",
+              "✅ TextField, Picker, DatePicker, Toggle dans Form",
+              "✅ withAnimation et .transition()",
+              "✅ @AppStorage pour la persistance",
+              "✅ ObservableObject pour l'état partagé",
+            ]
+          ),
+        ],
+        files: todo.files,
+        task: "Implémente l'app Todo complète. Chaque fonctionnalité doit fonctionner : ajout avec formulaire, suppression avec swipe, filtrage par statut, et persistance entre sessions.",
+        takeaway:
+          "Tu sais maintenant créer de vraies applications iOS : listes dynamiques, navigation multi-écrans, saisie utilisateur et persistance. Place au niveau avancé !",
+        quiz: quiz(
+          "Comment implémenter le swipe-to-delete sur une List en SwiftUI ?",
+          [".onDelete(perform: supprimer)", ".swipeActions { Button('Supprimer') }", "Les deux fonctionnent"],
+          2,
+          ".onDelete est l'API historique simple. .swipeActions (iOS 15+) offre plus de contrôle (couleur, icône, multiple actions)."
+        ),
+        link: docs + "list",
       }),
     ],
   },
@@ -449,222 +1496,283 @@ const intermediate: WebLevel["chapters"] = [
 
 const advanced: WebLevel["chapters"] = [
   {
-    id: "async-json-swift",
-    title: "Appels asynchrones et décodage JSON",
+    id: "swift-async-await",
+    title: "Appels réseau avec async/await",
     description:
-      "Charge des données à distance et traite les différents résultats de la requête.",
+      "Récupère des données depuis des API avec URLSession, async/await et gère les erreurs.",
     lessons: [
       lesson({
-        id: "urlsession-async-await",
-        title: "Télécharger des données avec URLSession",
-        minutes: 23,
+        id: "swift-urlsession-async",
+        title: "URLSession, async/await et décodage JSON",
+        minutes: 35,
         summary:
-          "URLSession récupère des données avec une fonction async. await suspend la tâche pendant l’attente, ce qui laisse le système exécuter d’autres tâches.",
+          "URLSession envoie des requêtes HTTP. async/await simplifie le code asynchrone. Codable décode automatiquement le JSON en structs Swift.",
         sections: [
           section(
-            "Charger les trois cours spot",
-            "QuoteClient.fetch prépare une URL HTTPS et attend data(from:). QuoteViewModel lance les requêtes BTC, ETH et SOL en parallèle avec async let.",
+            "URLSession : requêtes HTTP",
+            "URLSession est l'API native Apple pour les requêtes réseau (GET, POST, etc.).",
             [
-              "Une fonction throws peut signaler un échec. do et catch permettent de décider de la réaction de l’interface.",
-              "Vérifie le code de statut HTTP avant de décoder le résultat.",
-              "Affiche une progression pendant le chargement. Une annulation liée à l’écran ne doit pas déclencher un message d’erreur inutile.",
+              "Syntaxe moderne : let (data, response) = try await URLSession.shared.data(from: url)",
+              "data : Les données brutes reçues (JSON, image, etc.).",
+              "response : HTTPURLResponse avec status code, headers.",
+              "Erreur automatique : Si le réseau échoue, Swift throw une erreur.",
+            ],
+          ),
+          section(
+            "async/await : asynchrone simplifié",
+            "async/await remplace les closures imbriquées par un code linéaire lisible.",
+            [
+              "func fetchData() async throws : Déclare une fonction asynchrone qui peut throw des erreurs.",
+              "await : Attend la fin de l'opération asynchrone. let data = try await URLSession.shared.data(from: url)",
+              "Task : Task { await fetchData() } lance une tâche asynchrone depuis du code synchrone.",
+              "@MainActor : Force l'exécution sur le thread principal (nécessaire pour l'UI). @MainActor func updateUI() { ... }",
+            ],
+          ),
+          section(
+            "Codable : décoder le JSON automatiquement",
+            "Codable encode/décode automatiquement les structs Swift depuis/vers JSON.",
+            [
+              "struct User: Codable { let id: Int; let name: String; let email: String }",
+              "Décodage : let user = try JSONDecoder().decode(User.self, from: data)",
+              "Encodage : let data = try JSONEncoder().encode(user)",
+              "CodingKeys : Pour mapper des noms JSON différents. enum CodingKeys: String, CodingKey { case id, name = 'full_name' }",
+            ],
+          ),
+          section(
+            "Gestion d'erreurs avec do-catch",
+            "Gère les erreurs réseau avec do-catch, équivalent try-catch dans d'autres langages.",
+            [
+              "Syntaxe : do { let data = try await fetchData() } catch { print('Erreur: \\(error)') }",
+              "Spécifique : catch URLError.notConnectedToInternet { 'Pas de connexion' } catch DecodingError { 'JSON invalide' }",
             ],
           ),
         ],
-        files: projectExample(crypto, `${swiftPath}/QuoteClient.swift`),
-        task: "Ouvre l’écran avec une connexion active, puis coupe-la et tire la liste pour actualiser.",
+        files: weather.files,
+        task: "Crée un struct Post: Codable { let id: Int; let title: String }. Récupère https://jsonplaceholder.typicode.com/posts/1 avec URLSession, décode avec JSONDecoder, affiche le titre. Gère les erreurs avec do-catch.",
         takeaway:
-          "Une requête asynchrone sépare attente, réponse HTTP et mise à jour de l’écran.",
+          "URLSession.shared.data(from:) envoie des requêtes HTTP. async/await simplifie l'asynchrone. Codable décode automatiquement le JSON. do-catch gère les erreurs.",
         quiz: quiz(
-          "Quand appelle-t-on JSONDecoder ?",
-          [
-            "Avant de créer l’URL",
-            "Après avoir reçu une réponse HTTP réussie",
-            "Uniquement quand la connexion est coupée",
-          ],
+          "Quel protocole permet de décoder automatiquement du JSON en struct Swift ?",
+          ["Decodable", "Codable", "JSONSerializable"],
           1,
-          "Le code HTTP doit indiquer un succès avant d’interpréter le corps comme des données.",
+          "Codable (combinaison de Encodable + Decodable) permet d'encoder et décoder automatiquement JSON <> Swift struct.",
         ),
-        link: appleDocs + "foundation/urlsession/data(from:delegate:)",
-      }),
-      lesson({
-        id: "decoder-json-swift",
-        title: "Transformer le JSON en données typées",
-        minutes: 22,
-        summary:
-          "Decodable décrit la structure attendue du JSON. QuoteClient vérifie ensuite la devise et l’actif, puis convertit le montant textuel en Decimal.",
-        sections: [
-          section(
-            "Lire la réponse de l’API",
-            "Le modèle Envelope contient data. Value récupère amount, base et currency. Le modèle Quote représente le résultat affiché.",
-            [
-              "Si une clé attendue manque ou si son type est incorrect, JSONDecoder signale une erreur.",
-              "Utilise la locale POSIX pour lire le montant renvoyé avec un point décimal. Formate ensuite la valeur pour l’affichage.",
-              "L’écran indique l’heure du dernier relevé et garde ces valeurs visibles si la prochaine actualisation échoue.",
-            ],
-          ),
-        ],
-        files: projectExample(crypto, `${swiftPath}/QuoteClient.swift`),
-        task: "Observe les champs data.amount et data.currency dans la réponse d’un actif. Vérifie le symbole de la devise affichée.",
-        takeaway:
-          "Le décodage reconstruit les données. Une validation métier vérifie qu’elles sont utilisables.",
-        quiz: quiz(
-          "Pourquoi vérifier data.currency ?",
-          [
-            "Pour savoir si le prix reçu correspond à l’USD affiché",
-            "Pour choisir un mode de navigation",
-            "Pour effacer le cache de Xcode",
-          ],
-          0,
-          "La devise reçue doit être celle annoncée dans l’interface.",
-        ),
-        link: appleDocs + "foundation/jsondecoder",
+        link: "https://developer.apple.com/documentation/foundation/urlsession",
       }),
     ],
   },
   {
-    id: "persister-avec-swiftdata",
-    title: "Stockage local avec SwiftData",
+    id: "swiftui-observableobject",
+    title: "Gestion d'état global avec ObservableObject",
     description:
-      "Enregistre des entrées de journal et relis-les après une relance.",
+      "Partage des données entre plusieurs vues avec ObservableObject et @Published.",
     lessons: [
       lesson({
-        id: "model-et-container-swiftdata",
-        title: "Définir un modèle SwiftData et son conteneur",
-        minutes: 24,
+        id: "swiftui-observableobject-published",
+        title: "ObservableObject, @Published et @StateObject",
+        minutes: 32,
         summary:
-          "@Model déclare une classe que SwiftData peut gérer. Le journal définit un titre, un texte et une date de création.",
+          "ObservableObject crée des stores observables. @Published notifie les changements. @StateObject et @ObservedObject lient les vues au store.",
         sections: [
           section(
-            "Relier le modèle à l’application",
-            "Le point d’entrée appelle modelContainer(for: JournalEntry.self). Le conteneur fournit le stockage et met un contexte à disposition des vues.",
+            "ObservableObject : classe observable",
+            "ObservableObject est un protocole pour créer des classes qui notifient les vues de leurs changements.",
             [
-              "L’initialiseur donne des valeurs à chaque nouvelle entrée. createdAt reçoit la date de création.",
-              "Le conteneur utilisé ici enregistre sur l’appareil. Relance sur le même simulateur pour retrouver les données.",
-              "Une modification de la structure d’un modèle déjà déployé peut nécessiter une migration.",
+              "class UserStore: ObservableObject : Crée un store observable.",
+              "@Published var nom = '' : Propriété qui notifie automatiquement les changements.",
+              "objectWillChange : ObservableObject envoie automatiquement objectWillChange.send() quand une propriété @Published change.",
+            ],
+          ),
+          section(
+            "@Published : propriété réactive",
+            "@Published sur une propriété déclenche une notification automatique à chaque modification.",
+            [
+              "@Published var count = 0 : Quand count change, tous les listeners sont notifiés.",
+              "Automatique : Pas besoin d'appeler manuellement une fonction de notification.",
+              "Types supportés : Tous les types (Int, String, Array, custom struct, etc.).",
+            ],
+          ),
+          section(
+            "@StateObject : créer et posséder un store",
+            "@StateObject crée une instance du store et maintient sa durée de vie.",
+            [
+              "@StateObject private var store = UserStore() : Crée le store une fois, le garde en vie.",
+              "Ownership : La vue POSSÈDE le store. Quand la vue disparaît, le store est détruit.",
+              "Règle : Utilise @StateObject pour CRÉER un store dans une vue.",
+            ],
+          ),
+          section(
+            "@ObservedObject : observer un store existant",
+            "@ObservedObject observe un store passé depuis une autre vue (ne le possède pas).",
+            [
+              "@ObservedObject var store: UserStore : Observe un store existant.",
+              "Pas d'ownership : La vue observe mais ne possède pas. Si la vue est recréée, le store persiste ailleurs.",
+              "Règle : Utilise @ObservedObject pour RECEVOIR un store créé ailleurs.",
+            ],
+          ),
+          section(
+            "@EnvironmentObject : injecter globalement",
+            "@EnvironmentObject injecte un store dans TOUTES les vues enfants sans passer par constructeurs.",
+            [
+              ".environmentObject(store) : Injecte le store dans la hiérarchie depuis la vue parente.",
+              "@EnvironmentObject var store: UserStore : Récupère le store injecté dans n'importe quelle vue enfant.",
+              "Use case : Données globales accessibles partout (auth, theme, settings).",
+            ],
+          ),
+          section(
+            "Un exemple à explorer",
+            "Voici un exemple complet qui montre comment utiliser ObservableObject avec plusieurs vues.",
+            [
+              "Exemple complet : WeatherView.swift et WeatherService.swift montrent un ViewModel avec @Published.",
+              "Pattern MVVM : ViewModel (ObservableObject) sépare la logique métier de la vue.",
+              "À toi de jouer : Explore WeatherView.swift pour voir @StateObject et WeatherViewModel.",
+              "Async/await : Le ViewModel utilise async/await pour les appels réseau.",
             ],
           ),
         ],
-        files: projectExample(journal, `${swiftPath}/JournalEntry.swift`),
-        task: "Repère les trois propriétés enregistrées et ouvre DevAfricaApp.swift pour trouver le conteneur.",
+        files: weather.files,
+        task: "Explore le code de WeatherView.swift et WeatherViewModel. Observe comment @StateObject crée le ViewModel, @Published notifie les changements d'état (isLoading, weather, errorMessage), et @MainActor garantit les mises à jour UI sur le thread principal.",
         takeaway:
-          "Le modèle décrit les données. Le conteneur gère leur stockage.",
+          "ObservableObject crée des stores observables. @Published notifie automatiquement les changements. @StateObject crée et possède, @ObservedObject observe sans posséder, @EnvironmentObject injecte globalement.",
         quiz: quiz(
-          "Quel attribut rend JournalEntry utilisable par SwiftData ?",
-          ["@State", "@ObservedObject", "@Model"],
-          2,
-          "La macro @Model adapte la classe au stockage SwiftData.",
-        ),
-        link:
-          appleDocs +
-          "swiftdata/preserving-your-apps-model-data-across-launches",
-      }),
-      lesson({
-        id: "query-et-contexte-swiftdata",
-        title: "Lire, enregistrer et retirer des entrées",
-        minutes: 24,
-        summary:
-          "@Query alimente la liste avec les entrées du stockage. Le contexte prend en charge l’insertion et la suppression.",
-        sections: [
-          section(
-            "Suivre la modification jusqu’au disque",
-            "La requête trie sur createdAt avec order: .reverse. L’ajout appelle context.insert puis save. Le retrait appelle context.delete puis save.",
-            [
-              "Valide le titre et le texte avant insertion. Le formulaire est réinitialisé après une sauvegarde réussie.",
-              "En cas d’erreur, rollback remet le contexte dans l’état enregistré et l’interface affiche une alerte.",
-              "Teste la persistance en arrêtant puis relançant sur le même simulateur.",
-            ],
-          ),
-        ],
-        files: journal.files,
-        task: "Crée deux entrées, ferme puis rouvre l’app. Supprime la plus ancienne et vérifie le résultat après une nouvelle relance.",
-        takeaway:
-          "La requête lit les données. Le contexte enregistre les opérations de modification.",
-        quiz: quiz(
-          "Qu’est-ce qui ordonne les entrées par date ?",
-          [
-            "Le titre de la barre de navigation",
-            "Le tri de @Query",
-            "La taille du TextEditor",
-          ],
+          "Quel property wrapper utilises-tu pour CRÉER et POSSÉDER un store dans une vue ?",
+          ["@ObservedObject", "@StateObject", "@EnvironmentObject"],
           1,
-          "La requête utilise createdAt comme clé de tri.",
+          "@StateObject crée une instance du store et maintient sa durée de vie. @ObservedObject observe un store existant sans le posséder.",
         ),
-        link: appleDocs + "swiftdata/query",
+        link: docs + "stateobject",
       }),
     ],
   },
   {
-    id: "animations-et-recherche-ios",
-    title: "Tri, recherche et animations",
+    id: "swiftdata",
+    title: "Persistance locale avec SwiftData",
     description:
-      "Fais évoluer une liste de résultats tout en gardant son état lisible.",
+      "Stocke des données persistantes avec SwiftData, le framework moderne d'Apple introduit en iOS 17.",
     lessons: [
       lesson({
-        id: "filtrer-et-trier-swiftui",
-        title: "Dériver une liste filtrée sans perdre les données",
-        minutes: 22,
+        id: "swiftdata-intro",
+        title: "SwiftData : @Model, @Query et ModelContainer",
+        minutes: 35,
         summary:
-          "Le texte de recherche et l’ordre du tri sont des états d’interface. La collection filtrée est calculée à partir des cours chargés.",
+          "SwiftData remplace Core Data avec une API SwiftUI native. @Model marque une classe comme persistante. @Query récupère les données automatiquement. ModelContainer configure la base.",
         sections: [
           section(
-            "Lier l’entrée à la vue",
-            "searchable fournit le champ de recherche. shownQuotes compare la saisie au nom ou au symbole, puis applique le tri choisi.",
+            "@Model : déclarer un modèle persistant",
+            "@Model transforme une classe Swift ordinaire en modèle persistant géré par SwiftData.",
             [
-              "Pour retrouver toutes les valeurs, efface le champ de recherche.",
-              "Un prix est un Decimal. Les égalités sont départagées par symbole pour obtenir un ordre stable.",
-              "Affiche un message si le filtre ne trouve rien. Le modèle garde la liste complète pour la prochaine recherche.",
-            ],
+              "import SwiftData",
+              "@Model class Tache { var titre: String; var estComplete: Bool }",
+              "SwiftData génère automatiquement le schéma et la migration.",
+              "Initialiseur standard requis : init(titre: String) { self.titre = titre; self.estComplete = false }",
+              "@Attribute(.unique) pour les propriétés uniques.",
+              "@Relationship pour les relations entre modèles.",
+            ]
+          ),
+          section(
+            "ModelContainer et ModelContext",
+            "ModelContainer configure la base de données. ModelContext permet les opérations CRUD.",
+            [
+              "Dans App : .modelContainer(for: Tache.self) sur WindowGroup.",
+              "@Environment(\\.modelContext) var context : Accès au contexte dans les vues.",
+              "Insérer : context.insert(nouvelleTache)",
+              "Supprimer : context.delete(tache)",
+              "Pas de save manuel : SwiftData sauvegarde automatiquement.",
+            ]
+          ),
+          section(
+            "@Query : récupérer les données",
+            "@Query est un property wrapper qui récupère et observe automatiquement les données.",
+            [
+              "@Query var taches: [Tache] : Récupère toutes les tâches.",
+              "@Query(sort: \\.titre) var taches: [Tache] : Triées par titre.",
+              "@Query(filter: #Predicate { $0.estComplete == false }) : Filtrées.",
+              "La vue se reconstruit automatiquement quand les données changent.",
+              "Équivalent de @FetchRequest de Core Data mais plus simple.",
+            ]
           ),
         ],
-        files: crypto.files,
-        task: "Recherche « ETH », efface la recherche puis active le tri par prix. Observe l’ordre des lignes.",
+        files: weather.files,
+        task: "Crée une app Notes avec SwiftData : @Model class Note { titre, contenu, dateCreation }. CRUD complet : liste des notes avec @Query, formulaire d'ajout, swipe pour supprimer, tap pour éditer.",
         takeaway:
-          "La recherche et le tri dérivent l’affichage à partir d’une collection intacte.",
+          "SwiftData simplifie la persistance : @Model marque le modèle, @Query récupère les données, ModelContext fait le CRUD. Plus simple que Core Data mais iOS 17+ requis.",
         quiz: quiz(
-          "Que modifie le filtre quand on saisit ETH ?",
-          [
-            "La liste affichée par la vue",
-            "Les cotations sur le serveur",
-            "Le schéma Xcode",
-          ],
-          0,
-          "Le filtre choisit les valeurs visibles à partir des cotations déjà chargées.",
+          "Quel property wrapper récupère automatiquement les données SwiftData dans une vue ?",
+          ["@FetchRequest", "@Query", "@Persistent"],
+          1,
+          "@Query récupère et observe les données SwiftData. La vue se reconstruit automatiquement quand les données changent."
         ),
-        link: appleDocs + "swiftui/search",
+        link: "https://developer.apple.com/documentation/swiftdata",
       }),
+    ],
+  },
+  {
+    id: "swift-exercice-avance",
+    title: "Projet final : App météo complète",
+    description:
+      "Construis une app météo professionnelle qui combine API réseau, gestion d'état globale, SwiftData et une UI soignée.",
+    lessons: [
       lesson({
-        id: "withanimation-et-liste-ios",
-        title: "Animer un changement d’état",
-        minutes: 22,
+        id: "swift-projet-final",
+        title: "Projet final : App météo avec MVVM, API et persistance",
+        minutes: 180,
         summary:
-          "Une animation rend l’insertion, le déplacement ou le retrait d’une ligne plus facile à suivre. SwiftUI repère les lignes par leur identifiant.",
+          "Crée une application météo complète niveau production : API OpenWeatherMap, MVVM avec ObservableObject, SwiftData pour l'historique, animations et gestion d'erreurs complète.",
         sections: [
           section(
-            "Déclencher une transition lisible",
-            "withAnimation entoure le changement d’ordre. animation(_:value:) observe les identifiants visibles pour accompagner la mise à jour du filtre.",
+            "Fonctionnalités",
+            "Une app météo qui utilise tous les concepts avancés appris.",
             [
-              "Garde un identifiant stable par actif pour que SwiftUI suive sa ligne après le tri.",
-              "Observe une valeur précise. Cela limite les animations aux changements voulus.",
-              "Quand Réduire les animations est activé, passe nil comme animation pour respecter la préférence.",
-            ],
+              "Recherche de ville avec autocomplétion.",
+              "Météo actuelle : température, humidité, vent, description.",
+              "Prévisions 5 jours avec List et icônes animées.",
+              "Villes favorites : SwiftData pour persistance.",
+              "Historique des recherches : SwiftData.",
+              "Mode sombre/clair avec @AppStorage.",
+              "Animations : transitions, loading spinner, effets de parallaxe.",
+            ]
+          ),
+          section(
+            "Architecture MVVM",
+            "Organisation professionnelle du code en Model, View, ViewModel.",
+            [
+              "Model : struct WeatherResponse: Codable { } (décode le JSON de l'API)",
+              "ViewModel : class WeatherViewModel: ObservableObject { @Published var weather, isLoading, error }",
+              "View : ContentView observe WeatherViewModel via @StateObject",
+              "Service : class WeatherService { func fetchWeather(city: String) async throws -> Weather }",
+            ]
+          ),
+          section(
+            "Concepts validés",
+            "Ce projet final couvre tous les concepts du niveau avancé et de la formation.",
+            [
+              "✅ async/await et URLSession",
+              "✅ Codable pour décoder le JSON",
+              "✅ ObservableObject, @Published, @StateObject",
+              "✅ @EnvironmentObject pour l'état global (thème)",
+              "✅ SwiftData pour favorites et historique",
+              "✅ @AppStorage pour les préférences",
+              "✅ Animations et transitions fluides",
+              "✅ Architecture MVVM professionnelle",
+              "✅ Gestion d'erreurs complète",
+            ]
           ),
         ],
-        files: crypto.files,
-        task: "Teste le tri et la recherche, puis compare le mouvement avec Réduire les animations activé.",
+        files: weather.files,
+        task: "Implémente l'app météo complète. Elle doit se connecter à une vraie API, sauvegarder les favoris avec SwiftData, et offrir une expérience utilisateur soignée avec animations.",
         takeaway:
-          "L’animation accompagne l’état et les identifiants conservent le lien avec les lignes.",
+          "Félicitations ! Tu maîtrises maintenant le développement iOS avec Swift et SwiftUI : langage, UI déclarative, navigation, état, API réseau, persistance et architecture MVVM. Tu es prêt pour le marché !",
         quiz: quiz(
-          "Quelle valeur observe animation(_:value:) dans cet atelier ?",
+          "Qu'est-ce que le pattern MVVM ?",
           [
-            "Le numéro de version du simulateur",
-            "La couleur du bouton",
-            "Les identifiants des lignes visibles",
+            "Un framework de navigation",
+            "Une séparation en Model (données), View (UI) et ViewModel (logique)",
+            "Un type de base de données"
           ],
-          2,
-          "Le modificateur anime la transition lorsque l’ordre ou le contenu visible change.",
+          1,
+          "MVVM sépare : Model (structures de données), View (SwiftUI), ViewModel (ObservableObject avec la logique). Facilite les tests et la maintenance."
         ),
-        link: appleDocs + "swiftui/animations",
+        link: docs,
       }),
     ],
   },
@@ -674,19 +1782,24 @@ export const swiftLevels: WebLevel[] = [
   {
     id: "debutant",
     title: "Débutant",
-    subtitle: "Swift et écrans déclaratifs",
+    subtitle: "Swift fondamentaux et premières vues SwiftUI",
     objective:
-      "Utilise les types et les optionnels de Swift, puis construis tes premiers écrans avec des piles et un état local.",
+      "Maîtrise les bases de Swift (variables, optionals, conditions, boucles, fonctions, structs, collections) puis crée tes premières vues SwiftUI avec Text, Image, Button et les stacks.",
     definition:
-      "Swift est le langage utilisé ici pour décrire les données et la logique. SwiftUI est la boîte à outils qui décrit l’interface avec des vues Swift. Xcode compile et lance les projets iOS sur Mac.",
+      "Swift est le langage moderne d'Apple pour iOS, macOS, watchOS et tvOS. SwiftUI est le framework déclaratif pour créer des interfaces utilisateur natives sur toutes les plateformes Apple.",
     color: levelColors[0],
     prerequisites:
-      "Prépare Xcode sur un Mac pour lancer les projets iOS. Le script Swift de syntaxe peut aussi être exécuté sur Windows ou Linux.",
+      "Mac obligatoire avec macOS 13+ et Xcode installé. Aucune expérience de programmation requise.",
     outcomes: [
-      "Déclarer des valeurs avec let et var, et manipuler des structures et des optionnels.",
-      "Ouvrir un projet dans Xcode et choisir un simulateur.",
-      "Assembler Text, Image et Button avec des piles et des modificateurs.",
-      "Mettre une vue à jour grâce à @State.",
+      "Comprendre let vs var, l'inférence de type et la type safety de Swift.",
+      "Maîtriser les optionals (?), if let, guard let et nil coalescing.",
+      "Utiliser if/else, switch exhaustif avec pattern matching et boucles for-in/while.",
+      "Créer des fonctions avec labels, valeurs par défaut et closures.",
+      "Modéliser les données avec struct, class et protocoles.",
+      "Manipuler Array, Dictionary et Set pour gérer les collections.",
+      "Créer des vues SwiftUI avec Text, Image, Button et modifiers.",
+      "Organiser des interfaces avec VStack, HStack, ZStack et Spacer.",
+      "Gérer l'état local avec @State et le binding bidirectionnel avec $.",
     ],
     chapters: beginner,
     projects: swiftBeginnerProjects,
@@ -694,16 +1807,21 @@ export const swiftLevels: WebLevel[] = [
   {
     id: "intermediaire",
     title: "Intermédiaire",
-    subtitle: "Listes, MVVM et navigation",
+    subtitle: "Listes, navigation, animations et persistance",
     objective:
-      "Affiche des collections, sépare les règles de la vue et relie une liste à ses écrans de détail.",
+      "Affiche des listes dynamiques, navigue entre écrans, collecte des données utilisateur, anime tes interfaces et persiste les données avec @AppStorage.",
+    definition:
+      "Le niveau intermédiaire te permet de créer des applications multi-écrans avec listes scrollables, navigation, saisie utilisateur, animations fluides et persistance locale.",
     color: levelColors[1],
     prerequisites:
-      "Savoir écrire une vue SwiftUI et modifier une valeur d’état depuis un bouton.",
+      "Connaître les bases Swift et SwiftUI. Maîtriser @State, les stacks, structs et closures.",
     outcomes: [
-      "Associer un identifiant stable aux lignes d’une List.",
-      "Utiliser un ViewModel observable avec @Published, @StateObject et @ObservedObject.",
-      "Calculer un total à partir des données et organiser la navigation avec NavigationStack.",
+      "Afficher des collections avec List et ForEach.",
+      "Implémenter Identifiable et gérer swipe-to-delete.",
+      "Naviguer entre écrans avec NavigationView et NavigationLink.",
+      "Créer des formulaires avec TextField, Toggle, Picker et Form.",
+      "Animer les changements d'état avec withAnimation et les transitions.",
+      "Persister les données entre sessions avec @AppStorage.",
     ],
     chapters: intermediate,
     projects: swiftIntermediateProjects,
@@ -711,17 +1829,22 @@ export const swiftLevels: WebLevel[] = [
   {
     id: "avance",
     title: "Avancé",
-    subtitle: "Réseau, SwiftData et animations",
+    subtitle: "API réseau, état global, SwiftData et MVVM",
     objective:
-      "Connecte une app à une API, enregistre des données sur l’appareil et anime des changements d’état.",
+      "Récupère des données d'API avec URLSession et async/await, gère l'état global avec ObservableObject, persiste avec SwiftData et maîtrise l'architecture MVVM.",
+    definition:
+      "Le niveau avancé te permet de créer des applications connectées et persistantes : API REST, JSON, état partagé, SwiftData et architecture professionnelle MVVM.",
     color: levelColors[2],
     prerequisites:
-      "Savoir afficher une liste et partager un ViewModel entre plusieurs vues.",
+      "Maîtriser @State, les listes, la navigation, les animations et @AppStorage. Comprendre les structs, classes et closures Swift.",
     outcomes: [
-      "Récupérer une réponse HTTP avec async/await et la décoder.",
-      "Gérer le chargement, l’échec et les dernières valeurs reçues.",
-      "Créer une persistance SwiftData avec @Model, @Query et ModelContext.",
-      "Animer un filtre, un tri et une transition en respectant la préférence de mouvement.",
+      "Récupérer des données avec URLSession et async/await.",
+      "Décoder du JSON automatiquement avec Codable.",
+      "Gérer les erreurs réseau avec do-catch.",
+      "Créer des stores observables avec ObservableObject et @Published.",
+      "Utiliser @StateObject, @ObservedObject et @EnvironmentObject.",
+      "Persister des modèles localement avec SwiftData (@Model, @Query).",
+      "Implémenter l'architecture MVVM professionnelle.",
     ],
     chapters: advanced,
     projects: swiftAdvancedProjects,

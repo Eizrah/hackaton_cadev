@@ -1,10 +1,12 @@
 from django.urls import path
 from .views import *
 from .views import OAuthTokenView
+from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
     path('inscription/', InscriptionView.as_view(), name='inscription'),
     path('connexion/', ConnexionView.as_view(), name='connexion'),
+    path('connexion/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
     path('deconnexion/', DeconnexionView.as_view(), name='deconnexion'),
 
     # URLs profil — les plus spécifiques AVANT profil/ général

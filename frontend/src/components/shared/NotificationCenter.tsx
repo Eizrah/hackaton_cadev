@@ -10,9 +10,9 @@ interface Notification {
   message: string
   lu: boolean
   date: string
-  post_id?: number
-  commentaire_id?: number
-  offre_id?: number
+  post_id?: string | number  // UUID ou number
+  commentaire_id?: string | number
+  offre_id?: string | number
 }
 
 export default function NotificationCenter({ profile, onNavigate }: { profile: Profile; onNavigate: (path: string) => void }) {

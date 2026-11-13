@@ -227,10 +227,14 @@ SOCIAL_AUTH_PIPELINE = (
 )
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),     # 1 heure (au lieu de 30 min)
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),     # 30 jours (au lieu de 7)
+    'ROTATE_REFRESH_TOKENS': True,                    # Rotation automatique des refresh tokens
+    'BLACKLIST_AFTER_ROTATION': True,                 # Blacklist l'ancien refresh token
     'USER_ID_FIELD': 'email',
     'USER_ID_CLAIM': 'email',
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'UPDATE_LAST_LOGIN': True,                        # Met à jour last_login à chaque refresh
 }
 
 CACHES = {

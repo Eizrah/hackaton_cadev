@@ -263,6 +263,31 @@ class CommentaireView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        # ── vérification IA du commentaire ────────────────────────────────────
+        from Agents.services.verification_services import verifier_commentaire
+        
+        commentaire_texte = request.data.get('commentaire', '')
+        if not commentaire_texte or not commentaire_texte.strip():
+            return Response(
+                {'erreur': 'Le commentaire ne peut pas être vide.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # appelle l'agent de vérification
+        resultat_verification = verifier_commentaire(commentaire=commentaire_texte.strip())
+        
+        if not resultat_verification.get('approuve', False):
+            # si l'agent refuse, on retourne le refus au frontend
+            raison = resultat_verification.get('raison', 'Commentaire non conforme aux règles.')
+            return Response(
+                {
+                    'erreur': 'Commentaire refusé par la modération.',
+                    'raison': raison
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        # ── fin vérification ───────────────────────────────────────────────────
+
         serializer = CommentaireSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(
@@ -341,6 +366,24 @@ class DetailCommentaireView(APIView):
                 {'erreur': 'Commentaire introuvable ou vous n\'êtes pas le créateur.'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+        # ── vérification IA si le commentaire est modifié ──────────────────────
+        nouveau_commentaire = request.data.get('commentaire')
+        if nouveau_commentaire and nouveau_commentaire.strip():
+            from Agents.services.verification_services import verifier_commentaire
+            
+            resultat_verification = verifier_commentaire(commentaire=nouveau_commentaire.strip())
+            
+            if not resultat_verification.get('approuve', False):
+                raison = resultat_verification.get('raison', 'Commentaire non conforme aux règles.')
+                return Response(
+                    {
+                        'erreur': 'Modification refusée par la modération.',
+                        'raison': raison
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        # ── fin vérification ───────────────────────────────────────────────────
 
         serializer = CommentaireSerializer(commentaire, data=request.data, partial=True)
         if serializer.is_valid():

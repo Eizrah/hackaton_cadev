@@ -8,6 +8,7 @@ import ApplicationDashboard from "./ApplicationDashboard";
 import RecruiterDashboard from "./RecruiterDashboard";
 import { useState, type FormEvent } from "react";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Camera,
@@ -21,6 +22,7 @@ import {
   Pencil,
   Share2,
   Sparkles,
+  Trash2,
   UserRound,
 } from "lucide-react";
 import { type Profile } from "../../data/models";
@@ -65,10 +67,10 @@ function Avatar({
     </div>
   );
 }
-// ─── Popups changement mot de passe / email / pseudo ──────────────────────────
+// ─── Popups changement mot de passe / email / pseudo / suppression compte ──────
 function CredentialsActions({ profile, onNotice }: { profile: Profile; onNotice: (msg: string) => void }) {
   const { t } = useI18n()
-  const [popup, setPopup] = useState<'mdp' | 'identifiants' | null>(null)
+  const [popup, setPopup] = useState<'mdp' | 'identifiants' | 'supprimer' | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -82,11 +84,17 @@ function CredentialsActions({ profile, onNotice }: { profile: Profile; onNotice:
   const [nouveauPseudo, setNouveauPseudo] = useState(profile.pseudo)
   const [mdpIdentifiants, setMdpIdentifiants] = useState('')
 
+  // état formulaire suppression
+  const [mdpSuppression, setMdpSuppression] = useState('')
+  const [confirmationSuppression, setConfirmationSuppression] = useState('')
+
   function fermer() {
     setPopup(null)
     setError('')
     setAncienMdp(''); setNouveauMdp(''); setConfirmMdp('')
     setMdpIdentifiants('')
+    setMdpSuppression('')
+    setConfirmationSuppression('')
   }
 
   async function soumettreMotDePasse(e: FormEvent) {
@@ -141,6 +149,38 @@ function CredentialsActions({ profile, onNotice }: { profile: Profile; onNotice:
     } finally { setBusy(false) }
   }
 
+  async function soumettreSuppression(e: FormEvent) {
+    e.preventDefault()
+    
+    // Vérification de la confirmation
+    const confirmationAttendue = 'SUPPRIMER'
+    if (confirmationSuppression !== confirmationAttendue) {
+      setError(t(`Veuillez taper "${confirmationAttendue}" pour confirmer.`))
+      return
+    }
+
+    setBusy(true); setError('')
+    try {
+      const { authApi } = await import('../../api/auth')
+      const refreshToken = localStorage.getItem('refresh_token')
+      
+      await authApi.supprimerCompte(mdpSuppression, refreshToken || undefined)
+      
+      // Suppression réussie → nettoie tout et redirige
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('devafrica:profile')
+      
+      onNotice(t('Votre compte a été supprimé avec succès.'))
+      
+      setTimeout(() => {
+        window.location.hash = '#login'
+      }, 1500)
+    } catch (err: any) {
+      setError(err?.response?.data?.erreur || t('Erreur lors de la suppression du compte.'))
+    } finally { setBusy(false) }
+  }
+
   return (
     <>
       <div className="profile-credentials-actions" style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
@@ -161,6 +201,15 @@ function CredentialsActions({ profile, onNotice }: { profile: Profile; onNotice:
         >
           <KeyRound size={15} />
           {t('Changer le mot de passe', 'Change password')}
+        </button>
+        <button
+          type="button"
+          className="text-link"
+          onClick={() => setPopup('supprimer')}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: '#dc2626' }}
+        >
+          <Trash2 size={15} />
+          {t('Supprimer mon compte', 'Delete my account')}
         </button>
       </div>
 
@@ -226,6 +275,92 @@ function CredentialsActions({ profile, onNotice }: { profile: Profile; onNotice:
                 </button>
                 <button type="submit" disabled={busy} className="btn-primary" style={{ padding: '8px 16px' }}>
                   {busy ? t('En cours…', 'Working…') : t('Enregistrer', 'Save')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Popup suppression de compte */}
+      {popup === 'supprimer' && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={fermer}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface, #fff)', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '450px', display: 'flex', flexDirection: 'column', gap: '16px', border: '2px solid #dc2626' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#dc2626' }}>
+              <AlertTriangle size={24} />
+              <h3 style={{ margin: 0 }}>{t('Supprimer définitivement mon compte', 'Permanently delete my account')}</h3>
+            </div>
+            
+            <div style={{ background: '#fef2f2', padding: '12px', borderRadius: '8px', border: '1px solid #fca5a5' }}>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#7f1d1d' }}>
+                <strong>{t('⚠️ Action irréversible', '⚠️ Irreversible action')}</strong>
+              </p>
+              <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: '#991b1b' }}>
+                {t('Toutes vos données seront supprimées définitivement : publications, commentaires, messages, profil, etc.', 'All your data will be permanently deleted: posts, comments, messages, profile, etc.')}
+              </p>
+            </div>
+
+            <form onSubmit={soumettreSuppression} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.9rem' }}>
+                {t('Votre mot de passe actuel', 'Your current password')}
+                <input 
+                  type="password" 
+                  required 
+                  minLength={8}
+                  value={mdpSuppression} 
+                  onChange={e => setMdpSuppression(e.target.value)} 
+                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '1rem' }}
+                  placeholder={t('Mot de passe', 'Password')}
+                />
+              </label>
+              
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.9rem' }}>
+                {t('Tapez "SUPPRIMER" pour confirmer', 'Type "SUPPRIMER" to confirm')}
+                <input 
+                  type="text" 
+                  required 
+                  value={confirmationSuppression} 
+                  onChange={e => setConfirmationSuppression(e.target.value)} 
+                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '1rem', fontFamily: 'monospace' }}
+                  placeholder="SUPPRIMER"
+                />
+                <small style={{ color: '#666' }}>{t('Cette action est irréversible. Tapez exactement "SUPPRIMER" en majuscules.', 'This action is irreversible. Type exactly "SUPPRIMER" in capitals.')}</small>
+              </label>
+              
+              {error && (
+                <div style={{ background: '#fef2f2', padding: '10px', borderRadius: '6px', border: '1px solid #fca5a5' }}>
+                  <p style={{ color: '#dc2626', margin: 0, fontSize: '0.85rem' }}>{error}</p>
+                </div>
+              )}
+              
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                <button 
+                  type="button" 
+                  onClick={fermer} 
+                  disabled={busy}
+                  style={{ padding: '10px 20px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer', background: 'transparent', fontWeight: 500 }}
+                >
+                  {t('Annuler', 'Cancel')}
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={busy || !mdpSuppression || confirmationSuppression !== 'SUPPRIMER'}
+                  style={{ 
+                    padding: '10px 20px', 
+                    borderRadius: '6px', 
+                    border: 'none', 
+                    background: '#dc2626', 
+                    color: 'white', 
+                    cursor: busy || !mdpSuppression || confirmationSuppression !== 'SUPPRIMER' ? 'not-allowed' : 'pointer',
+                    opacity: busy || !mdpSuppression || confirmationSuppression !== 'SUPPRIMER' ? 0.5 : 1,
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Trash2 size={16} />
+                  {busy ? t('Suppression…', 'Deleting…') : t('Supprimer définitivement', 'Delete permanently')}
                 </button>
               </div>
             </form>

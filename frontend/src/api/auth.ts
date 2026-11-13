@@ -40,6 +40,12 @@ export const authApi = {
   // Recherche de devs par pseudo
   rechercherDevs: (query: string) =>
     client.get(`/api/auth/rechercher/?q=${encodeURIComponent(query)}`),
+
+  // Suppression de compte avec confirmation par mot de passe
+  supprimerCompte: (password: string, refresh?: string) =>
+    client.delete('/api/auth/supprimer-compte/', {
+      data: { password, refresh }
+    }),
 }
 
 

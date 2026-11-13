@@ -23,7 +23,7 @@ class DockerCodeExecutor:
         'java': 'eclipse-temurin:21-jdk-alpine',
         'php': 'php:8.3-cli-alpine',
         'swift': 'swift:5.9',
-        'sql': 'postgres:16-alpine',  # Pour SQLite/PostgreSQL
+        'sql': 'alpine:3.19',  # SQLite léger pour apprentissage
     }
     
     # Limites de sécurité
@@ -114,10 +114,10 @@ class DockerCodeExecutor:
             }, 'swift main.swift'
         
         elif language == 'sql':
-            # SQLite pour exécution SQL
+            # SQLite pour exécution SQL simple
             return {
                 'query.sql': code
-            }, 'sh -c "apt-get update > /dev/null && apt-get install -y sqlite3 > /dev/null && sqlite3 :memory: < query.sql"'
+            }, 'sh -c "apk add --no-cache sqlite > /dev/null 2>&1 && sqlite3 :memory: < query.sql"'
         
         return {}, ''
     

@@ -14,6 +14,113 @@ const docs = "https://kotlinlang.org/docs/";
 
 const beginner: WebLevel["chapters"] = [
   {
+    id: "installation-kotlin",
+    title: "Installation et configuration Kotlin",
+    description:
+      "Installe les outils, comprends ce que Kotlin apporte par rapport à Java et lance ton premier programme.",
+    lessons: [
+      lesson({
+        id: "introduction-kotlin",
+        title: "Qu'est-ce que Kotlin et pourquoi l'apprendre ?",
+        minutes: 25,
+        summary:
+          "Kotlin est un langage de programmation moderne à typage statique, développé par JetBrains. Il est officiellement recommandé par Google pour le développement Android et remplace progressivement Java dans ce domaine.",
+        sections: [
+          section(
+            "Kotlin : langage officiel Android",
+            "Depuis 2017, Google recommande Kotlin comme premier langage pour Android. Kotlin est concis, expressif et interopérable avec Java.",
+            [
+              "Concisité : Kotlin élimine une grande partie du code répétitif Java. Une data class d'une ligne remplace 50 lignes Java.",
+              "Null safety : Le compilateur distingue les types nullables (String?) des types garantis non-null (String). Les NullPointerException sont quasi éliminées.",
+              "Coroutines : La gestion de l'asynchronisme est intégrée au langage, sans librairie externe complexe.",
+              "Interopérabilité Java : Un projet peut mélanger du code Kotlin et Java. Toutes les librairies Java sont utilisables depuis Kotlin.",
+              "Multiplateforme : Kotlin/JVM pour Android et backend, Kotlin/JS pour le web, Kotlin/Native pour iOS et systèmes embarqués.",
+              "JetBrains et Google : Kotlin bénéficie du support actif de son créateur et du premier utilisateur mobile mondial.",
+            ],
+          ),
+          section(
+            "Kotlin vs Java : les différences clés",
+            "Kotlin et Java compilent tous les deux vers du bytecode JVM, mais Kotlin est beaucoup plus expressif.",
+            [
+              "Variables : val et var remplacent le verbose Java. val nom = 'Alice' au lieu de String nom = 'Alice';",
+              "Null safety : En Java, toute variable peut être null. En Kotlin, String ne peut jamais être null sauf si déclaré String?.",
+              "Data classes : data class Produit(val nom: String, val prix: Double) remplace une classe Java avec getters, setters, equals, hashCode et toString.",
+              "Lambdas : Kotlin a un support natif et élégant des lambdas. list.filter { it.prix > 10 } au lieu de code Java verbeux.",
+              "Extensions : Kotlin permet d'ajouter des méthodes à des classes existantes sans les modifier ni les hériter.",
+              "Coroutines : suspend fun et launch remplacent les threads et callbacks Java pour le code asynchrone.",
+            ],
+          ),
+          section(
+            "Prérequis système",
+            "Kotlin fonctionne partout où Java est présent. Les outils principaux sont le JDK et un IDE comme IntelliJ IDEA.",
+            [
+              "JDK : Installe le JDK 17 ou supérieur (LTS recommandé). Télécharge depuis adoptium.net ou oracle.com/java.",
+              "Windows : Exécute l'installeur MSI. Vérifie l'installation avec java -version dans le terminal.",
+              "macOS : Utilise Homebrew : brew install openjdk@17. Ou télécharge le pkg depuis adoptium.net.",
+              "Linux : sudo apt install openjdk-17-jdk (Debian/Ubuntu) ou sudo dnf install java-17-openjdk (Fedora).",
+              "RAM : 4 GB minimum pour l'IDE et le compilateur. 8 GB recommandés.",
+            ],
+          ),
+          section(
+            "Installation de l'IDE : IntelliJ IDEA ou Android Studio",
+            "IntelliJ IDEA est l'IDE Kotlin par excellence pour le code Kotlin/JVM. Android Studio (basé sur IntelliJ) est l'IDE Android.",
+            [
+              "IntelliJ IDEA Community : Gratuit, idéal pour apprendre Kotlin et écrire du code JVM. Télécharge depuis jetbrains.com/idea.",
+              "Android Studio : Gratuit, basé sur IntelliJ, optimisé pour Android. Inclut l'émulateur et le SDK Android.",
+              "VS Code : L'extension Kotlin existe mais le support est moins complet qu'IntelliJ.",
+              "Playground en ligne : play.kotlinlang.org permet d'essayer Kotlin sans rien installer.",
+              "Première ouverture IntelliJ : Crée un nouveau projet Kotlin JVM et sélectionne le JDK installé.",
+            ],
+          ),
+          section(
+            "Premier programme Kotlin",
+            "Le point d'entrée d'un programme Kotlin est la fonction main(). Elle peut être dans n'importe quel fichier .kt.",
+            [
+              "Créer un fichier : main.kt avec fun main() { println('Bonjour Kotlin !') }.",
+              "Compiler en ligne de commande : kotlinc main.kt -include-runtime -d main.jar puis java -jar main.jar.",
+              "Depuis IntelliJ : Clique sur le triangle vert à côté de fun main() pour lancer directement.",
+              "println() : Affiche une ligne dans la console. print() affiche sans retour à la ligne.",
+              "Pas de classe nécessaire : Contrairement à Java, les fonctions Kotlin peuvent exister en dehors d'une classe.",
+              "fun main(args: Array<String>) : La version avec arguments accepte des paramètres en ligne de commande.",
+            ],
+          ),
+          section(
+            "Structure d'un projet Kotlin avec Maven",
+            "Les ateliers de ce cours utilisent Maven pour gérer les dépendances et compiler le projet.",
+            [
+              "pom.xml : Fichier de configuration Maven qui déclare le langage (Kotlin), la version du compilateur et les dépendances.",
+              "src/main/kotlin : Dossier contenant le code source Kotlin principal.",
+              "src/test/kotlin : Dossier pour les tests unitaires.",
+              "mvn compile : Compile le projet. mvn exec:java lance le programme.",
+              "Le README de chaque atelier donne la commande exacte pour lancer le projet.",
+              "IDE : Ouvre le dossier du projet dans IntelliJ. Il détecte automatiquement le pom.xml et configure tout.",
+            ],
+          ),
+        ],
+        files: kotlinFiles(
+          "Premier programme Kotlin",
+          `
+fun main() {
+    println("Bonjour Kotlin !")
+    val nom = "Amina"
+    val annee = 2025
+    println("$nom programme depuis $annee.")
+}`,
+        ),
+        task: "Installe le JDK 17 et IntelliJ IDEA Community. Crée un nouveau projet Kotlin, écris fun main() { println('Bonjour Kotlin !') } et lance-le. Modifie le message et observe l'affichage.",
+        takeaway:
+          "Kotlin est le langage officiel Android. Il est concis, null-safe et interopérable avec Java. fun main() est le point d'entrée. println() affiche dans la console.",
+        quiz: quiz(
+          "Depuis quelle année Google recommande-t-il Kotlin comme premier langage Android ?",
+          ["2014", "2017", "2020"],
+          1,
+          "Google a annoncé Kotlin comme langage officiel Android à Google I/O 2017.",
+        ),
+        link: docs + "getting-started.html",
+      }),
+    ],
+  },
+  {
     id: "kotlin-variables",
     title: "Variables et types de données",
     description: "Déclare des valeurs et utilise les types du langage.",
@@ -730,6 +837,7 @@ export const kotlinLevels: WebLevel[] = [
     prerequisites:
       "Pour démarrer, installe un JDK et Maven. Le guide donne les commandes à exécuter.",
     outcomes: [
+      "Comprendre les avantages de Kotlin par rapport à Java et configurer l'environnement.",
       "Choisir entre val et var.",
       "Manipuler les types de base.",
       "Écrire des conditions et des boucles.",

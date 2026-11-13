@@ -130,7 +130,7 @@ export default function Community({
   focusPostId,
 }: {
   profile: Profile;
-  focusPostId?: number;
+  focusPostId?: string | number;
   onNavigate: (path: string) => void;
   onNotice: (text: string) => void;
 }) {
@@ -177,6 +177,33 @@ export default function Community({
             console.log('[FORUM] Réponse backend reçue:', res);
             console.log('[FORUM] Données brutes:', res.data);
             
+            // Fonction pour transformer l'URL du fichier backend en format StoredAttachment
+            const parseAttachmentResult = (fichierUrl: string | null | undefined, postId: string): StoredAttachment[] => {
+              if (!fichierUrl) return [];
+              // Extraire le nom du fichier de l'URL
+              const fileName = fichierUrl.split('/').pop() || 'fichier';
+              // Essayer de deviner le type MIME
+              const extension = fileName.split('.').pop()?.toLowerCase() || '';
+              const mimeTypes: Record<string, string> = {
+                pdf: 'application/pdf',
+                jpg: 'image/jpeg',
+                jpeg: 'image/jpeg',
+                png: 'image/png',
+                gif: 'image/gif',
+                doc: 'application/msword',
+                docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                xls: 'application/vnd.ms-excel',
+                xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+              };
+              return [{
+                id: `backend-${postId}`,
+                name: fileName,
+                type: mimeTypes[extension] || 'application/octet-stream',
+                size: 0,
+                url: fichierUrl,
+              }];
+            };
+
             const backendPosts: Post[] = res.data.map((p: any) => ({
               id: p.id_publication,
               authorId: p.developper_email,
@@ -186,7 +213,7 @@ export default function Community({
               title: "",
               text: p.description,
               links: p.lien ? [p.lien] : [],
-              attachments: [],
+              attachments: parseAttachmentResult(p.fichier, p.id_publication),
               savedBy: [],
               comments: [],
               publishedAt: p.date_publication,
@@ -274,25 +301,51 @@ export default function Community({
       publicationApi
         .rechercherPostsForum(query)
         .then((res) => {
-          const backendResults: Post[] = res.data.map((p: any) => ({
-            id: p.id_publication,
-            authorId: p.developper_email,
-            author: p.developper_pseudo,
-            country: "",
-            tag: "Publication",
-            title: "",
-            text: p.description,
-            links: p.lien ? [p.lien] : [],
-            attachments: [],
-            savedBy: [],
-            comments: [],
-            publishedAt: p.date_publication,
-            collaboration: false,
-            starCount: p.nombre_notes || 0,
-            starred: p.liked_by_me || false,
-            saved: false,
-            moderation: p.feu_vert ? "approved" : "pending",
-          }));
+          const backendResults: Post[] = res.data.map((p: any) => {
+            // Fonction pour transformer l'URL du fichier backend en format StoredAttachment
+            const parseAttachmentResult = (fichierUrl: string | null | undefined, postId: string): StoredAttachment[] => {
+              if (!fichierUrl) return [];
+              const fileName = fichierUrl.split('/').pop() || 'fichier';
+              const extension = fileName.split('.').pop()?.toLowerCase() || '';
+              const mimeTypes: Record<string, string> = {
+                pdf: 'application/pdf',
+                jpg: 'image/jpeg',
+                jpeg: 'image/jpeg',
+                png: 'image/png',
+                gif: 'image/gif',
+                doc: 'application/msword',
+                docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                xls: 'application/vnd.ms-excel',
+                xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+              };
+              return [{
+                id: `backend-${postId}`,
+                name: fileName,
+                type: mimeTypes[extension] || 'application/octet-stream',
+                size: 0,
+                url: fichierUrl,
+              }];
+            };
+            return {
+              id: p.id_publication,
+              authorId: p.developper_email,
+              author: p.developper_pseudo,
+              country: "",
+              tag: "Publication",
+              title: "",
+              text: p.description,
+              links: p.lien ? [p.lien] : [],
+              attachments: parseAttachmentResult(p.fichier, p.id_publication),
+              savedBy: [],
+              comments: [],
+              publishedAt: p.date_publication,
+              collaboration: false,
+              starCount: p.nombre_notes || 0,
+              starred: p.liked_by_me || false,
+              saved: false,
+              moderation: p.feu_vert ? "approved" : "pending",
+            };
+          });
 
           // Fusionner les résultats locaux et backend (dédupliquer par ID)
           const allResults = [...localResults];
@@ -418,7 +471,7 @@ export default function Community({
   }
 
   // ─── Publication d'un post ────────────────────────────────────────────────
-  function publish(e: FormEvent) {
+  async function publish(e: FormEvent) {
     e.preventDefault();
     if (uploading || busy || (!text.trim() && !attachments.length && !link.trim())) return;
     const url = link.trim() ? safePortfolio(link.trim()) : null;
@@ -432,6 +485,22 @@ export default function Community({
     console.log('[PUBLISH] Fichiers:', attachments);
     
     setBusy(true);
+    
+    // Récupérer le fichier réel depuis IndexedDB si nécessaire
+    let fileToUpload: File | undefined = undefined;
+    if (attachments.length > 0) {
+      try {
+        const { readAttachment } = await import("../../lib/attachments");
+        const blob = await readAttachment(attachments[0].id);
+        if (blob) {
+          fileToUpload = new File([blob], attachments[0].name, { type: attachments[0].type });
+          console.log('[PUBLISH] Fichier récupéré depuis IndexedDB:', fileToUpload);
+        }
+      } catch (err) {
+        console.error('[PUBLISH] Erreur lors de la récupération du fichier:', err);
+      }
+    }
+    
     import("../../api/publication")
       .then(({ publicationApi }) => {
         console.log('[PUBLISH] Appel API...');
@@ -439,10 +508,37 @@ export default function Community({
           .creerPostForum({
             description: text.trim(),
             lien: url || undefined,
+            fichier: fileToUpload,
           })
           .then((res) => {
             console.log('[PUBLISH] Réponse API:', res);
             const data = res.data;
+            
+            // Fonction pour transformer l'URL du fichier backend en format StoredAttachment
+            const parseAttachmentResult = (fichierUrl: string | null | undefined, postId: string): StoredAttachment[] => {
+              if (!fichierUrl) return [];
+              const fileName = fichierUrl.split('/').pop() || 'fichier';
+              const extension = fileName.split('.').pop()?.toLowerCase() || '';
+              const mimeTypes: Record<string, string> = {
+                pdf: 'application/pdf',
+                jpg: 'image/jpeg',
+                jpeg: 'image/jpeg',
+                png: 'image/png',
+                gif: 'image/gif',
+                doc: 'application/msword',
+                docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                xls: 'application/vnd.ms-excel',
+                xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+              };
+              return [{
+                id: `backend-${postId}`,
+                name: fileName,
+                type: mimeTypes[extension] || 'application/octet-stream',
+                size: 0,
+                url: fichierUrl,
+              }];
+            };
+            
             const post: Post = {
               id: data.post?.id_publication || Date.now(),
               authorId: profile.id,
@@ -450,7 +546,7 @@ export default function Community({
               country: profile.country,
               tag: "Publication",
               title: "",
-              attachments: attachments,
+              attachments: parseAttachmentResult(data.post?.fichier, data.post?.id_publication),
               links: url ? [url] : [],
               savedBy: [],
               text: text.trim(),
@@ -496,13 +592,20 @@ export default function Community({
       });
   }
 
-  const visible = posts.filter(
-    (post) =>
-      !post.moderation ||
-      post.moderation === "approved" ||
-      post.authorId === profile.id ||
-      (!post.authorId && post.author === profile.name)
-  );
+  const visible = posts
+    .filter(
+      (post) =>
+        !post.moderation ||
+        post.moderation === "approved" ||
+        post.authorId === profile.id ||
+        (!post.authorId && post.author === profile.name)
+    )
+    .sort((a, b) => {
+      // Tri par date de publication (plus récent en premier)
+      const dateA = new Date(a.publishedAt).getTime();
+      const dateB = new Date(b.publishedAt).getTime();
+      return dateB - dateA; // Ordre décroissant
+    });
 
   // Afficher les résultats de recherche s'il y a une recherche active, sinon les posts normaux
   const displayedPosts = isSearching && searchQuery.trim() 
