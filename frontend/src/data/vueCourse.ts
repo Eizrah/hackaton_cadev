@@ -40,8 +40,164 @@ const beginner: WebLevel["chapters"] = [
     id: "fondations-vue",
     title: "Fondations et syntaxe",
     description:
-      "Installe tes repères, de la première variable à un vrai composant Vue.",
+      "Comprends Vue.js, sa philosophie, son architecture et crée ton premier composant.",
     lessons: [
+      lesson({
+        id: "introduction-vue",
+        title: "Qu'est-ce que Vue.js ?",
+        minutes: 20,
+        summary:
+          "Vue.js est un framework JavaScript progressif pour construire des interfaces utilisateur. Comprends sa philosophie, son architecture SPA, son écosystème officiel et sa différence avec React.",
+        sections: [
+          section(
+            "Vue : Framework progressif",
+            "Vue se distingue par sa philosophie progressive : tu peux l'adopter partiellement pour améliorer une page HTML existante, ou l'utiliser pour construire une Single-Page Application (SPA) complète.",
+            [
+              "Vue est un FRAMEWORK complet avec des solutions officielles intégrées : Vue Router (routage), Pinia (state management), Vite (build tool).",
+              "React est une BIBLIOTHÈQUE UI qui se concentre sur le rendu de composants. Pour le routage ou la gestion d'état, tu dois ajouter des librairies tierces.",
+              "Vue fournit une approche batteries included : l'équipe core maintient les outils officiels, garantissant cohérence et compatibilité.",
+            ],
+          ),
+          section(
+            "Architecture SPA (Single-Page Application)",
+            "Une SPA charge une seule page HTML au démarrage puis met à jour dynamiquement le contenu sans rechargement complet. Vue contrôle l'ensemble de la page et gère les mises à jour et la navigation.",
+            [
+              "Avantages SPA : Navigation fluide sans rechargement, expérience utilisateur rapide, état persistant entre les vues.",
+              "Vue Router gère la navigation : il change l'URL et affiche le composant correspondant sans appel serveur.",
+              "Le serveur expose des API REST/GraphQL pour les données. Vue récupère et affiche ces données avec fetch ou axios.",
+            ],
+          ),
+          section(
+            "Écosystème Vue officiel",
+            "L'équipe Vue maintient un ensemble cohérent d'outils pour chaque besoin d'une application moderne.",
+            [
+              "Vue Router : Gestion du routage et navigation (routes dynamiques, guards, lazy loading).",
+              "Pinia : Store centralisé pour l'état partagé entre composants (remplace Vuex depuis Vue 3).",
+              "Vite : Build tool ultra-rapide pour développement et production avec HMR instantané.",
+              "Vue DevTools : Extension navigateur pour inspecter composants, état Pinia, événements.",
+              "Nuxt : Framework fullstack pour SSR (Server-Side Rendering), SSG (Static Site Generation) et SEO.",
+            ],
+          ),
+          section(
+            "Vue vs React : Différences clés",
+            "Bien que les deux permettent de construire des interfaces modernes, leurs philosophies diffèrent fondamentalement.",
+            [
+              "Framework vs Bibliothèque : Vue = framework complet avec routeur/store officiels. React = bibliothèque UI, tu choisis tes propres outils.",
+              "Templates vs JSX : Vue sépare HTML (template), JS (script), CSS (style) dans les fichiers .vue. React mélange tout dans JSX.",
+              "Réactivité : Vue détecte automatiquement les changements avec des Proxies (ref, reactive). React nécessite useState et hooks.",
+              "Courbe d'apprentissage : Vue est plus accessible avec des templates HTML familiers. React exige de comprendre JSX.",
+              "Écosystème : React a un écosystème plus vaste. Vue offre une intégration officielle plus cohérente.",
+            ],
+          ),
+        ],
+        files: demo(
+          "Première impression Vue",
+          'const framework = "Vue.js";\nconst type = "Framework progressif";',
+          '<div class="card">\n      <h2>{{ framework }}</h2>\n      <p>Type : {{ type }}</p>\n      <p>Architecture : SPA (Single-Page Application)</p>\n      <p>Écosystème : Vue Router, Pinia, Vite, Nuxt</p>\n    </div>',
+        ),
+        task: "Observe comment les variables JavaScript sont affichées dans le template avec les doubles accolades {{ }}.",
+        takeaway:
+          "Vue est un framework progressif avec un écosystème officiel intégré. Il se distingue de React par ses templates déclaratifs et sa philosophie batteries included.",
+        quiz: quiz(
+          "Quelle est la différence principale entre Vue et React ?",
+          [
+            "Vue est un framework complet, React est une bibliothèque UI",
+            "Vue ne peut pas faire de SPA",
+            "React est plus simple que Vue",
+          ],
+          0,
+          "Vue fournit routeur et store officiels. React laisse le choix des outils externes.",
+        ),
+        link: `${guide}introduction.html`,
+        linkLabel: "Introduction à Vue",
+      }),
+      lesson({
+        id: "structure-projet-vue",
+        title: "Créer un projet Vue et comprendre sa structure",
+        minutes: 22,
+        summary:
+          "Utilise create-vue pour générer un projet moderne avec Vite. Comprends la structure des dossiers, les fichiers clés, les composants .vue et les templates.",
+        sections: [
+          section(
+            "Prérequis et création du projet",
+            "Node.js version 18+ est nécessaire. La commande npm create vue@latest utilise l'outil officiel create-vue pour générer un projet basé sur Vite.",
+            [
+              "npm create vue@latest lance un assistant interactif : TypeScript ? Router ? Pinia ? Tests ?",
+              "Pour apprendre, recommandation : TypeScript=Non, Router=Oui, Pinia=Oui, Tests=Non.",
+              "Après génération : cd nom-projet puis npm install pour installer les dépendances.",
+              "npm run dev lance Vite. L'URL (souvent http://localhost:5173/) s'affiche dans le terminal.",
+            ],
+          ),
+          section(
+            "Structure des dossiers Vue",
+            "Un projet Vue suit une organisation claire qui sépare le code source, les ressources et la configuration.",
+            [
+              "📁 src/ : Code source de ton application (composants, vues, stores, styles).",
+              "📁 src/components/ : Composants réutilisables (ButtonPrimary.vue, UserCard.vue, Modal.vue).",
+              "📁 src/views/ : Pages/vues principales liées aux routes (HomeView.vue, AboutView.vue, ProfileView.vue).",
+              "📁 src/assets/ : Ressources statiques (images, fonts, CSS globaux). Traités par Vite.",
+              "📁 src/router/ : Configuration Vue Router (routes, navigation guards).",
+              "📁 src/stores/ : Stores Pinia pour état global (userStore.js, cartStore.js).",
+              "📁 public/ : Fichiers statiques servis tels quels (favicon.ico, robots.txt). Non traités par Vite.",
+            ],
+          ),
+          section(
+            "Fichiers principaux du projet",
+            "Certains fichiers jouent un rôle central dans le fonctionnement de l'application Vue.",
+            [
+              "📄 index.html : Point d'entrée HTML. Contient <div id='app'></div> où Vue monte l'application.",
+              "📄 src/main.js : Point d'entrée JavaScript. Crée l'app Vue avec createApp, installe plugins (router, pinia) et monte sur #app.",
+              "📄 src/App.vue : Composant racine. Contient généralement <RouterView /> pour afficher les pages selon la route.",
+              "📄 vite.config.js : Configuration Vite (alias @/, plugins, proxy API, optimisations build).",
+              "📄 package.json : Dépendances npm et scripts. Lance npm run dev, npm run build, npm run preview.",
+            ],
+          ),
+          section(
+            "Le fichier .vue : Single-File Component (SFC)",
+            "Un composant monofichier regroupe template HTML, logique JavaScript et styles CSS dans un seul fichier .vue.",
+            [
+              "<template> : Section HTML déclarative. Utilise {{ variable }} pour interpolation, v-if pour conditions, v-for pour listes.",
+              "<script setup> : Composition API moderne. Les variables/fonctions définies ici sont automatiquement disponibles dans le template.",
+              "<style scoped> : CSS isolé au composant. L'attribut scoped évite les conflits de styles entre composants.",
+              "Exemple : Badge.vue contient son template, script et style. Tu l'importes et l'utilises avec <Badge />.",
+            ],
+          ),
+          section(
+            "Templates Vue : Syntaxe déclarative",
+            "Les templates Vue utilisent HTML standard enrichi de directives pour lier données et UI de manière déclarative.",
+            [
+              "{{ variable }} : Interpolation de texte. Affiche la valeur de variable dans le HTML.",
+              ":src ou v-bind:src : Lie un attribut HTML à une expression JavaScript. Exemple : :src='imageUrl'.",
+              "v-if / v-else-if / v-else : Affichage conditionnel. Le bloc est ajouté ou retiré du DOM.",
+              "v-for='item in items' :key='item.id' : Boucle pour afficher une liste. La key identifie chaque élément.",
+              "@click ou v-on:click : Écoute d'événements. Exemple : @click='handleClick'.",
+              "v-model : Liaison bidirectionnelle pour formulaires. Synchronise input avec variable réactive.",
+            ],
+          ),
+        ],
+        files: demo(
+          "Structure projet Vue",
+          `// Dans src/main.js\nimport { createApp } from 'vue';\nimport { createPinia } from 'pinia';\nimport { createRouter } from 'vue-router';\nimport App from './App.vue';\n\n// Simulation de la structure\nconst projectName = "Mon App Vue";\nconst folders = "components, views, assets, stores, router";`,
+          `<div class="card">
+      <h2>{{ projectName }}</h2>
+      <p><strong>📁 Dossiers clés :</strong> {{ folders }}</p>
+      <p><strong>📄 Fichiers :</strong> main.js, App.vue, vite.config.js</p>
+      <p><strong>🔧 Commandes :</strong> npm run dev, npm run build</p>
+      <p><strong>🧩 SFC :</strong> template + script + style dans .vue</p>
+    </div>`,
+        ),
+        task: "Crée un projet Vue avec npm create vue@latest. Explore src/components, src/views et lis main.js et App.vue.",
+        takeaway:
+          "Un projet Vue suit une structure claire : components (réutilisables), views (pages), assets (ressources), stores (état global). Les fichiers .vue regroupent template, script et style.",
+        quiz: quiz(
+          "Quel dossier contient les composants réutilisables ?",
+          ["src/views/", "src/components/", "src/assets/"],
+          1,
+          "src/components/ contient les composants réutilisables. src/views/ contient les pages liées aux routes.",
+        ),
+        link: `${guide}quick-start.html`,
+        linkLabel: "Démarrage rapide Vue",
+      }),
       lesson({
         id: "vue-premier-composant",
         title: "Vue, Vite et le premier composant",

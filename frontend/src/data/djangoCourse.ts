@@ -103,6 +103,253 @@ urlpatterns = [
 
 const beginner: WebLevel["chapters"] = [
   {
+    id: "introduction-django",
+    title: "Introduction à Django",
+    description: "Comprendre Django, son architecture MTV, son écosystème et ses différences avec d'autres frameworks.",
+    lessons: [
+      lesson({
+        id: "quest-ce-que-django",
+        title: "Qu'est-ce que Django ?",
+        minutes: 25,
+        summary:
+          "Django est un framework web Python batteries included créé en 2005. Il suit l'architecture MTV (Model-Template-View) et fournit tout ce dont tu as besoin pour créer des applications web robustes rapidement.",
+        sections: [
+          section(
+            "Django : Framework web Python batteries included",
+            "Django est un framework web high-level qui encourage le développement rapide et une conception propre et pragmatique. Créé en 2005 dans une salle de rédaction, il porte le slogan The web framework for perfectionists with deadlines.",
+            [
+              "Django est un framework BATTERIES INCLUDED : ORM, admin, authentification, formulaires, templates, tout est fourni.",
+              "Philosophie DRY (Don't Repeat Yourself) : éviter la duplication de code.",
+              "Créé au Lawrence Journal-World en 2005, open source depuis 2008.",
+              "High-level framework : abstraction élevée pour une productivité maximale.",
+              "Sécurité par défaut : protection contre CSRF, XSS, SQL injection, clickjacking.",
+            ],
+          ),
+          section(
+            "Architecture MTV : Model-Template-View",
+            "Django utilise le pattern MTV, une variante du MVC (Model-View-Controller). L'URL Router dirige les requêtes vers les vues appropriées.",
+            [
+              "**Model** (models.py) : couche de données. Définit la structure de la base de données avec des classes Python. Django génère automatiquement le SQL.",
+              "**Template** : couche de présentation. HTML enrichi avec Django Template Language (DTL). Variables {{ variable }}, boucles {% for %}, conditions {% if %}.",
+              "**View** (views.py) : couche logique métier. Fonction ou classe qui reçoit une requête HTTP, interroge les modèles, retourne une HttpResponse.",
+              "**URLconf** (urls.py) : routeur d'URLs. Mappe les chemins d'URL vers les fonctions de vue. path('articles/', views.liste_articles).",
+            ],
+          ),
+          section(
+            "Écosystème Django complet",
+            "Django fournit un écosystème riche et mature pour tous les besoins d'une application web moderne.",
+            [
+              "**Django ORM** : Object-Relational Mapping. Manipule la base de données avec Python (PostgreSQL, MySQL, SQLite, Oracle).",
+              "**Django Admin** : interface d'administration automatique générée depuis les modèles. Gestion des données sans code.",
+              "**Django Auth** : système d'authentification complet (users, groups, permissions, sessions).",
+              "**Django Forms** : validation et rendu de formulaires HTML avec classes Python.",
+              "**Django REST Framework (DRF)** : création d'API REST puissantes avec serializers et viewsets.",
+              "**Django Channels** : support WebSockets et protocoles asynchrones pour chat, notifications temps réel.",
+              "**Celery** : tâches asynchrones et background jobs (emails, rapports, nettoyage).",
+              "**Django Debug Toolbar** : panneau de debugging pour analyser requêtes SQL, performances, templates.",
+            ],
+          ),
+          section(
+            "Django vs autres frameworks backend",
+            "Chaque framework a sa philosophie. Django privilégie la productivité avec des conventions fortes, d'autres privilégient la flexibilité.",
+            [
+              "**Django vs Flask (Python)** : Django = batteries included, opinionated. Flask = minimaliste, flexible, tu choisis tes outils.",
+              "**Django vs FastAPI (Python)** : Django = synchrone traditionnel, ORM intégré. FastAPI = async natif, ultra-rapide, moderne (Pydantic).",
+              "**Django vs Laravel (PHP)** : très similaires ! Tous deux batteries included, ORM (Eloquent vs Django ORM), admin (Nova vs Django Admin).",
+              "**Django vs Express (Node.js)** : Django = opinionated, structure claire. Express = minimaliste, maximum de liberté.",
+              "**Django vs Spring Boot (Java)** : similaires, tous deux enterprise-grade avec annotations/décorateurs et DI (Dependency Injection).",
+            ],
+          ),
+          section(
+            "Avantages Django et concepts clés",
+            "Django excelle dans la création rapide d'applications web sécurisées et maintenables.",
+            [
+              "**Avantages** : Admin automatique, ORM puissant, sécurité intégrée, documentation excellente, écosystème mature, scalabilité prouvée (Instagram, Pinterest, Spotify).",
+              "**Projet vs Application** : Un projet = configuration globale (settings.py). Une application = module fonctionnel (blog, shop, api). Un projet contient plusieurs apps.",
+              "**manage.py** : outil CLI pour gérer le projet (runserver, migrate, makemigrations, createsuperuser, shell).",
+              "**Middleware** : couches entre requête et vue (auth, CSRF, sessions, compression, cache).",
+              "**Migrations** : versioning du schéma de base de données. Fichiers Python générés automatiquement, appliqués avec migrate.",
+            ],
+          ),
+        ],
+        files: djangoFiles("Introduction Django", {
+          info: `# Django Framework
+
+## Architecture MTV
+- **M**odel : Données (ORM)
+- **T**emplate : Présentation (HTML)
+- **V**iew : Logique (Python)
+
+## Philosophie
+- Batteries included
+- Don't Repeat Yourself (DRY)
+- Explicit is better than implicit
+
+## Écosystème
+- ORM : Manipulation BDD
+- Admin : Interface auto
+- Auth : Authentification
+- Forms : Validation
+- DRF : API REST
+
+## Commandes essentielles
+python manage.py runserver
+python manage.py migrate
+python manage.py makemigrations
+python manage.py createsuperuser
+`,
+        }),
+        task: "Lis le fichier info qui résume l'architecture MTV et les concepts clés de Django.",
+        takeaway:
+          "Django est un framework batteries included qui suit MTV (Model-Template-View). Il fournit ORM, admin, auth, forms et tout ce qu'il faut pour créer des applications web rapidement et en toute sécurité.",
+        quiz: quiz(
+          "Quelle est la différence entre Django et Flask ?",
+          [
+            "Django est batteries included, Flask est minimaliste",
+            "Django ne peut pas faire d'API",
+            "Flask est plus rapide que Django",
+          ],
+          0,
+          "Django fournit tout (ORM, admin, auth), Flask te laisse choisir tes outils.",
+        ),
+        link: `${docs}intro/overview/`,
+      }),
+      lesson({
+        id: "structure-projet-django",
+        title: "Créer un projet Django et comprendre sa structure",
+        minutes: 30,
+        summary:
+          "Installe Django, crée un projet et une application, comprends la différence entre les deux et le rôle des fichiers clés : settings.py, urls.py, models.py, views.py.",
+        sections: [
+          section(
+            "Prérequis et installation",
+            "Python 3.10+ est requis. Un environnement virtuel est OBLIGATOIRE pour isoler les dépendances du projet.",
+            [
+              "Vérifie Python : python --version (ou python3 --version sur Linux/Mac).",
+              "Crée un environnement virtuel : python -m venv .venv",
+              "Active l'environnement : Windows PowerShell : .venv\\Scripts\\activate | Linux/Mac : source .venv/bin/activate",
+              "Installe Django : pip install Django==5.2",
+              "Vérifie l'installation : python -m django --version",
+            ],
+          ),
+          section(
+            "Créer un projet Django",
+            "Un PROJET Django contient la configuration globale. Une APPLICATION est un module fonctionnel réutilisable. Un projet peut avoir plusieurs applications.",
+            [
+              "Crée un projet : django-admin startproject config . (le point crée dans le dossier actuel)",
+              "Structure générée : manage.py (CLI), config/ (dossier de configuration avec settings.py, urls.py, wsgi.py, asgi.py).",
+              "Crée une application : python manage.py startapp blog",
+              "Ajoute l'app dans settings.py INSTALLED_APPS : 'blog.apps.BlogConfig',",
+              "Un projet peut avoir plusieurs apps : blog, api, users, shop, etc. Chaque app est réutilisable dans d'autres projets.",
+            ],
+          ),
+          section(
+            "Structure du projet Django",
+            "Comprends le rôle de chaque fichier et dossier pour naviguer efficacement dans ton projet.",
+            [
+              "📄 **manage.py** : CLI pour gérer le projet. Commandes : runserver, migrate, makemigrations, createsuperuser, shell, test.",
+              "📁 **config/** (ou nom du projet) : Dossier de configuration globale.",
+              "📄 **config/settings.py** : Configuration complète du projet (INSTALLED_APPS, DATABASES, MIDDLEWARE, TEMPLATES, STATIC, MEDIA).",
+              "📄 **config/urls.py** : URLconf racine. Inclut les URLs des applications avec include('blog.urls').",
+              "📄 **config/wsgi.py** : Point d'entrée WSGI pour déploiement production (Gunicorn, uWSGI).",
+              "📄 **config/asgi.py** : Point d'entrée ASGI pour WebSockets et async (Daphne, Uvicorn).",
+            ],
+          ),
+          section(
+            "Structure d'une application Django",
+            "Une application Django suit une structure standardisée avec des fichiers clés pour les modèles, vues et URLs.",
+            [
+              "📁 **migrations/** : Fichiers de migration de base de données générés automatiquement.",
+              "📄 **admin.py** : Configuration de l'interface admin Django. Register tes modèles ici.",
+              "📄 **apps.py** : Configuration de l'application (nom, label, auto-découverte).",
+              "📄 **models.py** : **FICHIER CLÉ** - Définition des modèles (tables de base de données). Classes Python héritant de models.Model.",
+              "📄 **views.py** : **FICHIER CLÉ** - Logique métier. Fonctions/classes qui reçoivent HttpRequest et retournent HttpResponse.",
+              "📄 **urls.py** : **FICHIER CLÉ** (à créer) - Routage des URLs vers les vues. path(), include().",
+              "📄 **tests.py** : Tests unitaires de l'application avec unittest ou pytest.",
+              "📁 **templates/blog/** : Templates HTML (à créer). Django cherche dans app/templates/.",
+              "📁 **static/blog/** : Fichiers statiques CSS, JS, images (à créer).",
+            ],
+          ),
+          section(
+            "Les 3 fichiers clés : models.py, views.py, urls.py",
+            "Ces trois fichiers forment le cœur de ton application Django et suivent le pattern MTV.",
+            [
+              "**models.py** : Définit la STRUCTURE de la base de données. Chaque classe = une table, chaque attribut = une colonne. Django génère le SQL automatiquement.",
+              "**views.py** : Contient la LOGIQUE métier. Reçoit request, interroge les modèles, prépare les données, retourne HttpResponse (HTML, JSON, redirect).",
+              "**urls.py** : Définit le ROUTAGE. Mappe les chemins d'URL vers les fonctions de vue. Capture des paramètres (<int:id>). Nommage des routes (name='...').",
+              "Workflow complet : URL → urls.py → view (views.py) → model (models.py) → template (HTML) → HttpResponse.",
+            ],
+          ),
+          section(
+            "Commandes Django essentielles",
+            "Maîtrise ces commandes pour créer, migrer et lancer ton projet Django.",
+            [
+              "**Créer un projet** : django-admin startproject config .",
+              "**Créer une app** : python manage.py startapp blog",
+              "**Créer migrations** : python manage.py makemigrations (après modification de models.py)",
+              "**Appliquer migrations** : python manage.py migrate (crée/met à jour les tables)",
+              "**Créer superuser** : python manage.py createsuperuser (accès /admin/)",
+              "**Lancer serveur** : python manage.py runserver (http://127.0.0.1:8000/)",
+              "**Shell Python** : python manage.py shell (interactif avec accès aux modèles)",
+              "**Tests** : python manage.py test",
+            ],
+          ),
+        ],
+        files: djangoFiles("Structure Django complète", {
+          structure: `# Structure d'un projet Django
+
+## Racine du projet
+📄 manage.py                 # CLI Django
+📁 config/                   # Configuration globale
+📁 blog/                     # Application blog
+📁 .venv/                    # Environnement virtuel
+📄 db.sqlite3                # Base de données (après migrate)
+📄 requirements.txt          # Dépendances Python
+
+## Dossier config/ (projet)
+📄 __init__.py
+📄 settings.py               # Configuration (APPS, DB, MIDDLEWARE)
+📄 urls.py                   # URLconf racine
+📄 wsgi.py                   # Déploiement production
+📄 asgi.py                   # Déploiement async
+
+## Dossier blog/ (application)
+📁 migrations/               # Migrations de BDD
+📄 __init__.py
+📄 admin.py                  # Config admin
+📄 apps.py                   # Config app
+📄 models.py                 # 🔑 Modèles (tables)
+📄 views.py                  # 🔑 Vues (logique)
+📄 urls.py                   # 🔑 Routes (à créer)
+📄 tests.py                  # Tests
+📁 templates/blog/           # Templates HTML (à créer)
+📁 static/blog/              # CSS, JS, images (à créer)
+
+## Fichiers clés à comprendre
+1. settings.py : Configuration globale
+2. models.py : Structure de la BDD (ORM)
+3. views.py : Logique métier
+4. urls.py : Routage des URLs
+`,
+        }),
+        task: "Crée un projet Django avec django-admin startproject config ., puis une app avec python manage.py startapp blog. Explore les fichiers générés.",
+        takeaway:
+          "Un PROJET Django contient la configuration globale (settings.py, urls.py racine). Une APPLICATION est un module fonctionnel (models.py, views.py, urls.py). Les 3 fichiers clés sont models.py (données), views.py (logique), urls.py (routage).",
+        quiz: quiz(
+          "Quelle est la différence entre un projet et une application Django ?",
+          [
+            "Un projet contient la config globale, une app est un module fonctionnel",
+            "Un projet est pour le frontend, une app pour le backend",
+            "Il n'y a pas de différence",
+          ],
+          0,
+          "Le projet (config/) contient settings.py et urls.py racine. L'app (blog/) contient models.py, views.py, urls.py spécifiques.",
+        ),
+        link: `${docs}intro/tutorial01/`,
+      }),
+    ],
+  },
+  {
     id: "initialisation-mtv",
     title: "Initialisation et architecture MTV",
     description: "Suis une requête HTTP puis lance ton premier serveur Django.",

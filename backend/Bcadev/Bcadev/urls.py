@@ -12,6 +12,8 @@ urlpatterns = [
     path('api/groups/', include('Groups.urls')),
     path('api/moderation/', include('Moderation.urls')),
     path('api/learning/', include('Learning.urls')),
+    path('api/code-execution/', include('CodeExecution.urls')),
+    path('api/agents/', include('Agents.urls')),  # Agent IA pour FloatingTutor
 
     #path('social-auth/', include('social_django.urls', namespace='social')),
     path('social-auth/', include('social_django.urls', namespace='social')),

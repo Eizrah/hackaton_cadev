@@ -1,4 +1,4 @@
-import { pythonLevels } from "./pythonCourse";
+﻿import { pythonLevels } from "./pythonCourse";
 import { scriptJsLevels } from "./scriptJsCourse";
 import { typescriptLevels } from "./typescriptCourse";
 import { phpLanguageLevels } from "./phpLanguageCourse";
@@ -426,25 +426,25 @@ const baseCurricula: Record<DetailedCourseId, WebCurriculum> = {
   "lang-cpp": {
     title: "C++",
     intro:
-      "Comprends les références, les classes et les instances en console, puis relie des widgets dans une interface Qt 6.",
+      "Maîtrise les pointeurs, l'héritage multiple et SQLite en console, puis construis des interfaces graphiques légères avec FLTK.",
     mode: "cpp",
     path: "langages",
     icons: ["C++"],
     levels: cppLevels,
     toolbox: [
       {
-        name: "Qt Creator",
-        role: "Installer un kit Desktop Qt 6 et ouvrir les projets CMake exportés de l’atelier.",
-        url: "https://doc.qt.io/qtcreator/creator-getting-started.html",
+        name: "FLTK Documentation",
+        role: "Explorer les widgets et les événements de l'interface graphique légère utilisée dans le niveau avancé.",
+        url: "https://www.fltk.org/documentation.php",
       },
       {
-        name: "Qt Designer",
-        role: "Disposer les widgets dans fenetre.ui et générer leur code avec AUTOUIC.",
-        url: "https://doc.qt.io/qt-6/designer-manual.html",
+        name: "SQLite C/C++",
+        role: "Comprendre l'API sqlite3 pour les opérations CRUD dans les applications C++.",
+        url: "https://www.sqlite.org/cintro.html",
       },
       {
         name: "C++ Reference",
-        role: "Vérifier la syntaxe des classes, les références et les conteneurs standard.",
+        role: "Vérifier la syntaxe des classes, les références, les pointeurs et les conteneurs standard.",
         url: "https://en.cppreference.com/w/cpp.html",
       },
       {

@@ -5,1148 +5,3443 @@ import type { WebLevel } from "./webCourseTypes";
 const mdn = "https://developer.mozilla.org/fr/docs/";
 const js = mdn + "Web/JavaScript/";
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🟢 NIVEAU DÉBUTANT - Fondamentaux JavaScript ES6+
+// ═══════════════════════════════════════════════════════════════════════════
+
+const beginner: WebLevel["chapters"] = [
+  {
+    id: "js-introduction",
+    title: "Introduction à JavaScript",
+    description: "Découvrir JavaScript et son environnement",
+    lessons: [
+      lesson({
+        id: "js-intro-langage",
+        title: "Qu'est-ce que JavaScript ?",
+        minutes: 15,
+        summary:
+          "JavaScript est le langage de programmation du web. Il rend les pages interactives et peut aussi créer des serveurs avec Node.js. Ce cours te mènera des bases jusqu'aux applications web complètes.",
+        sections: [
+          section(
+            "JavaScript : Le langage du web",
+            "JavaScript est partout sur le web : sites interactifs, applications mobiles, serveurs.",
+            [
+              "Frontend : interactions dans le navigateur (clics, animations)",
+              "Backend : serveurs avec Node.js",
+              "JavaScript = JS (abréviation courante)",
+              "ECMAScript = standard du langage (ES6, ES2020, etc.)",
+              "Interprété : pas besoin de compilation",
+              "Syntaxe proche de C/Java mais plus flexible",
+            ]
+          ),
+          section(
+            "Déroulement de la formation",
+            "Trois niveaux progressifs sans framework pour comprendre les bases.",
+            [
+              "🟢 Débutant : Variables, fonctions, tableaux, objets",
+              "🟡 Intermédiaire : POO, méthodes avancées, modules",
+              "🔴 Avancé : DOM, événements, CSS dynamique, Async/Await, Fetch API",
+            ]
+          ),
+          section(
+            "Premiers pas",
+            "Deux environnements pour exécuter JavaScript.",
+            [
+              "Console navigateur : F12 → Console (pour tests rapides)",
+              "Node.js : exécuter JS dans le terminal (npm, serveurs)",
+              "VS Code : éditeur recommandé",
+              "Extensions utiles : Live Server, ESLint",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Premier programme",
+          '<h1>JavaScript</h1><p id="demo">Prêt à démarrer ?</p>',
+          `// Premier programme JavaScript
+console.log("Bonjour DevAfrica !");
+console.log("Je commence JavaScript 🚀");
+
+// Modifier le DOM
+const paragraphe = document.querySelector("#demo");
+paragraphe.textContent = "JavaScript fonctionne !";`,
+        ),
+        task: "Modifie le message affiché dans le paragraphe avec ton propre texte.",
+        takeaway:
+          "JavaScript rend les pages web interactives. Console pour tester, Node.js pour serveurs. ES6+ = syntaxe moderne.",
+        quiz: quiz(
+          "Où s'exécute principalement JavaScript ?",
+          ["Seulement serveur", "Navigateur et serveur (Node.js)", "Base de données"],
+          1,
+          "JavaScript s'exécute dans le navigateur (frontend) et peut aussi tourner sur serveur avec Node.js (backend)."
+        ),
+        link: js + "Guide",
+      }),
+    ],
+  },
+  {
+    id: "js-variables-types",
+    title: "Variables et types",
+    description: "let, const, var et types primitifs",
+    lessons: [
+      lesson({
+        id: "js-let-const-var",
+        title: "let, const et var : les différences",
+        minutes: 20,
+        summary:
+          "En JavaScript moderne (ES6+), on utilise let et const. var est l'ancienne syntaxe. const pour valeurs constantes, let pour variables modifiables.",
+        sections: [
+          section(
+            "const : valeur constante",
+            "const déclare une variable dont la valeur ne change pas.",
+            [
+              "const nom = 'Alice'; // Ne peut pas être réassigné",
+              "Utiliser const par défaut",
+              "Erreur si tentative de réassignation",
+              "Portée : block scope (entre {})",
+              "Must avoir une valeur initiale",
+            ]
+          ),
+          section(
+            "let : valeur modifiable",
+            "let pour variables qui changeront.",
+            [
+              "let compteur = 0; compteur++; // OK",
+              "Portée : block scope (comme const)",
+              "Peut être réassigné",
+              "Peut être déclaré sans valeur initiale",
+            ]
+          ),
+          section(
+            "var : ancienne syntaxe (à éviter)",
+            "var était utilisé avant ES6. Évitez-le.",
+            [
+              "Portée : function scope (problématique)",
+              "Hoisting : déclaration remontée en haut",
+              "Peut causer bugs subtils",
+              "Utiliser let ou const à la place",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Variables let et const",
+          '<h1>Variables</h1><div id="output"></div>',
+          `// const : constante
+const pi = 3.14159;
+console.log("Pi:", pi);
+// pi = 3.14; // ❌ Erreur !
+
+// let : variable modifiable
+let compteur = 0;
+console.log("Début:", compteur);
+compteur = compteur + 1;
+compteur++; // Équivalent à compteur = compteur + 1
+console.log("Après incrémentation:", compteur);
+
+// var : ancien (à éviter)
+var ancienneVariable = "Utiliser let ou const à la place";
+
+// Afficher dans le DOM
+const output = document.querySelector("#output");
+output.innerHTML = \`
+  <p>Pi (const): \${pi}</p>
+  <p>Compteur (let): \${compteur}</p>
+\`;`,
+        ),
+        task: "Déclare 3 constantes pour ton nom, âge et ville, puis une variable compteur qui s'incrémente.",
+        takeaway:
+          "const par défaut, let si besoin de réassigner. Éviter var. Block scope pour const et let.",
+        quiz: quiz(
+          "Quelle différence entre let et const ?",
+          ["Aucune", "const ne peut pas être réassigné, let oui", "let est plus rapide"],
+          1,
+          "const crée une constante (valeur fixe). let permet de réassigner la variable."
+        ),
+        link: js + "Reference/Statements/const",
+      }),
+      lesson({
+        id: "js-types-primitifs",
+        title: "Types primitifs : string, number, boolean",
+        minutes: 20,
+        summary:
+          "JavaScript a plusieurs types primitifs : string (texte), number (nombres), boolean (vrai/faux), null, undefined. typeof pour vérifier le type.",
+        sections: [
+          section(
+            "Les types de base",
+            "Types primitifs en JavaScript.",
+            [
+              "string : 'texte' ou \"texte\" ou `template`",
+              "number : 42, 3.14, -10 (int et float = number)",
+              "boolean : true ou false",
+              "null : absence de valeur intentionnelle",
+              "undefined : variable déclarée sans valeur",
+              "typeof variable : obtenir le type",
+            ]
+          ),
+          section(
+            "Template literals (ES6)",
+            "Backticks pour chaînes avec variables.",
+            [
+              "const nom = 'Alice'; `Bonjour ${nom}` → 'Bonjour Alice'",
+              "Multi-lignes possibles",
+              "Expressions dans ${...}",
+              "Plus pratique que concaténation (+)",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Types primitifs",
+          '<h1>Types</h1><pre id="output"></pre>',
+          `// Types primitifs
+const nom = "Alice";           // string
+const age = 25;                // number
+const estMajeur = true;        // boolean
+const adresse = null;          // null
+let ville;                     // undefined
+
+// typeof
+console.log(typeof nom);       // "string"
+console.log(typeof age);       // "number"
+console.log(typeof estMajeur); // "boolean"
+console.log(typeof adresse);   // "object" (bug historique JS)
+console.log(typeof ville);     // "undefined"
+
+// Template literals
+const message = \`Je m'appelle \${nom} et j'ai \${age} ans.\`;
+console.log(message);
+
+// Affichage
+document.querySelector("#output").textContent = \`
+Nom: \${nom} (type: \${typeof nom})
+Âge: \${age} (type: \${typeof age})
+Majeur: \${estMajeur} (type: \${typeof estMajeur})
+Message: \${message}
+\`;`,
+        ),
+        task: "Crée des variables pour ton profil : nom, age, estEtudiant. Utilise template literals pour afficher.",
+        takeaway:
+          "Types : string, number, boolean, null, undefined. Template literals avec backticks. typeof pour vérifier type.",
+        quiz: quiz(
+          "Comment insérer une variable dans une string ?",
+          ["'Bonjour ' + nom", "`Bonjour ${nom}`", "Les deux"],
+          2,
+          "Les deux fonctionnent. Template literals (`${nom}`) sont plus modernes et lisibles."
+        ),
+        link: js + "Data_structures",
+      }),
+      lesson({
+        id: "js-operateurs",
+        title: "Opérateurs arithmétiques et comparaison",
+        minutes: 15,
+        summary:
+          "Opérateurs : +, -, *, /, % pour calculs. ==, ===, !=, !== pour comparaisons. === recommandé (compare valeur ET type).",
+        sections: [
+          section(
+            "Opérateurs arithmétiques",
+            "Calculs mathématiques de base.",
+            [
+              "+ : addition", "- : soustraction", "* : multiplication",
+              "/ : division", "% : modulo (reste)", "** : puissance",
+              "++ : incrémentation", "-- : décrémentation",
+            ]
+          ),
+          section(
+            "Comparaison : == vs ===",
+            "Différence importante en JavaScript.",
+            [
+              "=== : égalité stricte (valeur ET type)",
+              "== : égalité souple (conversion automatique)",
+              "5 === '5' → false (types différents)",
+              "5 == '5' → true (conversion en nombre)",
+              "Toujours préférer ===",
+              "!==, !=, <, >, <=, >=",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Opérateurs",
+          '<h1>Calculs</h1><pre id="output"></pre>',
+          `// Arithmétique
+const a = 10, b = 3;
+console.log("Addition:", a + b);      // 13
+console.log("Soustraction:", a - b);  // 7
+console.log("Multiplication:", a * b); // 30
+console.log("Division:", a / b);       // 3.333...
+console.log("Modulo:", a % b);         // 1
+console.log("Puissance:", a ** 2);     // 100
+
+// Comparaison === vs ==
+console.log("\\n=== vs ==");
+console.log(5 === 5);     // true
+console.log(5 === "5");   // false (types différents)
+console.log(5 == "5");    // true (conversion automatique)
+
+// Logiques
+console.log("\\nLogiques");
+console.log(true && false);  // false (ET)
+console.log(true || false);  // true (OU)
+console.log(!true);          // false (NON)
+
+document.querySelector("#output").textContent = \`
+10 + 3 = \${a + b}
+10 === 10: \${10 === 10}
+10 === "10": \${10 === "10"}
+\`;`,
+        ),
+        task: "Calcule l'aire d'un rectangle (largeur * hauteur). Compare deux valeurs avec ===.",
+        takeaway:
+          "Opérateurs : +, -, *, /, %. === strict (type + valeur), == souple (conversion). Préférer ===.",
+        quiz: quiz(
+          "Quelle différence entre == et === ?",
+          ["Aucune", "=== compare type aussi, == non", "== est plus rapide"],
+          1,
+          "=== est strict : vérifie valeur ET type. == convertit automatiquement les types avant comparaison."
+        ),
+        link: js + "Reference/Operators",
+      }),
+    ],
+  },
+  {
+    id: "js-conditions",
+    title: "Structures conditionnelles",
+    description: "if, else, switch et ternaire",
+    lessons: [
+      lesson({
+        id: "js-if-else",
+        title: "Conditions if, else if, else",
+        minutes: 20,
+        summary:
+          "if exécute code selon condition. else if pour tester autre condition. else pour cas par défaut. Accolades {} recommandées.",
+        sections: [
+          section(
+            "Syntaxe if/else",
+            "Brancher l'exécution selon condition.",
+            [
+              "if (condition) { code }",
+              "else if (autreCondition) { code }",
+              "else { code }",
+              "Accolades recommandées même pour une ligne",
+              "&& pour ET, || pour OU, ! pour NON",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Conditions",
+          '<h1>Notes</h1><input id="note" type="number" value="15"><button id="verifier">Vérifier</button><p id="resultat"></p>',
+          `const noteInput = document.querySelector("#note");
+const bouton = document.querySelector("#verifier");
+const resultat = document.querySelector("#resultat");
+
+bouton.addEventListener("click", () => {
+  const note = Number(noteInput.value);
+  let mention;
+  
+  if (note >= 16) {
+    mention = "Très bien 🌟";
+  } else if (note >= 14) {
+    mention = "Bien 👍";
+  } else if (note >= 12) {
+    mention = "Assez bien ✓";
+  } else if (note >= 10) {
+    mention = "Passable";
+  } else {
+    mention = "Insuffisant";
+  }
+  
+  resultat.textContent = \`Note \${note}/20 : \${mention}\`;
+});`,
+        ),
+        task: "Crée un système de réduction : 20% si prix > 100€, 10% si > 50€, 0% sinon.",
+        takeaway:
+          "if/else branche l'exécution. && pour ET, || pour OU. Accolades recommandées.",
+        quiz: quiz(
+          "Que fait && ?",
+          ["OU logique", "ET logique", "NON logique"],
+          1,
+          "&& retourne true seulement si les deux conditions sont vraies."
+        ),
+        link: js + "Reference/Statements/if...else",
+      }),
+      lesson({
+        id: "js-switch-ternaire",
+        title: "Switch et opérateur ternaire",
+        minutes: 15,
+        summary:
+          "switch teste une variable contre plusieurs valeurs. Ternaire : condition ? vrai : faux pour if/else court.",
+        sections: [
+          section(
+            "Switch",
+            "Alternative à if/else multiples.",
+            [
+              "switch (variable) { case valeur: break; }",
+              "break obligatoire !",
+              "default pour cas par défaut",
+              "Bon pour : valeurs exactes",
+              "Pas bon pour : intervalles",
+            ]
+          ),
+          section(
+            "Opérateur ternaire",
+            "if/else en une ligne.",
+            [
+              "condition ? siVrai : siFaux",
+              "const statut = age >= 18 ? 'majeur' : 'mineur'",
+              "Plus concis qu'un if/else",
+              "À utiliser pour cas simples",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Switch et ternaire",
+          '<h1>Jour</h1><input id="jour" type="number" value="3"><button id="afficher">Afficher</button><p id="resultat"></p>',
+          `const jourInput = document.querySelector("#jour");
+const bouton = document.querySelector("#afficher");
+const resultat = document.querySelector("#resultat");
+
+bouton.addEventListener("click", () => {
+  const jour = Number(jourInput.value);
+  let nom;
+  
+  // Switch
+  switch (jour) {
+    case 1: nom = "Lundi"; break;
+    case 2: nom = "Mardi"; break;
+    case 3: nom = "Mercredi"; break;
+    case 4: nom = "Jeudi"; break;
+    case 5: nom = "Vendredi"; break;
+    case 6:
+    case 7:
+      nom = "Week-end !";
+      break;
+    default:
+      nom = "Jour invalide";
+  }
+  
+  // Ternaire
+  const travail = (jour >= 1 && jour <= 5) ? "Jour de travail" : "Repos";
+  
+  resultat.innerHTML = \`
+    <strong>Jour \${jour}</strong>: \${nom}<br>
+    Statut: \${travail}
+  \`;
+});`,
+        ),
+        task: "Crée un switch pour notes (A, B, C, D, F). Utilise ternaire pour dire si note >= C.",
+        takeaway:
+          "switch pour valeurs multiples. break obligatoire. Ternaire : condition ? vrai : faux.",
+        quiz: quiz(
+          "Pourquoi break dans switch ?",
+          ["Optionnel", "Empêche fall-through dans case suivant", "Termine programme"],
+          1,
+          "Sans break, l'exécution continue dans les case suivants (fall-through), ce qui est rarement voulu."
+        ),
+        link: js + "Reference/Statements/switch",
+      }),
+      lesson({
+        id: "js-truthy-falsy",
+        title: "Truthy et Falsy : spécificité JavaScript",
+        minutes: 15,
+        summary:
+          "En JavaScript, certaines valeurs sont 'falsy' (considérées comme false) : 0, '', null, undefined, NaN, false. Tout le reste est 'truthy'.",
+        sections: [
+          section(
+            "Valeurs falsy",
+            "Valeurs considérées comme false.",
+            [
+              "false : booléen faux",
+              "0 : zéro",
+              "'' : string vide",
+              "null : absence de valeur",
+              "undefined : non défini",
+              "NaN : Not a Number",
+            ]
+          ),
+          section(
+            "Valeurs truthy",
+            "Tout le reste est truthy.",
+            [
+              "true, 1, -1, 'texte'",
+              "[], {} : tableaux et objets vides",
+              "'0', 'false' : strings non vides",
+              "Utilisation dans if : if (valeur) {...}",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Truthy et Falsy",
+          '<h1>Truthy/Falsy</h1><pre id="output"></pre>',
+          `// Test truthy/falsy
+const valeurs = [
+  false, 0, "", null, undefined, NaN,  // Falsy
+  true, 1, "texte", [], {}, "0"        // Truthy
+];
+
+let resultat = "Valeurs falsy:\\n";
+valeurs.slice(0, 6).forEach(v => {
+  resultat += \`  \${JSON.stringify(v)} → \${v ? "truthy" : "falsy"}\\n\`;
+});
+
+resultat += "\\nValeurs truthy:\\n";
+valeurs.slice(6).forEach(v => {
+  resultat += \`  \${JSON.stringify(v)} → \${v ? "truthy" : "falsy"}\\n\`;
+});
+
+// Utilisation pratique
+const nom = "";
+if (nom) {
+  console.log("Nom fourni:", nom);
+} else {
+  console.log("Nom vide (falsy)");
+}
+
+// Opérateur || pour valeur par défaut
+const pseudo = nom || "Anonyme";
+console.log("Pseudo:", pseudo);
+
+document.querySelector("#output").textContent = resultat;`,
+        ),
+        task: "Teste plusieurs valeurs avec if (valeur) pour voir lesquelles sont truthy/falsy.",
+        takeaway:
+          "Falsy : false, 0, '', null, undefined, NaN. Truthy : tout le reste. Utile pour valeurs par défaut.",
+        quiz: quiz(
+          "[] (tableau vide) est truthy ou falsy ?",
+          ["Falsy", "Truthy", "Dépend du contexte"],
+          1,
+          "[] est truthy ! Seuls false, 0, '', null, undefined, NaN sont falsy. Tableau vide est un objet (truthy)."
+        ),
+        link: js + "Glossary/Truthy",
+      }),
+    ],
+  },
+  {
+    id: "js-boucles",
+    title: "Boucles",
+    description: "for, while, for...of, for...in",
+    lessons: [
+      lesson({
+        id: "js-for-while",
+        title: "Boucles for et while",
+        minutes: 20,
+        summary:
+          "for pour nombre connu d'itérations. while pour condition. break sort de la boucle, continue passe à l'itération suivante.",
+        sections: [
+          section(
+            "Boucle for",
+            "La plus courante pour itérations connues.",
+            [
+              "for (let i = 0; i < 10; i++) { }",
+              "i++ équivaut à i = i + 1",
+              "i < array.length pour parcourir tableau",
+              "break : sortir de la boucle",
+              "continue : passer à l'itération suivante",
+            ]
+          ),
+          section(
+            "Boucle while",
+            "Tant que condition vraie.",
+            [
+              "while (condition) { }",
+              "Attention aux boucles infinies",
+              "do { } while (condition) : au moins une fois",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Boucles for et while",
+          '<h1>Boucles</h1><button id="executer">Exécuter</button><pre id="output"></pre>',
+          `const bouton = document.querySelector("#executer");
+const output = document.querySelector("#output");
+
+bouton.addEventListener("click", () => {
+  let resultat = "";
+  
+  // Boucle for
+  resultat += "For 0 à 4:\\n";
+  for (let i = 0; i < 5; i++) {
+    resultat += \`  i = \${i}\\n\`;
+  }
+  
+  // Table de multiplication
+  resultat += "\\nTable de 7:\\n";
+  for (let i = 1; i <= 10; i++) {
+    resultat += \`  7 x \${i} = \${7 * i}\\n\`;
+  }
+  
+  // While
+  resultat += "\\nWhile (compte à rebours):\\n";
+  let compteur = 5;
+  while (compteur > 0) {
+    resultat += \`  \${compteur}...\\n\`;
+    compteur--;
+  }
+  resultat += "  Décollage ! 🚀\\n";
+  
+  // break et continue
+  resultat += "\\nBreak et continue:\\n";
+  for (let i = 0; i < 10; i++) {
+    if (i === 3) {
+      resultat += "  (3 sauté)\\n";
+      continue;
+    }
+    if (i === 7) {
+      resultat += "  (arrêt à 7)\\n";
+      break;
+    }
+    resultat += \`  \${i}\\n\`;
+  }
+  
+  output.textContent = resultat;
+});`,
+        ),
+        task: "Affiche tous les nombres pairs de 0 à 20. Calcule leur somme avec une boucle.",
+        takeaway:
+          "for pour itérations connues. while pour condition. break sort, continue passe à la suivante.",
+        quiz: quiz(
+          "Que fait continue ?",
+          ["Sort de la boucle", "Passe à l'itération suivante", "Relance la boucle"],
+          1,
+          "continue passe immédiatement à l'itération suivante sans exécuter le reste du code de la boucle."
+        ),
+        link: js + "Reference/Statements/for",
+      }),
+      lesson({
+        id: "js-for-of-in",
+        title: "for...of et for...in",
+        minutes: 15,
+        summary:
+          "for...of parcourt valeurs d'un tableau. for...in parcourt clés d'un objet. for...of recommandé pour tableaux.",
+        sections: [
+          section(
+            "for...of : valeurs",
+            "Parcourir valeurs d'un itérable.",
+            [
+              "for (const element of tableau) { }",
+              "Plus simple que for classique",
+              "Fonctionne sur : arrays, strings, Map, Set",
+              "Ne fonctionne PAS sur objets simples",
+            ]
+          ),
+          section(
+            "for...in : clés",
+            "Parcourir clés d'un objet.",
+            [
+              "for (const cle in objet) { }",
+              "Utilisé pour objets",
+              "Éviter pour tableaux (utiliser for...of)",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "for...of et for...in",
+          '<h1>Boucles modernes</h1><button id="executer">Exécuter</button><pre id="output"></pre>',
+          `const bouton = document.querySelector("#executer");
+const output = document.querySelector("#output");
+
+bouton.addEventListener("click", () => {
+  let resultat = "";
+  
+  // for...of : valeurs d'un tableau
+  const villes = ["Dakar", "Abidjan", "Lagos", "Nairobi"];
+  resultat += "for...of (valeurs):\\n";
+  for (const ville of villes) {
+    resultat += \`  - \${ville}\\n\`;
+  }
+  
+  // for...in : clés d'un objet
+  const personne = {
+    nom: "Alice",
+    age: 25,
+    ville: "Dakar"
+  };
+  
+  resultat += "\\nfor...in (clés d'objet):\\n";
+  for (const cle in personne) {
+    resultat += \`  \${cle}: \${personne[cle]}\\n\`;
+  }
+  
+  // Comparaison for classique vs for...of
+  resultat += "\\nfor classique:\\n";
+  for (let i = 0; i < villes.length; i++) {
+    resultat += \`  [\${i}] \${villes[i]}\\n\`;
+  }
+  
+  resultat += "\\nfor...of (plus simple):\\n";
+  for (const ville of villes) {
+    resultat += \`  \${ville}\\n\`;
+  }
+  
+  output.textContent = resultat;
+});`,
+        ),
+        task: "Crée un tableau de nombres. Utilise for...of pour afficher chaque nombre et sa racine carrée.",
+        takeaway:
+          "for...of pour valeurs de tableaux. for...in pour clés d'objets. for...of plus simple que for classique.",
+        quiz: quiz(
+          "Pour parcourir un tableau, préférer ?",
+          ["for...in", "for...of", "Les deux"],
+          1,
+          "for...of est fait pour parcourir valeurs de tableaux. for...in pour clés d'objets."
+        ),
+        link: js + "Reference/Statements/for...of",
+      }),
+    ],
+  },
+  {
+    id: "js-fonctions",
+    title: "Fonctions",
+    description: "Fonctions classiques, fléchées, scope et closures",
+    lessons: [
+      lesson({
+        id: "js-fonctions-base",
+        title: "Fonctions classiques et return",
+        minutes: 20,
+        summary:
+          "function nomFonction() {} pour définir. return renvoie valeur. Paramètres par défaut possibles.",
+        sections: [
+          section(
+            "Définir et appeler",
+            "Regrouper code réutilisable.",
+            [
+              "function nom(params) { return valeur; }",
+              "Appel : nom(arguments)",
+              "return termine fonction et renvoie valeur",
+              "Paramètres par défaut : function f(a = 0) {}",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Fonctions",
+          '<h1>Calculatrice</h1><input id="a" type="number" value="5"><input id="b" type="number" value="3"><button id="calculer">+</button><p id="resultat"></p>',
+          `function addition(a, b) {
+  return a + b;
+}
+
+function multiplication(a, b) {
+  return a * b;
+}
+
+// Valeur par défaut
+function saluer(nom = "visiteur") {
+  return \`Bonjour \${nom} !\`;
+}
+
+const bouton = document.querySelector("#calculer");
+bouton.addEventListener("click", () => {
+  const a = Number(document.querySelector("#a").value);
+  const b = Number(document.querySelector("#b").value);
+  const somme = addition(a, b);
+  const produit = multiplication(a, b);
+  
+  document.querySelector("#resultat").innerHTML = \`
+    \${a} + \${b} = \${somme}<br>
+    \${a} × \${b} = \${produit}<br>
+    \${saluer("Alice")}
+  \`;
+});`,
+        ),
+        task: "Créez fonction calculerMoyenne(notes) qui retourne moyenne d'un tableau de notes.",
+        takeaway:
+          "function nom() {} pour définir. return renvoie valeur. Paramètres par défaut possibles.",
+        quiz: quiz(
+          "À quoi sert return ?",
+          ["Afficher valeur", "Renvoyer valeur au code appelant", "Terminer script"],
+          1,
+          "return renvoie une valeur et termine la fonction. Sans return, fonction retourne undefined."
+        ),
+        link: js + "Reference/Statements/function",
+      }),
+      lesson({
+        id: "js-arrow-functions",
+        title: "Fonctions fléchées (Arrow functions)",
+        minutes: 20,
+        summary:
+          "Syntaxe moderne et concise : const f = () => {}. Parfait pour callbacks. Différence avec function : this.",
+        sections: [
+          section(
+            "Syntaxe fléchée",
+            "Plus courte que function.",
+            [
+              "const f = () => { return valeur; }",
+              "const f = () => valeur; // return implicite",
+              "const f = x => x * 2; // un paramètre, pas de ()",
+              "Utilisées souvent dans map, filter, callbacks",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Arrow functions",
+          '<h1>Map/Filter</h1><button id="executer">Exécuter</button><pre id="output"></pre>',
+          `// Fonction classique
+function doubler(x) {
+  return x * 2;
+}
+
+// Arrow function équivalente
+const doublerArrow = x => x * 2;
+
+// Avec map
+const nombres = [1, 2, 3, 4, 5];
+const doubles = nombres.map(x => x * 2);
+const carres = nombres.map(x => x ** 2);
+
+// Avec filter
+const pairs = nombres.filter(x => x % 2 === 0);
+
+document.querySelector("#executer").addEventListener("click", () => {
+  const output = document.querySelector("#output");
+  output.textContent = \`
+Nombres: \${nombres.join(", ")}
+Doubles: \${doubles.join(", ")}
+Carrés: \${carres.join(", ")}
+Pairs: \${pairs.join(", ")}
+  \`;
+});`,
+        ),
+        task: "Utilisez arrow function avec filter pour extraire nombres > 10 d'un tableau.",
+        takeaway:
+          "Arrow functions : () => {}. Plus courtes. Return implicite si une expression. Idéales pour callbacks.",
+        quiz: quiz(
+          "Quelle syntaxe est arrow function ?",
+          ["function f() {}", "const f = () => {}", "def f():"],
+          1,
+          "const f = () => {} est la syntaxe arrow function ES6."
+        ),
+        link: js + "Reference/Functions/Arrow_functions",
+      }),
+      lesson({
+        id: "js-scope-closures",
+        title: "Scope et closures",
+        minutes: 20,
+        summary:
+          "Scope = portée des variables. Block scope (let/const). Closures = fonction qui capture variables externes.",
+        sections: [
+          section(
+            "Scope (portée)",
+            "Où une variable est accessible.",
+            [
+              "Global scope : partout",
+              "Block scope : entre {} (let/const)",
+              "Function scope : dans la fonction",
+              "Variables locales masquent globales",
+            ]
+          ),
+          section(
+            "Closures",
+            "Fonction qui se souvient de son environnement.",
+            [
+              "Fonction interne accède variables fonction externe",
+              "Utile pour : compteurs, factory functions",
+              "Encapsulation de données",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Scope et Closures",
+          '<h1>Compteur</h1><button id="incrementer">+1</button><button id="decrementer">-1</button><p id="compteur">0</p>',
+          `// Closure : compteur privé
+function creerCompteur() {
+  let valeur = 0; // Variable privée
+  
+  return {
+    incrementer: () => ++valeur,
+    decrementer: () => --valeur,
+    getValeur: () => valeur
+  };
+}
+
+const compteur = creerCompteur();
+
+document.querySelector("#incrementer").addEventListener("click", () => {
+  compteur.incrementer();
+  document.querySelector("#compteur").textContent = compteur.getValeur();
+});
+
+document.querySelector("#decrementer").addEventListener("click", () => {
+  compteur.decrementer();
+  document.querySelector("#compteur").textContent = compteur.getValeur();
+});
+
+// valeur n'est pas accessible directement (encapsulé)
+console.log("Valeur actuelle:", compteur.getValeur());`,
+        ),
+        task: "Créez fonction creerMultiplicateur(facteur) qui retourne fonction multipliant par facteur.",
+        takeaway:
+          "Scope : global, block, function. Closures = fonctions qui capturent variables externes. Encapsulation.",
+        quiz: quiz(
+          "Qu'est-ce qu'une closure ?",
+          ["Boucle fermée", "Fonction qui capture variables externes", "Tableau"],
+          1,
+          "Closure = fonction qui se souvient des variables de son environnement de création."
+        ),
+        link: js + "Closures",
+      }),
+    ],
+  },
+  {
+    id: "js-tableaux",
+    title: "Tableaux (Arrays)",
+    description: "Création, manipulation, méthodes courantes",
+    lessons: [
+      lesson({
+        id: "js-array-base",
+        title: "Création et manipulation basique",
+        minutes: 20,
+        summary:
+          "const arr = [1, 2, 3] pour créer. arr[0] pour accéder. length pour taille. push, pop, shift, unshift pour modifier.",
+        sections: [
+          section(
+            "Créer et accéder",
+            "Tableaux = listes ordonnées.",
+            [
+              "const arr = [1, 2, 3]",
+              "arr[0] : premier élément (index 0)",
+              "arr.length : nombre d'éléments",
+              "arr[arr.length - 1] : dernier",
+            ]
+          ),
+          section(
+            "Méthodes de base",
+            "Ajouter/retirer éléments.",
+            [
+              "push(el) : ajoute à la fin",
+              "pop() : retire dernier",
+              "unshift(el) : ajoute au début",
+              "shift() : retire premier",
+              "includes(el) : vérifie présence",
+              "indexOf(el) : trouve index",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Tableaux",
+          '<h1>Liste de courses</h1><input id="item"><button id="ajouter">Ajouter</button><ul id="liste"></ul>',
+          `const input = document.querySelector("#item");
+const bouton = document.querySelector("#ajouter");
+const liste = document.querySelector("#liste");
+
+const courses = ["Pain", "Lait", "Œufs"];
+
+function afficher() {
+  liste.innerHTML = "";
+  courses.forEach((item, index) => {
+    liste.innerHTML += \`<li>[\${index}] \${item}</li>\`;
+  });
+}
+
+bouton.addEventListener("click", () => {
+  const item = input.value.trim();
+  if (item) {
+    courses.push(item);
+    input.value = "";
+    afficher();
+  }
+});
+
+afficher();
+console.log("Nombre d'articles:", courses.length);
+console.log("Premier:", courses[0]);
+console.log("Dernier:", courses[courses.length - 1]);`,
+        ),
+        task: "Créez tableau de villes. Ajoutez-en 2 avec push, retirez la dernière avec pop.",
+        takeaway:
+          "Tableaux : []. Index commence à 0. push/pop fin, unshift/shift début. length pour taille.",
+        quiz: quiz(
+          "Comment accéder au dernier élément ?",
+          ["arr[0]", "arr[arr.length - 1]", "arr.last"],
+          1,
+          "arr[arr.length - 1] car dernier index = length - 1 (index commence à 0)."
+        ),
+        link: js + "Reference/Global_Objects/Array",
+      }),
+      lesson({
+        id: "js-array-iteration",
+        title: "forEach, map, filter",
+        minutes: 25,
+        summary:
+          "forEach pour itérer. map pour transformer. filter pour filtrer. Retournent nouveau tableau (sauf forEach).",
+        sections: [
+          section(
+            "Méthodes d'itération",
+            "Plus modernes que for.",
+            [
+              "forEach(fn) : exécute fonction pour chaque",
+              "map(fn) : transforme et retourne nouveau tableau",
+              "filter(fn) : filtre et retourne nouveau tableau",
+              "find(fn) : trouve premier élément",
+              "some(fn) : au moins un vrai",
+              "every(fn) : tous vrais",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "map, filter",
+          '<h1>Nombres</h1><button id="executer">Exécuter</button><pre id="output"></pre>',
+          `const nombres = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+// map : transformer
+const doubles = nombres.map(n => n * 2);
+const carres = nombres.map(n => n ** 2);
+
+// filter : filtrer
+const pairs = nombres.filter(n => n % 2 === 0);
+const grands = nombres.filter(n => n > 5);
+
+// forEach : itérer (ne retourne rien)
+let somme = 0;
+nombres.forEach(n => {
+  somme += n;
+});
+
+// find : trouver premier
+const premierGrand = nombres.find(n => n > 5);
+
+// some et every
+const aPair = nombres.some(n => n % 2 === 0);
+const tousPairs = nombres.every(n => n % 2 === 0);
+
+document.querySelector("#executer").addEventListener("click", () => {
+  document.querySelector("#output").textContent = \`
+Nombres: \${nombres.join(", ")}
+
+map (doubles): \${doubles.join(", ")}
+map (carrés): \${carres.join(", ")}
+
+filter (pairs): \${pairs.join(", ")}
+filter (>5): \${grands.join(", ")}
+
+Somme (forEach): \${somme}
+find (>5): \${premierGrand}
+
+some (a pair): \${aPair}
+every (tous pairs): \${tousPairs}
+  \`;
+});`,
+        ),
+        task: "Tableau de prix. Utilisez map pour appliquer 20% TVA, filter pour garder < 50€.",
+        takeaway:
+          "forEach itère. map transforme. filter filtre. find trouve. some/every testent. Immutables (nouveau tableau).",
+        quiz: quiz(
+          "Quelle méthode crée nouveau tableau ?",
+          ["forEach", "map", "Les deux"],
+          1,
+          "map retourne nouveau tableau transformé. forEach ne retourne rien, juste itère."
+        ),
+        link: js + "Reference/Global_Objects/Array/map",
+      }),
+    ],
+  },
+  {
+    id: "js-objets",
+    title: "Objets",
+    description: "Création, propriétés, méthodes",
+    lessons: [
+      lesson({
+        id: "js-objets-base",
+        title: "Objets : propriétés et méthodes",
+        minutes: 25,
+        summary:
+          "Objets = paires clé:valeur. const obj = {cle: valeur}. obj.cle ou obj['cle'] pour accéder. Méthodes = fonctions dans objets.",
+        sections: [
+          section(
+            "Créer et accéder",
+            "Objets = dictionnaires.",
+            [
+              "const obj = {nom: 'Alice', age: 25}",
+              "obj.nom ou obj['nom'] : accès",
+              "obj.nouvelleCle = valeur : ajouter",
+              "delete obj.cle : supprimer",
+              "Object.keys(obj) : clés",
+              "Object.values(obj) : valeurs",
+            ]
+          ),
+          section(
+            "Méthodes d'objets",
+            "Fonctions dans objets.",
+            [
+              "Méthode : fonction dans objet",
+              "this : référence l'objet",
+              "Arrow functions n'ont pas leur this",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Objets",
+          '<h1>Profil</h1><button id="afficher">Afficher</button><div id="output"></div>',
+          `const personne = {
+  nom: "Alice",
+  age: 25,
+  ville: "Dakar",
+  
+  // Méthode
+  sePresenter() {
+    return \`Je suis \${this.nom}, \${this.age} ans, de \${this.ville}.\`;
+  },
+  
+  vieillir() {
+    this.age++;
+  }
+};
+
+// Accès propriétés
+console.log("Nom:", personne.nom);
+console.log("Âge:", personne["age"]);
+
+// Ajouter propriété
+personne.email = "alice@test.com";
+
+// Clés et valeurs
+console.log("Clés:", Object.keys(personne));
+console.log("Valeurs:", Object.values(personne));
+
+document.querySelector("#afficher").addEventListener("click", () => {
+  personne.vieillir();
+  document.querySelector("#output").innerHTML = \`
+    <p><strong>Présentation:</strong> \${personne.sePresenter()}</p>
+    <p><strong>Email:</strong> \${personne.email}</p>
+  \`;
+});`,
+        ),
+        task: "Créez objet produit {nom, prix, stock} avec méthode calculerTVA() qui retourne prix * 1.2.",
+        takeaway:
+          "Objets : {cle: valeur}. obj.cle pour accéder. Méthodes = fonctions. this = objet courant.",
+        quiz: quiz(
+          "Comment accéder propriété ?",
+          ["obj.nom", "obj['nom']", "Les deux"],
+          2,
+          "Les deux fonctionnent. obj.nom plus courant, obj['nom'] pour clés dynamiques ou avec espaces."
+        ),
+        link: js + "Reference/Global_Objects/Object",
+      }),
+    ],
+  },
+  {
+    id: "js-erreurs",
+    title: "Gestion d'erreurs",
+    description: "try, catch, throw",
+    lessons: [
+      lesson({
+        id: "js-try-catch",
+        title: "try/catch et throw",
+        minutes: 15,
+        summary:
+          "try/catch gère erreurs. throw lance erreur. finally toujours exécuté. Utile pour valider données.",
+        sections: [
+          section(
+            "Gérer erreurs",
+            "Empêcher crash du programme.",
+            [
+              "try { code_risque } catch (error) { gestion }",
+              "throw new Error('message') : lancer erreur",
+              "finally { } : toujours exécuté",
+              "error.message : message d'erreur",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Gestion erreurs",
+          '<h1>Division</h1><input id="a" type="number" value="10"><input id="b" type="number" value="2"><button id="diviser">Diviser</button><p id="resultat"></p>',
+          `function diviser(a, b) {
+  if (b === 0) {
+    throw new Error("Division par zéro impossible !");
+  }
+  return a / b;
+}
+
+document.querySelector("#diviser").addEventListener("click", () => {
+  try {
+    const a = Number(document.querySelector("#a").value);
+    const b = Number(document.querySelector("#b").value);
+    const resultat = diviser(a, b);
+    document.querySelector("#resultat").textContent = \`\${a} / \${b} = \${resultat}\`;
+    document.querySelector("#resultat").style.color = "green";
+  } catch (error) {
+    document.querySelector("#resultat").textContent = \`Erreur: \${error.message}\`;
+    document.querySelector("#resultat").style.color = "red";
+  } finally {
+    console.log("Opération terminée (finally)");
+  }
+});`,
+        ),
+        task: "Créez fonction racineCarree(n) qui lance erreur si n < 0. Testez avec try/catch.",
+        takeaway:
+          "try/catch gère erreurs. throw lance erreur personnalisée. finally toujours exécuté.",
+        quiz: quiz(
+          "Quand s'exécute finally ?",
+          ["Seulement si erreur", "Toujours", "Jamais"],
+          1,
+          "finally s'exécute TOUJOURS, qu'il y ait erreur ou non. Idéal pour nettoyage."
+        ),
+        link: js + "Reference/Statements/try...catch",
+      }),
+    ],
+  },
+  {
+    id: "js-projet-debutant",
+    title: "Projet final débutant",
+    description: "Mini-application console",
+    lessons: [
+      lesson({
+        id: "js-projet-todo-console",
+        title: "Projet : Todo List console",
+        minutes: 30,
+        summary:
+          "Application complète utilisant toutes les notions : variables, fonctions, tableaux, objets, boucles. Todo list en console.",
+        sections: [
+          section(
+            "Objectif",
+            "Créer gestionnaire de tâches.",
+            [
+              "Ajouter, lister, compléter tâches",
+              "Utilise tableaux et objets",
+              "Fonctions pour chaque action",
+              "Validation et gestion erreurs",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Todo List",
+          '<h1>Todo List</h1><input id="tache"><button id="ajouter">Ajouter</button><ul id="liste"></ul><button id="afficherConsole">Voir console</button>',
+          `// Structure de données
+const todos = [
+  {id: 1, texte: "Apprendre JavaScript", complete: false},
+  {id: 2, texte: "Créer un projet", complete: false}
+];
+let nextId = 3;
+
+// Ajouter tâche
+function ajouterTodo(texte) {
+  if (!texte.trim()) {
+    throw new Error("Texte vide");
+  }
+  const todo = {
+    id: nextId++,
+    texte: texte.trim(),
+    complete: false
+  };
+  todos.push(todo);
+  return todo;
+}
+
+// Compléter tâche
+function completerTodo(id) {
+  const todo = todos.find(t => t.id === id);
+  if (todo) {
+    todo.complete = !todo.complete;
+  }
+}
+
+// Afficher
+function afficherTodos() {
+  const liste = document.querySelector("#liste");
+  liste.innerHTML = "";
+  
+  todos.forEach(todo => {
+    const style = todo.complete ? "text-decoration: line-through" : "";
+    liste.innerHTML += \`
+      <li style="\${style}" onclick="completerTodo(\${todo.id}); afficherTodos()">
+        [\${todo.id}] \${todo.texte} \${todo.complete ? "✓" : ""}
+      </li>
+    \`;
+  });
+}
+
+// Interface
+document.querySelector("#ajouter").addEventListener("click", () => {
+  try {
+    const input = document.querySelector("#tache");
+    ajouterTodo(input.value);
+    input.value = "";
+    afficherTodos();
+  } catch (e) {
+    alert(e.message);
+  }
+});
+
+document.querySelector("#afficherConsole").addEventListener("click", () => {
+  console.log("=== Todo List ===");
+  todos.forEach(t => {
+    const statut = t.complete ? "✓" : "⬜";
+    console.log(\`\${statut} [\${t.id}] \${t.texte}\`);
+  });
+});
+
+// Rendre completerTodo global pour onclick
+window.completerTodo = completerTodo;
+
+afficherTodos();`,
+        ),
+        task: "Ajoutez fonction supprimerTodo(id) qui retire une tâche du tableau.",
+        takeaway:
+          "Projet complet utilisant : tableaux, objets, fonctions, boucles, try/catch. Félicitations niveau débutant ! 🎉",
+        quiz: quiz(
+          "Quel concept n'est pas utilisé ici ?",
+          ["Tableaux", "Async/Await", "Objets"],
+          1,
+          "Async/await sera au niveau avancé. Ce projet utilise bases : tableaux, objets, fonctions."
+        ),
+        link: js + "Guide",
+      }),
+    ],
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🟡 NIVEAU INTERMÉDIAIRE - POO et méthodes avancées
+// ═══════════════════════════════════════════════════════════════════════════
+
+const intermediate: WebLevel["chapters"] = [
+  {
+    id: "js-poo",
+    title: "POO en JavaScript",
+    description: "Classes ES6, constructeur, héritage",
+    lessons: [
+      lesson({
+        id: "js-classes-es6",
+        title: "Classes ES6 : syntaxe moderne",
+        minutes: 25,
+        summary:
+          "class pour créer classes. constructor pour initialiser. new pour créer instances. Méthodes définies directement dans la classe.",
+        sections: [
+          section(
+            "Définir une classe",
+            "Syntaxe moderne pour POO.",
+            [
+              "class NomClasse { constructor() {} }",
+              "constructor : initialise l'objet",
+              "Méthodes sans function",
+              "new NomClasse() : créer instance",
+              "this : référence l'instance",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Classes ES6",
+          '<h1>Produits</h1><button id="creer">Créer produits</button><ul id="liste"></ul>',
+          `class Produit {
+  constructor(nom, prix, stock) {
+    this.nom = nom;
+    this.prix = prix;
+    this.stock = stock;
+  }
+  
+  afficher() {
+    return \`\${this.nom}: \${this.prix}€ (stock: \${this.stock})\`;
+  }
+  
+  estDisponible() {
+    return this.stock > 0;
+  }
+  
+  calculerTVA() {
+    return this.prix * 0.20;
+  }
+  
+  getPrixTTC() {
+    return this.prix + this.calculerTVA();
+  }
+}
+
+// Créer instances
+const p1 = new Produit("Laptop", 999, 10);
+const p2 = new Produit("Souris", 25, 0);
+
+console.log(p1.afficher());
+console.log("Disponible:", p1.estDisponible());
+console.log("Prix TTC:", p1.getPrixTTC());
+
+document.querySelector("#creer").addEventListener("click", () => {
+  const produits = [
+    new Produit("Clavier", 75, 5),
+    new Produit("Écran", 299, 3),
+    new Produit("Webcam", 89, 0)
+  ];
+  
+  const liste = document.querySelector("#liste");
+  liste.innerHTML = produits.map(p => \`
+    <li>\${p.afficher()} - \${p.estDisponible() ? "✅" : "❌"}</li>
+  \`).join("");
+});`,
+        ),
+        task: "Créez classe Utilisateur avec nom, email, age. Ajoutez méthode estMajeur().",
+        takeaway:
+          "class NomClasse {}. constructor initialise. Méthodes sans function. new pour créer instances.",
+        quiz: quiz(
+          "À quoi sert constructor ?",
+          ["Détruire objet", "Initialiser objet", "Copier objet"],
+          1,
+          "constructor initialise l'objet lors de sa création avec new."
+        ),
+        link: js + "Reference/Classes",
+      }),
+      lesson({
+        id: "js-heritage",
+        title: "Héritage avec extends",
+        minutes: 25,
+        summary:
+          "extends pour hériter d'une classe. super() appelle constructeur parent. Surcharge de méthodes possible.",
+        sections: [
+          section(
+            "Héritage",
+            "Classe enfant hérite de classe parent.",
+            [
+              "class Enfant extends Parent {}",
+              "super() : appelle constructeur parent",
+              "super.methode() : appelle méthode parent",
+              "Surcharge : redéfinir méthode",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Héritage",
+          '<h1>Animaux</h1><button id="creer">Créer animaux</button><pre id="output"></pre>',
+          `class Animal {
+  constructor(nom, age) {
+    this.nom = nom;
+    this.age = age;
+  }
+  
+  parler() {
+    return \`\${this.nom} fait un bruit.\`;
+  }
+  
+  decrire() {
+    return \`\${this.nom} (\${this.age} ans)\`;
+  }
+}
+
+class Chien extends Animal {
+  constructor(nom, age, race) {
+    super(nom, age); // Appel constructeur parent
+    this.race = race;
+  }
+  
+  parler() {
+    return \`\${this.nom} aboie: Woof!\`;
+  }
+  
+  getRace() {
+    return this.race;
+  }
+}
+
+class Chat extends Animal {
+  parler() {
+    return \`\${this.nom} miaule: Miaou!\`;
+  }
+}
+
+document.querySelector("#creer").addEventListener("click", () => {
+  const animaux = [
+    new Chien("Rex", 5, "Berger"),
+    new Chat("Minou", 3),
+    new Chien("Max", 2, "Labrador")
+  ];
+  
+  let output = "";
+  animaux.forEach(a => {
+    output += a.decrire() + "\\n";
+    output += a.parler() + "\\n";
+    if (a instanceof Chien) {
+      output += \`Race: \${a.getRace()}\\n\`;
+    }
+    output += "\\n";
+  });
+  
+  document.querySelector("#output").textContent = output;
+});`,
+        ),
+        task: "Créez classe Vehicule puis Voiture et Moto qui héritent. Surchargez méthode demarrer().",
+        takeaway:
+          "extends hérite. super() appelle parent. Surcharge = redéfinir méthode. instanceof vérifie type.",
+        quiz: quiz(
+          "Comment appeler constructeur parent ?",
+          ["parent()", "super()", "this.parent()"],
+          1,
+          "super() dans constructor appelle le constructeur de la classe parent."
+        ),
+        link: js + "Reference/Classes/extends",
+      }),
+      lesson({
+        id: "js-getters-setters",
+        title: "Getters et setters",
+        minutes: 20,
+        summary:
+          "get et set pour propriétés calculées ou validées. Syntaxe : get nom() {} et set nom(valeur) {}. Accès comme propriété normale.",
+        sections: [
+          section(
+            "Getters et Setters",
+            "Contrôler accès aux propriétés.",
+            [
+              "get nom() { return ... } : lecture",
+              "set nom(v) { ... } : écriture",
+              "Accès comme propriété : obj.nom",
+              "Validation dans setter",
+              "Propriétés calculées dans getter",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Getters/Setters",
+          '<h1>Rectangle</h1><input id="l" value="10"><input id="h" value="5"><button id="calculer">Calculer</button><p id="resultat"></p>',
+          `class Rectangle {
+  constructor(largeur, hauteur) {
+    this._largeur = largeur;
+    this._hauteur = hauteur;
+  }
+  
+  get largeur() {
+    return this._largeur;
+  }
+  
+  set largeur(v) {
+    if (v <= 0) throw new Error("Largeur doit être > 0");
+    this._largeur = v;
+  }
+  
+  get hauteur() {
+    return this._hauteur;
+  }
+  
+  set hauteur(v) {
+    if (v <= 0) throw new Error("Hauteur doit être > 0");
+    this._hauteur = v;
+  }
+  
+  // Propriété calculée
+  get aire() {
+    return this._largeur * this._hauteur;
+  }
+  
+  get perimetre() {
+    return 2 * (this._largeur + this._hauteur);
+  }
+}
+
+const rect = new Rectangle(10, 5);
+
+document.querySelector("#calculer").addEventListener("click", () => {
+  try {
+    rect.largeur = Number(document.querySelector("#l").value);
+    rect.hauteur = Number(document.querySelector("#h").value);
+    
+    document.querySelector("#resultat").innerHTML = \`
+      Largeur: \${rect.largeur}<br>
+      Hauteur: \${rect.hauteur}<br>
+      Aire: \${rect.aire}<br>
+      Périmètre: \${rect.perimetre}
+    \`;
+  } catch (e) {
+    alert(e.message);
+  }
+});`,
+        ),
+        task: "Créez classe Cercle avec getter/setter rayon (validation > 0) et getter aire.",
+        takeaway:
+          "get pour lecture, set pour écriture. Validation dans setters. Propriétés calculées dans getters.",
+        quiz: quiz(
+          "Comment accéder getter ?",
+          ["obj.getNom()", "obj.nom", "obj.get('nom')"],
+          1,
+          "Getter s'utilise comme propriété : obj.nom (pas de parenthèses)."
+        ),
+        link: js + "Reference/Functions/get",
+      }),
+    ],
+  },
+  {
+    id: "js-array-advanced",
+    title: "Méthodes avancées tableaux",
+    description: "map, filter, reduce, find, chaînage",
+    lessons: [
+      lesson({
+        id: "js-map-filter-reduce",
+        title: "map, filter, reduce : trio puissant",
+        minutes: 30,
+        summary:
+          "map transforme. filter filtre. reduce agrège. Retournent nouveau tableau (immutables). Chaînables.",
+        sections: [
+          section(
+            "Les trois méthodes",
+            "Programmation fonctionnelle.",
+            [
+              "map(fn) : transforme chaque élément",
+              "filter(fn) : garde éléments selon condition",
+              "reduce(fn, initial) : réduit à une valeur",
+              "Immutables : nouveau tableau",
+              "Chaînables : .map().filter().reduce()",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "map/filter/reduce",
+          '<h1>Produits</h1><button id="calculer">Calculer</button><pre id="output"></pre>',
+          `const produits = [
+  {nom: "Laptop", prix: 999, categorie: "tech"},
+  {nom: "Souris", prix: 25, categorie: "tech"},
+  {nom: "Chaise", prix: 150, categorie: "mobilier"},
+  {nom: "Bureau", prix: 299, categorie: "mobilier"},
+  {nom: "Clavier", prix: 75, categorie: "tech"}
+];
+
+document.querySelector("#calculer").addEventListener("click", () => {
+  // map : ajouter TVA
+  const avecTVA = produits.map(p => ({
+    ...p,
+    prixTTC: p.prix * 1.20
+  }));
+  
+  // filter : tech seulement
+  const tech = produits.filter(p => p.categorie === "tech");
+  
+  // reduce : somme des prix
+  const total = produits.reduce((sum, p) => sum + p.prix, 0);
+  
+  // Chaînage : tech > 50€ avec TVA
+  const result = produits
+    .filter(p => p.categorie === "tech")
+    .filter(p => p.prix > 50)
+    .map(p => ({
+      nom: p.nom,
+      prixTTC: (p.prix * 1.20).toFixed(2)
+    }));
+  
+  document.querySelector("#output").textContent = \`
+MAP (avec TVA):
+\${JSON.stringify(avecTVA, null, 2)}
+
+FILTER (tech):
+\${JSON.stringify(tech, null, 2)}
+
+REDUCE (total): \${total}€
+
+CHAÎNAGE (tech > 50€ avec TVA):
+\${JSON.stringify(result, null, 2)}
+  \`;
+});`,
+        ),
+        task: "Tableau de nombres. Utilisez map pour doubler, filter pour > 10, reduce pour somme.",
+        takeaway:
+          "map transforme, filter filtre, reduce agrège. Immutables. Chaînables. Programmation fonctionnelle.",
+        quiz: quiz(
+          "Que retourne reduce ?",
+          ["Tableau", "Une seule valeur", "Objet"],
+          1,
+          "reduce agrège tableau en une seule valeur (somme, produit, objet, etc.)."
+        ),
+        link: js + "Reference/Global_Objects/Array/reduce",
+      }),
+      lesson({
+        id: "js-find-some-every",
+        title: "find, findIndex, some, every",
+        minutes: 20,
+        summary:
+          "find trouve premier élément. findIndex trouve index. some teste si au moins un. every teste si tous.",
+        sections: [
+          section(
+            "Recherche et test",
+            "Méthodes utilitaires.",
+            [
+              "find(fn) : premier élément trouvé",
+              "findIndex(fn) : index premier trouvé",
+              "some(fn) : au moins un vrai",
+              "every(fn) : tous vrais",
+              "Retournent booléen (some/every)",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "find/some/every",
+          '<h1>Utilisateurs</h1><button id="tester">Tester</button><pre id="output"></pre>',
+          `const users = [
+  {nom: "Alice", age: 25, premium: true},
+  {nom: "Bob", age: 17, premium: false},
+  {nom: "Charlie", age: 30, premium: true},
+  {nom: "David", age: 22, premium: false}
+];
+
+document.querySelector("#tester").addEventListener("click", () => {
+  // find : premier premium
+  const premierPremium = users.find(u => u.premium);
+  
+  // findIndex : index premier mineur
+  const indexMineur = users.findIndex(u => u.age < 18);
+  
+  // some : au moins un premium
+  const aPremium = users.some(u => u.premium);
+  
+  // every : tous majeurs
+  const tousMajeurs = users.every(u => u.age >= 18);
+  
+  // every : tous premium
+  const tousPremium = users.every(u => u.premium);
+  
+  document.querySelector("#output").textContent = \`
+find (premier premium): \${premierPremium.nom}
+
+findIndex (premier < 18): \${indexMineur} (\${indexMineur >= 0 ? users[indexMineur].nom : "aucun"})
+
+some (au moins un premium): \${aPremium}
+
+every (tous >= 18): \${tousMajeurs}
+every (tous premium): \${tousPremium}
+  \`;
+});`,
+        ),
+        task: "Tableau produits. Utilisez find pour trouver premier > 100€, some pour vérifier si stock > 0.",
+        takeaway:
+          "find trouve élément. findIndex trouve index. some au moins un. every tous. Booléens.",
+        quiz: quiz(
+          "Différence some et every ?",
+          ["Aucune", "some = au moins un, every = tous", "some plus rapide"],
+          1,
+          "some retourne true si AU MOINS UN élément respecte condition. every si TOUS."
+        ),
+        link: js + "Reference/Global_Objects/Array/find",
+      }),
+    ],
+  },
+  {
+    id: "js-destructuring-spread",
+    title: "Destructuring et Spread",
+    description: "Syntaxe moderne pour extraction et copie",
+    lessons: [
+      lesson({
+        id: "js-destructuring",
+        title: "Destructuring : arrays et objets",
+        minutes: 25,
+        summary:
+          "Destructuring extrait valeurs facilement. const [a, b] = array ou const {nom} = obj. Valeurs par défaut possibles.",
+        sections: [
+          section(
+            "Destructuring",
+            "Extraire valeurs facilement.",
+            [
+              "const [a, b] = [1, 2] : arrays",
+              "const {nom, age} = obj : objets",
+              "Valeurs par défaut : {nom = 'Anonyme'}",
+              "Rest : const [first, ...rest] = array",
+              "Renommer : const {nom: n} = obj",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Destructuring",
+          '<h1>Destructuring</h1><button id="demo">Démonstration</button><pre id="output"></pre>',
+          `document.querySelector("#demo").addEventListener("click", () => {
+  // Array destructuring
+  const nombres = [1, 2, 3, 4, 5];
+  const [premier, deuxieme, ...reste] = nombres;
+  
+  // Object destructuring
+  const personne = {nom: "Alice", age: 25, ville: "Dakar"};
+  const {nom, age, pays = "Sénégal"} = personne;
+  
+  // Renommer
+  const {nom: pseudo} = personne;
+  
+  // Fonction avec destructuring
+  function afficherUser({nom, age}) {
+    return \`\${nom}, \${age} ans\`;
+  }
+  
+  // Swap variables
+  let a = 1, b = 2;
+  [a, b] = [b, a];
+  
+  document.querySelector("#output").textContent = \`
+Array destructuring:
+  premier: \${premier}
+  deuxieme: \${deuxieme}
+  reste: [\${reste.join(", ")}]
+
+Object destructuring:
+  nom: \${nom}
+  age: \${age}
+  pays (défaut): \${pays}
+  pseudo (renommé): \${pseudo}
+
+Fonction: \${afficherUser(personne)}
+
+Swap: a=\${a}, b=\${b}
+  \`;
+});`,
+        ),
+        task: "Créez objet produit, extrayez nom et prix avec destructuring. Ajoutez valeur par défaut stock = 0.",
+        takeaway:
+          "Destructuring extrait valeurs : [a, b] = array, {nom} = obj. Valeurs par défaut. Rest ...",
+        quiz: quiz(
+          "Que fait const [a, ...rest] = [1,2,3] ?",
+          ["Erreur", "a=1, rest=[2,3]", "a=[1,2,3]"],
+          1,
+          "a prend premier élément, ...rest collecte le reste dans un tableau."
+        ),
+        link: js + "Reference/Operators/Destructuring_assignment",
+      }),
+      lesson({
+        id: "js-spread-rest",
+        title: "Spread operator (...)",
+        minutes: 20,
+        summary:
+          "Spread ... étale éléments. Copie tableaux/objets. Concat. Passer arguments. Rest parameters dans fonctions.",
+        sections: [
+          section(
+            "Spread operator",
+            "Étaler éléments.",
+            [
+              "[...array] : copie tableau",
+              "{...obj} : copie objet",
+              "[...a, ...b] : concat",
+              "func(...args) : passer arguments",
+              "Rest parameters : function f(...args) {}",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Spread",
+          '<h1>Spread</h1><button id="demo">Démonstration</button><pre id="output"></pre>',
+          `document.querySelector("#demo").addEventListener("click", () => {
+  // Copie tableau
+  const original = [1, 2, 3];
+  const copie = [...original];
+  copie.push(4);
+  
+  // Concat
+  const a = [1, 2], b = [3, 4];
+  const concat = [...a, ...b];
+  
+  // Copie objet
+  const user = {nom: "Alice", age: 25};
+  const userCopie = {...user, ville: "Dakar"};
+  
+  // Rest parameters
+  function somme(...nombres) {
+    return nombres.reduce((sum, n) => sum + n, 0);
+  }
+  
+  // Math.max avec spread
+  const nums = [5, 2, 9, 1];
+  const max = Math.max(...nums);
+  
+  document.querySelector("#output").textContent = \`
+Copie tableau:
+  original: [\${original.join(", ")}]
+  copie: [\${copie.join(", ")}]
+
+Concat:
+  [\${concat.join(", ")}]
+
+Copie objet:
+  \${JSON.stringify(userCopie, null, 2)}
+
+Rest parameters:
+  somme(1,2,3,4,5) = \${somme(1,2,3,4,5)}
+
+Math.max:
+  max([\${nums.join(", ")}]) = \${max}
+  \`;
+});`,
+        ),
+        task: "Créez fonction max(...nombres) qui retourne le plus grand avec spread et Math.max.",
+        takeaway:
+          "Spread ... étale éléments. Copie tableaux/objets. Concat. Rest parameters ...args dans fonctions.",
+        quiz: quiz(
+          "Que fait {...obj} ?",
+          ["Détruit objet", "Copie superficielle objet", "Affiche objet"],
+          1,
+          "{...obj} crée copie superficielle (shallow copy) de l'objet."
+        ),
+        link: js + "Reference/Operators/Spread_syntax",
+      }),
+    ],
+  },
+  {
+    id: "js-modules",
+    title: "Modules ES6",
+    description: "Export et import pour organiser code",
+    lessons: [
+      lesson({
+        id: "js-modules-es6",
+        title: "Export et import",
+        minutes: 20,
+        summary:
+          "Modules organisent code. export pour exposer. import pour utiliser. type='module' dans script. export default pour export principal.",
+        sections: [
+          section(
+            "Modules ES6",
+            "Organiser code en fichiers.",
+            [
+              "export const var = ... : nommé",
+              "export default ... : défaut",
+              "import {var} from './file.js' : nommé",
+              "import name from './file.js' : défaut",
+              "import * as name from './file.js' : tout",
+              "type='module' dans <script>",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Modules (concept)",
+          '<h1>Modules</h1><p>Modules = fichiers séparés. Voir console.</p>',
+          `// math.js (simulation)
+// export const add = (a, b) => a + b;
+// export const multiply = (a, b) => a * b;
+// export default function square(x) { return x ** 2; }
+
+// main.js (simulation)
+// import square from './math.js';
+// import {add, multiply} from './math.js';
+
+// Simulation inline
+const add = (a, b) => a + b;
+const multiply = (a, b) => a * b;
+const square = x => x ** 2;
+
+console.log("Modules ES6 (simulés):");
+console.log("add(5, 3):", add(5, 3));
+console.log("multiply(4, 7):", multiply(4, 7));
+console.log("square(5):", square(5));
+
+console.log(\`
+Structure recommandée:
+  src/
+    ├── utils.js    (export const helper = ...)
+    ├── math.js     (export default function)
+    └── main.js     (import from './utils.js')
+    
+HTML: <script type="module" src="main.js"></script>
+\`);`,
+        ),
+        task: "Concepts seulement. Modules nécessitent serveur web pour fonctionner (CORS).",
+        takeaway:
+          "Modules organisent code. export expose, import utilise. export default pour principal. type='module' requis.",
+        quiz: quiz(
+          "Quelle différence export vs export default ?",
+          ["Aucune", "export default = un seul par fichier", "export plus rapide"],
+          1,
+          "export default = export principal (un seul). export nommé = plusieurs possibles."
+        ),
+        link: js + "Guide/Modules",
+      }),
+    ],
+  },
+  {
+    id: "js-json-storage",
+    title: "JSON et LocalStorage",
+    description: "Sérialisation et stockage navigateur",
+    lessons: [
+      lesson({
+        id: "js-json",
+        title: "JSON : parse et stringify",
+        minutes: 20,
+        summary:
+          "JSON = format texte pour échanger données. JSON.stringify(obj) convertit en string. JSON.parse(string) convertit en objet.",
+        sections: [
+          section(
+            "JSON",
+            "JavaScript Object Notation.",
+            [
+              "JSON.stringify(obj) : objet → string",
+              "JSON.parse(string) : string → objet",
+              "Format : {\"cle\": \"valeur\"}",
+              "Utilisé pour API, storage, fichiers",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "JSON",
+          '<h1>JSON</h1><textarea id="json" rows="5"></textarea><button id="parser">Parser</button><pre id="output"></pre>',
+          `const user = {
+  nom: "Alice",
+  age: 25,
+  hobbies: ["lecture", "code", "sport"]
+};
+
+// Objet → JSON
+const jsonString = JSON.stringify(user, null, 2);
+document.querySelector("#json").value = jsonString;
+
+document.querySelector("#parser").addEventListener("click", () => {
+  try {
+    const text = document.querySelector("#json").value;
+    const parsed = JSON.parse(text);
+    
+    document.querySelector("#output").textContent = \`
+Type: \${typeof parsed}
+Nom: \${parsed.nom}
+Age: \${parsed.age}
+Hobbies: \${parsed.hobbies.join(", ")}
+
+Objet complet:
+\${JSON.stringify(parsed, null, 2)}
+    \`;
+  } catch (e) {
+    document.querySelector("#output").textContent = "Erreur: " + e.message;
+  }
+});`,
+        ),
+        task: "Créez objet produit, convertissez en JSON avec stringify, puis reparsez avec parse.",
+        takeaway:
+          "JSON.stringify objet → string. JSON.parse string → objet. Format échange données universel.",
+        quiz: quiz(
+          "À quoi sert JSON ?",
+          ["Afficher objets", "Échanger données (format texte)", "Compiler code"],
+          1,
+          "JSON = format texte standard pour échanger données entre applications, API, fichiers."
+        ),
+        link: js + "Reference/Global_Objects/JSON",
+      }),
+      lesson({
+        id: "js-localstorage",
+        title: "LocalStorage : persistance navigateur",
+        minutes: 20,
+        summary:
+          "localStorage stocke données dans navigateur. setItem(key, value), getItem(key), removeItem(key). Persiste après fermeture. Stocke strings uniquement.",
+        sections: [
+          section(
+            "LocalStorage",
+            "Stockage persistent navigateur.",
+            [
+              "localStorage.setItem(key, value) : sauver",
+              "localStorage.getItem(key) : récupérer",
+              "localStorage.removeItem(key) : supprimer",
+              "localStorage.clear() : tout effacer",
+              "Stocke strings uniquement (JSON pour objets)",
+              "Persiste après fermeture navigateur",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "LocalStorage",
+          '<h1>Compteur persistent</h1><p id="compteur">0</p><button id="incrementer">+1</button><button id="reset">Reset</button>',
+          `// Charger compteur
+let compteur = Number(localStorage.getItem("compteur")) || 0;
+const afficher = () => {
+  document.querySelector("#compteur").textContent = compteur;
+};
+
+afficher();
+
+// Incrémenter
+document.querySelector("#incrementer").addEventListener("click", () => {
+  compteur++;
+  localStorage.setItem("compteur", compteur);
+  afficher();
+  console.log("Compteur sauvegardé:", compteur);
+});
+
+// Reset
+document.querySelector("#reset").addEventListener("click", () => {
+  compteur = 0;
+  localStorage.setItem("compteur", compteur);
+  afficher();
+  console.log("Compteur réinitialisé");
+});
+
+// Stocker objet (avec JSON)
+const user = {nom: "Alice", visites: 1};
+localStorage.setItem("user", JSON.stringify(user));
+
+// Récupérer objet
+const userSauve = JSON.parse(localStorage.getItem("user") || "{}");
+console.log("User sauvegardé:", userSauve);`,
+        ),
+        task: "Créez système de thème (clair/sombre) sauvegardé dans localStorage. Persiste au rechargement.",
+        takeaway:
+          "localStorage persiste données navigateur. setItem/getItem. Strings uniquement (JSON pour objets). Pas de sécurité.",
+        quiz: quiz(
+          "Que stocke localStorage ?",
+          ["Objets", "Strings", "Les deux"],
+          1,
+          "localStorage stocke uniquement strings. Utiliser JSON.stringify/parse pour objets."
+        ),
+        link: mdn + "Web/API/Window/localStorage",
+      }),
+    ],
+  },
+  {
+    id: "js-dates-math",
+    title: "Dates et Math",
+    description: "Manipuler dates et calculs mathématiques",
+    lessons: [
+      lesson({
+        id: "js-date",
+        title: "Objet Date",
+        minutes: 20,
+        summary:
+          "new Date() pour créer date. getFullYear(), getMonth(), getDate() pour lire. toLocaleDateString() pour formater.",
+        sections: [
+          section(
+            "Date",
+            "Manipuler dates en JavaScript.",
+            [
+              "new Date() : maintenant",
+              "new Date('2024-01-15') : date spécifique",
+              "getFullYear(), getMonth() (0-11), getDate()",
+              "getHours(), getMinutes(), getSeconds()",
+              "toLocaleDateString() : format local",
+              "getTime() : timestamp",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Dates",
+          '<h1>Dates</h1><button id="afficher">Afficher dates</button><pre id="output"></pre>',
+          `document.querySelector("#afficher").addEventListener("click", () => {
+  const maintenant = new Date();
+  const anniversaire = new Date("2000-05-15");
+  
+  // Extraire composants
+  const annee = maintenant.getFullYear();
+  const mois = maintenant.getMonth() + 1; // 0-11 → 1-12
+  const jour = maintenant.getDate();
+  
+  // Formater
+  const formatted = maintenant.toLocaleDateString("fr-FR", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+  
+  // Calcul âge
+  const age = annee - anniversaire.getFullYear();
+  
+  // Différence jours
+  const diff = maintenant - anniversaire;
+  const jours = Math.floor(diff / (1000 * 60 * 60 * 24));
+  
+  document.querySelector("#output").textContent = \`
+Maintenant: \${maintenant}
+
+Composants:
+  Année: \${annee}
+  Mois: \${mois}
+  Jour: \${jour}
+
+Formaté: \${formatted}
+
+Anniversaire: \${anniversaire.toLocaleDateString("fr-FR")}
+Âge: \${age} ans
+Jours depuis naissance: \${jours}
+  \`;
+});`,
+        ),
+        task: "Créez countdown qui affiche jours restants jusqu'à une date future (ex: Noël).",
+        takeaway:
+          "new Date() crée date. get* pour extraire. toLocaleDateString() formate. Calculs avec timestamps.",
+        quiz: quiz(
+          "getMonth() retourne ?",
+          ["1-12", "0-11", "0-12"],
+          1,
+          "getMonth() retourne 0-11 (janvier=0). Ajouter +1 pour affichage humain."
+        ),
+        link: js + "Reference/Global_Objects/Date",
+      }),
+    ],
+  },
+  {
+    id: "js-projet-intermediaire",
+    title: "Projet final intermédiaire",
+    description: "Application POO avec localStorage",
+    lessons: [
+      lesson({
+        id: "js-projet-notes",
+        title: "Projet : Gestionnaire de notes (POO + LocalStorage)",
+        minutes: 40,
+        summary:
+          "Application complète : classes ES6, localStorage, JSON, méthodes array. Gestionnaire de notes avec catégories et recherche.",
+        sections: [
+          section(
+            "Objectif",
+            "App complète utilisant toutes notions intermédiaires.",
+            [
+              "Classes Note et GestionnaireNotes",
+              "Persistence localStorage",
+              "Recherche et filtrage",
+              "Export/import JSON",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Gestionnaire Notes",
+          '<h1>Notes</h1><input id="titre" placeholder="Titre"><textarea id="contenu"></textarea><select id="categorie"><option>Perso</option><option>Travail</option></select><button id="ajouter">Ajouter</button><input id="recherche" placeholder="Rechercher"><div id="notes"></div>',
+          `class Note {
+  constructor(id, titre, contenu, categorie) {
+    this.id = id;
+    this.titre = titre;
+    this.contenu = contenu;
+    this.categorie = categorie;
+    this.date = new Date();
+  }
+  
+  afficher() {
+    return \`
+      <div class="note" style="border:1px solid #ccc; padding:10px; margin:10px 0">
+        <h3>\${this.titre} <span style="color:#666">[\${this.categorie}]</span></h3>
+        <p>\${this.contenu}</p>
+        <small>\${this.date.toLocaleDateString()}</small>
+        <button onclick="gestionnaire.supprimer(\${this.id})">❌</button>
+      </div>
+    \`;
+  }
+}
+
+class GestionnaireNotes {
+  constructor() {
+    this.notes = this.charger();
+    this.nextId = Math.max(...this.notes.map(n => n.id), 0) + 1;
+  }
+  
+  ajouter(titre, contenu, categorie) {
+    const note = new Note(this.nextId++, titre, contenu, categorie);
+    this.notes.push(note);
+    this.sauvegarder();
+    this.afficher();
+  }
+  
+  supprimer(id) {
+    this.notes = this.notes.filter(n => n.id !== id);
+    this.sauvegarder();
+    this.afficher();
+  }
+  
+  rechercher(terme) {
+    return this.notes.filter(n => 
+      n.titre.toLowerCase().includes(terme.toLowerCase()) ||
+      n.contenu.toLowerCase().includes(terme.toLowerCase())
+    );
+  }
+  
+  sauvegarder() {
+    localStorage.setItem("notes", JSON.stringify(this.notes));
+  }
+  
+  charger() {
+    const data = localStorage.getItem("notes");
+    return data ? JSON.parse(data) : [];
+  }
+  
+  afficher(notes = this.notes) {
+    const div = document.querySelector("#notes");
+    div.innerHTML = notes.length 
+      ? notes.map(n => new Note(n.id, n.titre, n.contenu, n.categorie).afficher()).join("")
+      : "<p>Aucune note</p>";
+  }
+}
+
+const gestionnaire = new GestionnaireNotes();
+gestionnaire.afficher();
+window.gestionnaire = gestionnaire;
+
+document.querySelector("#ajouter").addEventListener("click", () => {
+  const titre = document.querySelector("#titre").value;
+  const contenu = document.querySelector("#contenu").value;
+  const categorie = document.querySelector("#categorie").value;
+  if (titre && contenu) {
+    gestionnaire.ajouter(titre, contenu, categorie);
+    document.querySelector("#titre").value = "";
+    document.querySelector("#contenu").value = "";
+  }
+});
+
+document.querySelector("#recherche").addEventListener("input", e => {
+  const results = gestionnaire.rechercher(e.target.value);
+  gestionnaire.afficher(results);
+});`,
+        ),
+        task: "Ajoutez bouton 'Exporter JSON' qui télécharge toutes les notes en fichier JSON.",
+        takeaway:
+          "Projet POO + localStorage complet. Classes, persistence, recherche. Félicitations niveau intermédiaire ! 🎉",
+        quiz: quiz(
+          "Pourquoi JSON.stringify dans localStorage ?",
+          ["Obligatoire", "localStorage stocke strings uniquement", "Plus rapide"],
+          1,
+          "localStorage ne stocke que strings. JSON.stringify convertit objets en strings."
+        ),
+        link: js + "Guide",
+      }),
+    ],
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔴 NIVEAU AVANCÉ - DOM, CSS dynamique, Async et Fetch API
+// ═══════════════════════════════════════════════════════════════════════════
+
+const advanced: WebLevel["chapters"] = [
+  {
+    id: "js-dom",
+    title: "Manipulation du DOM",
+    description: "Sélectionner et modifier les éléments HTML",
+    lessons: [
+      lesson({
+        id: "js-dom-selection",
+        title: "Sélectionner des éléments",
+        minutes: 25,
+        summary:
+          "querySelector() sélectionne le premier élément correspondant. querySelectorAll() retourne tous les éléments. getElementById(), getElementsByClassName() sont aussi disponibles.",
+        sections: [
+          section(
+            "Méthodes de sélection",
+            "Accéder aux éléments HTML depuis JavaScript.",
+            [
+              "querySelector('#id') : sélectionne par ID",
+              "querySelector('.classe') : premier élément de classe",
+              "querySelectorAll('.classe') : tous les éléments",
+              "getElementById('id') : plus rapide pour ID",
+              "getElementsByClassName('classe') : collection live",
+              "getElementsByTagName('p') : tous les <p>",
+            ]
+          ),
+          section(
+            "Parcourir NodeList",
+            "querySelectorAll retourne NodeList, pas Array.",
+            [
+              "forEach() disponible sur NodeList",
+              "Array.from(nodeList) pour convertir en Array",
+              "Spread : [...nodeList]",
+              "for...of fonctionne sur NodeList",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Sélection DOM",
+          `<h1>Titre principal</h1>
+<p class="texte">Paragraphe 1</p>
+<p class="texte">Paragraphe 2</p>
+<p class="texte">Paragraphe 3</p>
+<div id="resultat"></div>`,
+          `// querySelector : premier élément
+const titre = document.querySelector("h1");
+console.log("Titre:", titre.textContent);
+
+// querySelectorAll : tous les éléments
+const paragraphes = document.querySelectorAll(".texte");
+console.log("Nombre de paragraphes:", paragraphes.length);
+
+// Parcourir avec forEach
+paragraphes.forEach((p, index) => {
+  console.log(\`Paragraphe \${index + 1}: \${p.textContent}\`);
+});
+
+// Afficher dans le DOM
+const resultat = document.querySelector("#resultat");
+resultat.innerHTML = \`
+  <h3>Résultats</h3>
+  <p>Titre: \${titre.textContent}</p>
+  <p>Paragraphes: \${paragraphes.length}</p>
+\`;`,
+        ),
+        task: "Ajoutez 3 divs avec classe 'carte'. Sélectionnez-les et affichez leur nombre.",
+        takeaway:
+          "querySelector() pour un élément, querySelectorAll() pour plusieurs. forEach pour parcourir.",
+        quiz: quiz(
+          "Différence entre querySelector et querySelectorAll ?",
+          ["Aucune", "querySelector retourne 1 élément, querySelectorAll tous", "querySelector est plus lent"],
+          1,
+          "querySelector retourne le premier élément trouvé, querySelectorAll retourne tous les éléments (NodeList)."
+        ),
+        link: js + "Reference/Global_Objects/Document/querySelector",
+      }),
+      lesson({
+        id: "js-dom-manipulation",
+        title: "Modifier le DOM",
+        minutes: 30,
+        summary:
+          "textContent modifie le texte. innerHTML modifie le HTML. createElement() crée élément. appendChild() l'ajoute. classList.add/remove pour les classes CSS.",
+        sections: [
+          section(
+            "Modifier contenu",
+            "Changer texte et HTML des éléments.",
+            [
+              "textContent : contenu texte pur",
+              "innerHTML : contenu HTML (attention XSS)",
+              "innerText : texte visible (respecte CSS)",
+              "value : valeur des inputs",
+            ]
+          ),
+          section(
+            "Créer et ajouter éléments",
+            "Construire le DOM dynamiquement.",
+            [
+              "createElement('div') : créer élément",
+              "appendChild(element) : ajouter à la fin",
+              "prepend(element) : ajouter au début",
+              "remove() : supprimer élément",
+              "replaceWith(newElement) : remplacer",
+            ]
+          ),
+          section(
+            "Manipuler classes CSS",
+            "Ajouter/retirer classes pour styling dynamique.",
+            [
+              "classList.add('classe') : ajouter",
+              "classList.remove('classe') : retirer",
+              "classList.toggle('classe') : basculer",
+              "classList.contains('classe') : vérifier",
+              "className : toutes les classes (string)",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Manipulation DOM",
+          `<div id="container">
+  <h2>Liste de tâches</h2>
+  <button id="ajouter">Ajouter tâche</button>
+  <ul id="liste"></ul>
+</div>`,
+          `let compteur = 1;
+
+document.querySelector("#ajouter").addEventListener("click", () => {
+  // Créer nouvel élément
+  const li = document.createElement("li");
+  li.textContent = \`Tâche \${compteur}\`;
+  li.classList.add("tache");
+  
+  // Bouton supprimer
+  const btnSupprimer = document.createElement("button");
+  btnSupprimer.textContent = "✕";
+  btnSupprimer.style.marginLeft = "10px";
+  
+  btnSupprimer.addEventListener("click", () => {
+    li.remove();
+  });
+  
+  li.appendChild(btnSupprimer);
+  
+  // Ajouter à la liste
+  document.querySelector("#liste").appendChild(li);
+  
+  compteur++;
+});
+
+// Styling
+const style = document.createElement("style");
+style.textContent = \`
+  .tache {
+    padding: 8px;
+    margin: 5px 0;
+    background: #f0f0f0;
+    border-radius: 4px;
+  }
+\`;
+document.head.appendChild(style);`,
+        ),
+        task: "Modifiez pour que cliquer sur une tâche la barre (toggle classe 'complete' avec text-decoration: line-through).",
+        takeaway:
+          "textContent/innerHTML modifient contenu. createElement/appendChild créent éléments. classList pour classes CSS.",
+        quiz: quiz(
+          "Quelle méthode pour ajouter classe CSS ?",
+          ["className.add()", "classList.add()", "addClass()"],
+          1,
+          "classList.add('classe') ajoute une classe CSS à un élément."
+        ),
+        link: js + "Reference/Global_Objects/Element/classList",
+      }),
+    ],
+  },
+  {
+    id: "js-evenements",
+    title: "Gestion des événements",
+    description: "Réagir aux interactions utilisateur",
+    lessons: [
+      lesson({
+        id: "js-events-base",
+        title: "addEventListener et types d'événements",
+        minutes: 25,
+        summary:
+          "addEventListener('event', callback) écoute événements. Types : click, input, submit, keydown, mouseover. event.preventDefault() empêche comportement par défaut.",
+        sections: [
+          section(
+            "Écouter événements",
+            "Réagir aux actions utilisateur.",
+            [
+              "addEventListener('click', callback)",
+              "callback reçoit event object",
+              "event.target : élément cliqué",
+              "event.type : type d'événement",
+              "removeEventListener : arrêter écoute",
+            ]
+          ),
+          section(
+            "Types d'événements courants",
+            "Souris, clavier, formulaires.",
+            [
+              "click, dblclick : clic souris",
+              "input, change : champs formulaire",
+              "submit : envoi formulaire",
+              "keydown, keyup : touches clavier",
+              "mouseover, mouseout : survol souris",
+              "focus, blur : focus input",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Événements",
+          `<button id="btn">Clique-moi</button>
+<input type="text" id="champ" placeholder="Tape quelque chose">
+<p id="compteur">Clics: 0</p>
+<p id="saisie"></p>`,
+          `let clics = 0;
+
+// Événement click
+document.querySelector("#btn").addEventListener("click", (event) => {
+  clics++;
+  document.querySelector("#compteur").textContent = \`Clics: \${clics}\`;
+  console.log("Clic sur:", event.target);
+});
+
+// Événement input (temps réel)
+document.querySelector("#champ").addEventListener("input", (event) => {
+  const valeur = event.target.value;
+  document.querySelector("#saisie").textContent = \`Tu tapes: "\${valeur}"\`;
+});
+
+// Événement keydown
+document.querySelector("#champ").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    alert(\`Tu as tapé: \${event.target.value}\`);
+  }
+});`,
+        ),
+        task: "Ajoutez bouton 'Réinitialiser' qui remet compteur à 0 et vide le champ.",
+        takeaway:
+          "addEventListener écoute événements. event.target est l'élément. click, input, submit, keydown sont événements courants.",
+        quiz: quiz(
+          "Comment empêcher envoi d'un formulaire ?",
+          ["event.stop()", "event.preventDefault()", "return false"],
+          1,
+          "event.preventDefault() dans le listener 'submit' empêche l'envoi par défaut."
+        ),
+        link: js + "Reference/Global_Objects/EventTarget/addEventListener",
+      }),
+      lesson({
+        id: "js-events-delegation",
+        title: "Event delegation et propagation",
+        minutes: 25,
+        summary:
+          "Événements remontent (bubbling). Event delegation : écouter sur parent au lieu de chaque enfant. event.stopPropagation() arrête propagation.",
+        sections: [
+          section(
+            "Bubbling (remontée)",
+            "Événements remontent de l'élément cliqué vers parents.",
+            [
+              "Phase capture : descend vers cible",
+              "Phase target : sur élément ciblé",
+              "Phase bubbling : remonte vers parents",
+              "Par défaut : addEventListener en phase bubbling",
+              "event.stopPropagation() : arrête remontée",
+            ]
+          ),
+          section(
+            "Event Delegation",
+            "Écouter sur parent pour gérer enfants dynamiques.",
+            [
+              "Utile pour listes dynamiques",
+              "Un seul listener au lieu de plusieurs",
+              "Fonctionne avec éléments ajoutés après",
+              "Vérifier event.target pour filtrer",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Event Delegation",
+          `<div id="app">
+  <h3>Liste (event delegation)</h3>
+  <button id="ajouter">Ajouter item</button>
+  <ul id="liste"></ul>
+</div>`,
+          `let compteur = 1;
+
+// Event delegation : un seul listener sur parent
+document.querySelector("#liste").addEventListener("click", (event) => {
+  // Vérifier que c'est un LI qui a été cliqué
+  if (event.target.tagName === "LI") {
+    event.target.classList.toggle("actif");
+  }
+});
+
+// Ajouter items dynamiquement
+document.querySelector("#ajouter").addEventListener("click", () => {
+  const li = document.createElement("li");
+  li.textContent = \`Item \${compteur}\`;
+  li.style.padding = "8px";
+  li.style.cursor = "pointer";
+  document.querySelector("#liste").appendChild(li);
+  compteur++;
+});
+
+// Style pour classe actif
+const style = document.createElement("style");
+style.textContent = \`.actif { background: #4CAF50; color: white; }\`;
+document.head.appendChild(style);
+
+console.log("Clique sur les items pour les activer");`,
+        ),
+        task: "Ajoutez bouton '×' dans chaque item. Utilisez delegation pour supprimer item cliqué (event.stopPropagation pour ne pas activer).",
+        takeaway:
+          "Événements remontent (bubbling). Event delegation : écouter sur parent. event.target indique élément cliqué.",
+        quiz: quiz(
+          "Avantage de event delegation ?",
+          ["Plus rapide", "Fonctionne avec éléments ajoutés dynamiquement", "Aucun"],
+          1,
+          "Event delegation fonctionne automatiquement avec les éléments ajoutés après le chargement."
+        ),
+        link: js + "Learn/Events/Event_delegation",
+      }),
+    ],
+  },
+  {
+    id: "js-css-dynamique",
+    title: "CSS dynamique",
+    description: "Modifier styles avec JavaScript",
+    lessons: [
+      lesson({
+        id: "js-style-inline",
+        title: "Propriété style et CSS inline",
+        minutes: 20,
+        summary:
+          "element.style.property modifie CSS inline. Noms CSS en camelCase : background-color → backgroundColor. style.cssText pour plusieurs propriétés.",
+        sections: [
+          section(
+            "Modifier styles inline",
+            "Changer CSS directement depuis JS.",
+            [
+              "element.style.color = 'red'",
+              "CSS en camelCase : backgroundColor, fontSize",
+              "style.cssText = 'color: red; font-size: 20px'",
+              "Priorité : inline > classes > feuille",
+              "Vider : style.property = ''",
+            ]
+          ),
+          section(
+            "Lire styles calculés",
+            "Obtenir style appliqué (pas seulement inline).",
+            [
+              "getComputedStyle(element).property",
+              "Retourne valeur finale après cascade CSS",
+              "Inclut styles de feuille externe",
+              "Valeurs calculées (ex: em → px)",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Style inline",
+          `<div id="boite" style="width: 100px; height: 100px; background: blue;"></div>
+<button id="rouge">Rouge</button>
+<button id="grand">Agrandir</button>
+<button id="reset">Reset</button>
+<p id="info"></p>`,
+          `const boite = document.querySelector("#boite");
+
+// Changer couleur
+document.querySelector("#rouge").addEventListener("click", () => {
+  boite.style.backgroundColor = "red";
+  boite.style.borderRadius = "50%";
+});
+
+// Agrandir
+document.querySelector("#grand").addEventListener("click", () => {
+  const largeur = parseInt(boite.style.width);
+  boite.style.width = (largeur + 20) + "px";
+  boite.style.height = (largeur + 20) + "px";
+});
+
+// Reset
+document.querySelector("#reset").addEventListener("click", () => {
+  boite.style.cssText = "width: 100px; height: 100px; background: blue;";
+});
+
+// Lire style calculé
+const styles = getComputedStyle(boite);
+document.querySelector("#info").textContent = \`
+  Largeur: \${styles.width}
+  Couleur: \${styles.backgroundColor}
+\`;`,
+        ),
+        task: "Ajoutez bouton 'Aléatoire' qui applique couleur RGB aléatoire à la boîte.",
+        takeaway:
+          "element.style.property modifie CSS inline. CamelCase pour noms CSS. getComputedStyle() lit styles appliqués.",
+        quiz: quiz(
+          "Comment écrire background-color en JS ?",
+          ["background-color", "backgroundColor", "bgColor"],
+          1,
+          "Les propriétés CSS avec tiret deviennent camelCase : backgroundColor."
+        ),
+        link: js + "Reference/Global_Objects/HTMLElement/style",
+      }),
+      lesson({
+        id: "js-css-classes",
+        title: "Animations et transitions CSS",
+        minutes: 25,
+        summary:
+          "Animations CSS déclenchées par classes JS. transition pour animations simples. @keyframes pour animations complexes. classList.toggle pour basculer.",
+        sections: [
+          section(
+            "CSS Transitions",
+            "Animer changements de propriétés CSS.",
+            [
+              "transition: property duration easing",
+              "Ex: transition: all 0.3s ease",
+              "Déclencher en changeant classe/style JS",
+              "Propriétés animables : opacity, transform, colors",
+            ]
+          ),
+          section(
+            "CSS Animations",
+            "Animations avec keyframes.",
+            [
+              "@keyframes nom { from {} to {} }",
+              "Étapes : 0%, 50%, 100%",
+              "animation: nom duration easing",
+              "Ajouter classe pour déclencher",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Animations CSS + JS",
+          `<button id="animer">Animer</button>
+<div id="carre"></div>`,
+          `// CSS dans style tag
+const style = document.createElement("style");
+style.textContent = \`
+  #carre {
+    width: 100px;
+    height: 100px;
+    background: #4CAF50;
+    transition: all 0.3s ease;
+  }
+  
+  #carre.anime {
+    transform: scale(1.5) rotate(45deg);
+    background: #FF5722;
+    border-radius: 50%;
+  }
+  
+  @keyframes rebond {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-50px); }
+  }
+  
+  #carre.rebond {
+    animation: rebond 0.5s ease;
+  }
+\`;
+document.head.appendChild(style);
+
+// Toggle animation
+document.querySelector("#animer").addEventListener("click", () => {
+  const carre = document.querySelector("#carre");
+  
+  // Toggle classe anime
+  carre.classList.toggle("anime");
+  
+  // Animation rebond au clic
+  carre.classList.add("rebond");
+  setTimeout(() => carre.classList.remove("rebond"), 500);
+});`,
+        ),
+        task: "Créez animation 'pulse' (échelle 1 → 1.2 → 1) sur 1s. Appliquez au survol du carré.",
+        takeaway:
+          "CSS transitions pour changements simples. @keyframes pour animations complexes. JS ajoute/retire classes pour déclencher.",
+        quiz: quiz(
+          "Quelle propriété CSS pour transition simple ?",
+          ["animation", "transition", "transform"],
+          1,
+          "transition définit comment animer les changements de propriété CSS."
+        ),
+        link: mdn + "Web/CSS/CSS_Transitions/Using_CSS_transitions",
+      }),
+    ],
+  },
+  {
+    id: "js-async",
+    title: "Programmation asynchrone",
+    description: "Async/Await et Promises",
+    lessons: [
+      lesson({
+        id: "js-promises",
+        title: "Promises : then et catch",
+        minutes: 25,
+        summary:
+          "Promise représente opération asynchrone. États : pending, fulfilled, rejected. .then() pour succès, .catch() pour erreur. Chaînage avec .then().",
+        sections: [
+          section(
+            "Comprendre Promises",
+            "Gérer opérations asynchrones (réseau, timers).",
+            [
+              "new Promise((resolve, reject) => {})",
+              "resolve(valeur) : succès",
+              "reject(erreur) : échec",
+              "États : pending → fulfilled ou rejected",
+              ".then(callback) : exécute si succès",
+              ".catch(callback) : exécute si erreur",
+            ]
+          ),
+          section(
+            "Chaînage",
+            "Enchaîner opérations asynchrones.",
+            [
+              ".then retourne nouvelle Promise",
+              "Chaîner : .then().then().then()",
+              ".catch attrape erreurs de toute chaîne",
+              ".finally() : exécute dans tous cas",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Promises",
+          `<button id="demarrer">Démarrer</button>
+<p id="status">En attente...</p>`,
+          `// Fonction retournant Promise
+function attendre(ms, valeur) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (ms > 0) {
+        resolve(valeur);
+      } else {
+        reject(new Error("Durée invalide"));
+      }
+    }, ms);
+  });
+}
+
+document.querySelector("#demarrer").addEventListener("click", () => {
+  const status = document.querySelector("#status");
+  
+  status.textContent = "⏳ Étape 1...";
+  
+  attendre(1000, "Étape 1 OK")
+    .then(result => {
+      console.log(result);
+      status.textContent = "⏳ Étape 2...";
+      return attendre(1000, "Étape 2 OK");
+    })
+    .then(result => {
+      console.log(result);
+      status.textContent = "⏳ Étape 3...";
+      return attendre(1000, "Étape 3 OK");
+    })
+    .then(result => {
+      console.log(result);
+      status.textContent = "✅ Terminé !";
+    })
+    .catch(error => {
+      status.textContent = "❌ Erreur: " + error.message;
+      console.error(error);
+    });
+});`,
+        ),
+        task: "Modifiez pour qu'étape 2 rejette (reject) après 500ms. Observez catch.",
+        takeaway:
+          "Promise gère async. .then() pour succès, .catch() pour erreur. Chaînage avec .then().",
+        quiz: quiz(
+          "Que fait .catch() ?",
+          ["Arrête Promise", "Attrape erreurs", "Crée Promise"],
+          1,
+          ".catch(callback) exécute callback si Promise est rejetée (erreur)."
+        ),
+        link: js + "Reference/Global_Objects/Promise",
+      }),
+      lesson({
+        id: "js-async-await",
+        title: "async/await : syntaxe moderne",
+        minutes: 30,
+        summary:
+          "async function retourne Promise. await attend résolution. Code asynchrone ressemble à code synchrone. try/catch pour erreurs.",
+        sections: [
+          section(
+            "async/await",
+            "Syntaxe plus lisible pour Promises.",
+            [
+              "async function : retourne Promise automatiquement",
+              "await expression : attend Promise",
+              "await uniquement dans async function",
+              "Code linéaire au lieu de .then()",
+              "try/catch pour gérer erreurs",
+            ]
+          ),
+          section(
+            "Avantages",
+            "Code plus facile à lire et débugger.",
+            [
+              "Syntaxe synchrone pour code async",
+              "Meilleure gestion erreurs",
+              "Stack traces plus claires",
+              "Facilite conditions et boucles async",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "async/await",
+          `<button id="demarrer">Démarrer</button>
+<p id="status">En attente...</p>
+<ul id="logs"></ul>`,
+          `// Fonction async helper
+function attendre(ms, valeur) {
+  return new Promise(resolve => setTimeout(() => resolve(valeur), ms));
+}
+
+function log(message) {
+  const li = document.createElement("li");
+  li.textContent = \`[\${new Date().toLocaleTimeString()}] \${message}\`;
+  document.querySelector("#logs").prepend(li);
+}
+
+// Fonction async/await
+async function executerTaches() {
+  const status = document.querySelector("#status");
+  
+  try {
+    status.textContent = "⏳ Démarrage...";
+    log("Démarrage");
+    
+    status.textContent = "⏳ Tâche 1...";
+    const resultat1 = await attendre(1000, "Tâche 1 terminée");
+    log(resultat1);
+    
+    status.textContent = "⏳ Tâche 2...";
+    const resultat2 = await attendre(1000, "Tâche 2 terminée");
+    log(resultat2);
+    
+    status.textContent = "⏳ Tâche 3...";
+    const resultat3 = await attendre(1000, "Tâche 3 terminée");
+    log(resultat3);
+    
+    status.textContent = "✅ Tout est terminé !";
+    log("✅ Succès total");
+    
+  } catch (error) {
+    status.textContent = "❌ Erreur: " + error.message;
+    log("❌ " + error.message);
+  }
+}
+
+document.querySelector("#demarrer").addEventListener("click", () => {
+  executerTaches();
+});`,
+        ),
+        task: "Ajoutez tâche 4 qui simule erreur : throw new Error('Problème'). Observez try/catch.",
+        takeaway:
+          "async function retourne Promise. await attend résultat. try/catch pour erreurs. Syntaxe linéaire vs .then().",
+        quiz: quiz(
+          "Où utiliser await ?",
+          ["N'importe où", "Seulement dans async function", "Seulement au top-level"],
+          1,
+          "await ne peut être utilisé que dans une fonction marquée async."
+        ),
+        link: js + "Reference/Statements/async_function",
+      }),
+    ],
+  },
+  {
+    id: "js-fetch",
+    title: "Fetch API",
+    description: "Récupérer données via API REST",
+    lessons: [
+      lesson({
+        id: "js-fetch-get",
+        title: "fetch() et requêtes GET",
+        minutes: 30,
+        summary:
+          "fetch(url) récupère données. Retourne Promise. .json() parse réponse JSON. async/await simplifie code. Gestion erreurs réseau et HTTP.",
+        sections: [
+          section(
+            "Fetch API",
+            "Requêtes HTTP modernes en JavaScript.",
+            [
+              "fetch(url) : Promise<Response>",
+              "response.json() : parse JSON",
+              "response.ok : true si 200-299",
+              "response.status : code HTTP",
+              "Async par défaut",
+            ]
+          ),
+          section(
+            "Pattern async/await",
+            "Syntaxe recommandée avec fetch.",
+            [
+              "await fetch(url)",
+              "await response.json()",
+              "try/catch pour erreurs",
+              "Vérifier response.ok",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Fetch GET",
+          `<h2>API Publique</h2>
+<button id="charger">Charger utilisateurs</button>
+<div id="resultat"></div>`,
+          `async function chargerUtilisateurs() {
+  const resultat = document.querySelector("#resultat");
+  
+  try {
+    resultat.innerHTML = "⏳ Chargement...";
+    
+    // Requête GET
+    const response = await fetch("https://jsonplaceholder.typicode.com/users");
+    
+    // Vérifier statut
+    if (!response.ok) {
+      throw new Error(\`HTTP \${response.status}\`);
+    }
+    
+    // Parser JSON
+    const users = await response.json();
+    
+    // Afficher (5 premiers)
+    const html = users.slice(0, 5).map(user => \`
+      <div style="border: 1px solid #ddd; padding: 10px; margin: 5px;">
+        <strong>\${user.name}</strong> (@\${user.username})<br>
+        📧 \${user.email}<br>
+        🏙️ \${user.address.city}
+      </div>
+    \`).join("");
+    
+    resultat.innerHTML = \`<h3>Utilisateurs</h3>\${html}\`;
+    
+  } catch (error) {
+    resultat.innerHTML = \`❌ Erreur: \${error.message}\`;
+    console.error(error);
+  }
+}
+
+document.querySelector("#charger").addEventListener("click", () => {
+  chargerUtilisateurs();
+});`,
+        ),
+        task: "Utilisez https://jsonplaceholder.typicode.com/posts pour afficher 10 posts (title, body).",
+        takeaway:
+          "fetch(url) fait requête HTTP. response.json() parse JSON. async/await + try/catch pour gérer.",
+        quiz: quiz(
+          "fetch retourne quoi ?",
+          ["JSON directement", "Promise<Response>", "Array"],
+          1,
+          "fetch() retourne Promise qui résout en Response. Il faut .json() pour parser."
+        ),
+        link: js + "Reference/Global_Objects/fetch",
+      }),
+      lesson({
+        id: "js-fetch-post",
+        title: "POST, PUT, DELETE",
+        minutes: 30,
+        summary:
+          "fetch avec options : method, headers, body. POST pour créer, PUT pour modifier, DELETE pour supprimer. JSON.stringify() pour body. Headers Content-Type application/json.",
+        sections: [
+          section(
+            "Options fetch",
+            "Personnaliser requêtes HTTP.",
+            [
+              "method: 'POST', 'PUT', 'DELETE'",
+              "headers: { 'Content-Type': 'application/json' }",
+              "body: JSON.stringify(data)",
+              "Options par défaut : GET, no body",
+            ]
+          ),
+          section(
+            "CRUD complet",
+            "Create, Read, Update, Delete.",
+            [
+              "GET : lire (par défaut)",
+              "POST : créer (avec body)",
+              "PUT/PATCH : modifier (avec body)",
+              "DELETE : supprimer",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "Fetch POST",
+          `<h2>CRUD API</h2>
+<input id="titre" placeholder="Titre post">
+<button id="creer">Créer</button>
+<button id="modifier">Modifier ID 1</button>
+<button id="supprimer">Supprimer ID 1</button>
+<pre id="resultat"></pre>`,
+          `const API = "https://jsonplaceholder.typicode.com/posts";
+
+// POST : Créer
+document.querySelector("#creer").addEventListener("click", async () => {
+  try {
+    const titre = document.querySelector("#titre").value;
+    
+    const response = await fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: titre,
+        body: "Contenu du post",
+        userId: 1
+      })
+    });
+    
+    const data = await response.json();
+    document.querySelector("#resultat").textContent = 
+      "✅ Créé:\\n" + JSON.stringify(data, null, 2);
+      
+  } catch (error) {
+    document.querySelector("#resultat").textContent = "❌ " + error.message;
+  }
+});
+
+// PUT : Modifier
+document.querySelector("#modifier").addEventListener("click", async () => {
+  try {
+    const response = await fetch(API + "/1", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: 1,
+        title: "Titre modifié",
+        body: "Contenu modifié",
+        userId: 1
+      })
+    });
+    
+    const data = await response.json();
+    document.querySelector("#resultat").textContent = 
+      "✅ Modifié:\\n" + JSON.stringify(data, null, 2);
+      
+  } catch (error) {
+    document.querySelector("#resultat").textContent = "❌ " + error.message;
+  }
+});
+
+// DELETE : Supprimer
+document.querySelector("#supprimer").addEventListener("click", async () => {
+  try {
+    const response = await fetch(API + "/1", {
+      method: "DELETE"
+    });
+    
+    if (response.ok) {
+      document.querySelector("#resultat").textContent = "✅ Supprimé (ID 1)";
+    }
+    
+  } catch (error) {
+    document.querySelector("#resultat").textContent = "❌ " + error.message;
+  }
+});`,
+        ),
+        task: "Créez interface avec liste, formulaire ajout, boutons modifier/supprimer par item.",
+        takeaway:
+          "fetch avec method, headers, body pour POST/PUT/DELETE. JSON.stringify pour body. Content-Type: application/json.",
+        quiz: quiz(
+          "Comment envoyer données JSON en POST ?",
+          ["body: data", "body: JSON.stringify(data)", "data: JSON"],
+          1,
+          "body doit être string : body: JSON.stringify(data) pour envoyer JSON."
+        ),
+        link: js + "Reference/Global_Objects/fetch#parameters",
+      }),
+    ],
+  },
+  {
+    id: "js-projet-avance",
+    title: "Projet final avancé",
+    description: "Application web complète",
+    lessons: [
+      lesson({
+        id: "js-projet-meteo",
+        title: "Projet : Application Météo (Fetch + DOM + CSS)",
+        minutes: 60,
+        summary:
+          "Application complète : Fetch API météo, manipulation DOM, CSS dynamique, événements, async/await. Interface interactive avec recherche ville et affichage données.",
+        sections: [
+          section(
+            "Objectif",
+            "Application météo utilisant toutes notions avancées.",
+            [
+              "Fetch : API météo OpenWeatherMap (gratuite)",
+              "DOM : affichage dynamique résultats",
+              "Événements : recherche, boutons",
+              "CSS : animations, responsive",
+              "Async : gestion appels API",
+              "Erreurs : messages utilisateur clairs",
+            ]
+          ),
+          section(
+            "Fonctionnalités",
+            "Interface utilisateur complète.",
+            [
+              "Recherche ville par nom",
+              "Affichage : température, description, icône",
+              "Prévisions 5 jours",
+              "Gestion erreurs (ville inexistante, réseau)",
+              "Animation chargement",
+              "Design responsive",
+            ]
+          ),
+          section(
+            "Architecture",
+            "Code organisé et réutilisable.",
+            [
+              "Fonctions async pour API",
+              "Fonctions DOM séparées",
+              "Gestion d'état simple",
+              "Event delegation",
+              "Classes CSS pour states",
+            ]
+          ),
+        ],
+        files: jsFiles(
+          "App Météo",
+          `<div id="app">
+  <h1>🌤️ Météo App</h1>
+  <div class="recherche">
+    <input id="ville" placeholder="Entrez une ville" />
+    <button id="chercher">Rechercher</button>
+  </div>
+  <div id="resultat"></div>
+  <div id="previsions"></div>
+</div>`,
+          `// Configuration API (utilisez votre clé gratuite sur openweathermap.org)
+const API_KEY = "VOTRE_CLE_API";
+const API_URL = "https://api.openweathermap.org/data/2.5";
+
+// Fonction : Récupérer météo
+async function obtenirMeteo(ville) {
+  const url = \`\${API_URL}/weather?q=\${ville}&appid=\${API_KEY}&units=metric&lang=fr\`;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(response.status === 404 ? "Ville introuvable" : "Erreur réseau");
+  }
+  
+  return await response.json();
+}
+
+// Fonction : Afficher météo
+function afficherMeteo(data) {
+  const resultat = document.querySelector("#resultat");
+  
+  resultat.innerHTML = \`
+    <div class="meteo-card">
+      <h2>\${data.name}, \${data.sys.country}</h2>
+      <div class="temperature">\${Math.round(data.main.temp)}°C</div>
+      <div class="description">\${data.weather[0].description}</div>
+      <div class="details">
+        💧 Humidité: \${data.main.humidity}%<br>
+        💨 Vent: \${data.wind.speed} m/s<br>
+        🌡️ Ressenti: \${Math.round(data.main.feels_like)}°C
+      </div>
+    </div>
+  \`;
+  
+  resultat.classList.add("visible");
+}
+
+// Fonction : Afficher erreur
+function afficherErreur(message) {
+  const resultat = document.querySelector("#resultat");
+  resultat.innerHTML = \`<div class="erreur">❌ \${message}</div>\`;
+  resultat.classList.add("visible");
+}
+
+// Fonction : Afficher chargement
+function afficherChargement() {
+  const resultat = document.querySelector("#resultat");
+  resultat.innerHTML = '<div class="chargement">⏳ Chargement...</div>';
+  resultat.classList.add("visible");
+}
+
+// Event : Recherche
+document.querySelector("#chercher").addEventListener("click", async () => {
+  const ville = document.querySelector("#ville").value.trim();
+  
+  if (!ville) {
+    afficherErreur("Entrez un nom de ville");
+    return;
+  }
+  
+  try {
+    afficherChargement();
+    const data = await obtenirMeteo(ville);
+    afficherMeteo(data);
+  } catch (error) {
+    afficherErreur(error.message);
+  }
+});
+
+// Event : Enter dans input
+document.querySelector("#ville").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    document.querySelector("#chercher").click();
+  }
+});
+
+// Styles CSS
+const style = document.createElement("style");
+style.textContent = \`
+  #app {
+    max-width: 500px;
+    margin: 50px auto;
+    font-family: system-ui;
+  }
+  
+  .recherche {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+  }
+  
+  #ville {
+    flex: 1;
+    padding: 10px;
+    font-size: 16px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+  }
+  
+  #chercher {
+    padding: 10px 20px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  
+  #chercher:hover {
+    background: #1976D2;
+  }
+  
+  #resultat {
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  
+  #resultat.visible {
+    opacity: 1;
+  }
+  
+  .meteo-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  }
+  
+  .temperature {
+    font-size: 64px;
+    font-weight: bold;
+    margin: 20px 0;
+  }
+  
+  .description {
+    font-size: 24px;
+    text-transform: capitalize;
+    margin-bottom: 20px;
+  }
+  
+  .details {
+    text-align: left;
+    background: rgba(255,255,255,0.1);
+    padding: 15px;
+    border-radius: 8px;
+    line-height: 1.8;
+  }
+  
+  .erreur {
+    background: #f44336;
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+  }
+  
+  .chargement {
+    background: #FF9800;
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    animation: pulse 1s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+\`;
+document.head.appendChild(style);
+
+console.log("🌤️ App Météo chargée !");
+console.log("Note: Obtenez une clé API gratuite sur openweathermap.org");`,
+        ),
+        task: "Extensions : 1) Prévisions 5 jours 2) Géolocalisation navigateur 3) Historique recherches (localStorage) 4) Mode sombre",
+        takeaway:
+          "Application complète DOM + Fetch + CSS + Async. Architecture modulaire. Gestion erreurs. UX fluide.",
+        quiz: quiz(
+          "Quelles notions avancées sont utilisées ?",
+          ["Seulement Fetch", "Fetch + DOM + Events + CSS + Async", "Seulement CSS"],
+          1,
+          "Le projet combine toutes les notions avancées : Fetch API, manipulation DOM, événements, CSS dynamique, async/await."
+        ),
+        link: "https://openweathermap.org/api",
+      }),
+    ],
+  },
+];
+
 export const javascriptLevels: WebLevel[] = [
   {
     id: "debutant",
     title: "Débutant",
-    subtitle: "Logique et manipulation du HTML",
+    subtitle: "Fondamentaux JavaScript ES6+",
     color: levelColors[0],
     objective:
-      "Écrire tes premiers scripts et rendre une page interactive en réagissant aux actions de l’utilisateur.",
+      "Maîtriser les bases de JavaScript : variables, fonctions, tableaux, objets. Syntaxe moderne ES6+.",
     prerequisites:
-      "Savoir créer une petite page HTML et modifier ses styles CSS.",
+      "Aucun. Connaissances HTML/CSS recommandées mais pas obligatoires.",
     outcomes: [
-      "Lier un fichier JavaScript et utiliser la console.",
-      "Manipuler variables, conditions, boucles et fonctions.",
-      "Écouter un événement et modifier le DOM.",
+      "Écrire des scripts JavaScript",
+      "Utiliser let, const, fonctions fléchées",
+      "Manipuler tableaux et objets",
+      "Comprendre scope et closures",
     ],
     projects: javascriptProjects.debutant,
-    chapters: [
-      {
-        id: "fondations",
-        title: "Fondations et rôle de JavaScript",
-        description: "Faire le lien entre une page et son comportement.",
-        lessons: [
-          lesson({
-            id: "navigateur",
-            title: "JavaScript dans le navigateur",
-            minutes: 12,
-            summary:
-              "JavaScript transforme une page statique en interface capable de réagir à un clic, à une saisie ou à des données reçues.",
-            sections: [
-              section(
-                "Trois rôles dans une page",
-                "Imagine un bouton de vote. HTML place le bouton et le score, CSS dessine leur apparence et JavaScript fait évoluer le score quand quelqu’un clique.",
-                [
-                  "Le navigateur interprète le script sur l’appareil de l’utilisateur.",
-                  "Le DOM représente les éléments de la page sous forme d’objets accessibles au script.",
-                  "Un environnement comme Node.js permet aussi d’utiliser JavaScript en dehors du navigateur.",
-                ],
-              ),
-              section(
-                "Observer une interaction",
-                "Dans l’exemple, le script trouve un bouton et un paragraphe. Il associe une fonction au clic. La fonction change le texte à l’écran et écrit une trace dans la console.",
-                [
-                  "Lis index.html pour retrouver les identifiants message et saluer.",
-                  "Exécute le code, clique sur le bouton puis observe le texte.",
-                  "La console explique le passage du clic au changement visible.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Première interaction",
-              '<main><h1>Première interaction</h1><p id="message" aria-live="polite">Prêt à essayer ?</p><button id="saluer">Dire bonjour</button></main>',
-              `const message = document.querySelector("#message");
-const bouton = document.querySelector("#saluer");
-bouton.addEventListener("click", () => {
-  message.textContent = "Bonjour, bienvenue sur DevAfrica !";
-  console.log("Le bouton a reçu un clic.");
-});`,
-            ),
-            task: "Remplace le texte affiché après le clic par un message de bienvenue pour ton projet.",
-            takeaway:
-              "Une interaction relie une action, une fonction et une mise à jour de l’interface.",
-            quiz: quiz(
-              "Quel fichier décrit le comportement du bouton ?",
-              ["styles.css", "script.js", "Une image PNG"],
-              1,
-              "Le script associe une fonction au clic. HTML fournit le bouton et CSS peut lui donner un style.",
-            ),
-            link: js + "Guide",
-          }),
-          lesson({
-            id: "liaison-console",
-            title: "Relier script.js et lire la console",
-            minutes: 16,
-            summary:
-              "Prépare trois fichiers dans VS Code et utilise la console pour vérifier ce que fait ton programme.",
-            sections: [
-              section(
-                "Relier les fichiers",
-                "Crée index.html, styles.css et script.js dans le même dossier. À la fin de body, la balise script dont src vaut ./script.js indique au navigateur où trouver le code.",
-                [
-                  "Le chemin ./script.js désigne un fichier dans le dossier courant.",
-                  'Les exemples utilisent type="module" pour permettre les imports dans les leçons suivantes.',
-                  "Avec un serveur local comme Live Server, enregistre tes fichiers avant de vérifier la page.",
-                ],
-              ),
-              section(
-                "Déboguer à partir d’un indice",
-                "Sur ton ordinateur, ouvre les outils de développement avec F12 puis l’onglet Console. Ici, la console de l’atelier affiche aussi les traces. Commence par vérifier que le script démarre, puis affiche les valeurs qui te surprennent.",
-                [
-                  "console.log affiche une valeur utile au diagnostic.",
-                  "Une erreur ReferenceError peut signaler un nom mal écrit ou indisponible.",
-                  "Lis le premier message d’erreur et la ligne indiquée avant de modifier plusieurs fichiers.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Lire la console",
-              '<main><h1>Lire la console</h1><p id="etat">Le script va démarrer.</p></main>',
-              `console.log("script.js est chargé");
-const projet = "Mon premier site";
-console.info("Projet :", projet);
-document.querySelector("#etat").textContent = projet;`,
-            ),
-            task: "Change la valeur de projet, relance l’aperçu et vérifie le texte dans les deux panneaux.",
-            takeaway:
-              "La console aide à distinguer un problème de chargement d’un problème de logique.",
-            quiz: quiz(
-              "Quel attribut donne le chemin du fichier JavaScript ?",
-              ["class", "href", "src"],
-              2,
-              "La balise script utilise src pour charger un fichier externe.",
-            ),
-            link: mdn + "Web/HTML/Reference/Elements/script",
-          }),
-        ],
-      },
-      {
-        id: "syntaxe",
-        title: "Syntaxe moderne et logique de base",
-        description: "Stocker, comparer et transformer des valeurs.",
-        lessons: [
-          lesson({
-            id: "variables",
-            title: "Variables, constantes et types",
-            minutes: 18,
-            summary:
-              "Choisis un nom de variable qui décrit sa valeur et distingue les chaînes, les nombres et les booléens.",
-            sections: [
-              section(
-                "Choisir let ou const",
-                "Utilise let quand une variable doit recevoir une nouvelle valeur, comme un compteur. Utilise const quand la liaison reste la même, comme le nom d’un projet. Les propriétés d’un objet déclaré avec const peuvent encore changer.",
-                [
-                  'Une chaîne représente du texte, par exemple "DevAfrica".',
-                  "Un nombre permet un calcul, par exemple 3 + 2.",
-                  "Un booléen vaut true ou false et sert souvent à représenter un état.",
-                ],
-              ),
-              section(
-                "Lire et convertir une saisie",
-                "La valeur d’un champ de formulaire est une chaîne. Convertis-la avec Number lorsque tu veux calculer et vérifie le résultat avec Number.isFinite.",
-                [
-                  "typeof aide à connaître le type d’une valeur.",
-                  'Number("12") donne le nombre 12.',
-                  'Vérifie séparément une chaîne vide avant de la convertir, car Number("") vaut 0.',
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Variables",
-              '<main><h1>Variables</h1><pre id="resultat" class="output"></pre></main>',
-              `const nom = "DevAfrica";
-let score = 2;
-score += 3;
-const objectifAtteint = score >= 5;
-const lignes = [nom, "Score : " + score, "Objectif atteint : " + objectifAtteint];
-document.querySelector("#resultat").textContent = lignes.join("\\n");
-console.log(typeof nom, typeof score, typeof objectifAtteint);`,
-            ),
-            task: "Change le score initial et observe quand objectifAtteint passe de true à false.",
-            takeaway:
-              "Les noms décrivent les données et les types déterminent les opérations possibles.",
-            quiz: quiz(
-              "Quelle déclaration permet de réaffecter un compteur ?",
-              ["let", "const", "type"],
-              0,
-              "let permet d’attribuer une nouvelle valeur à la variable.",
-            ),
-            link: js + "Guide/Grammar_and_types",
-          }),
-          lesson({
-            id: "conditions-boucles",
-            title: "Conditions, comparaisons et boucles",
-            minutes: 20,
-            summary:
-              "Décide quoi afficher selon une condition, puis parcours une liste pour appliquer la même logique à plusieurs valeurs.",
-            sections: [
-              section(
-                "Choisir une branche",
-                "if teste une condition. else if permet de tester un autre cas et else traite les cas restants. Place la condition la plus spécifique avant une condition plus générale.",
-                [
-                  "=== compare la valeur et le type.",
-                  "!== signifie que les valeurs sont différentes au sens strict.",
-                  "&& exige que deux conditions soient vraies. || accepte qu’au moins une le soit.",
-                ],
-              ),
-              section(
-                "Répéter une opération",
-                "for...of parcourt directement les valeurs d’un tableau. Une boucle for avec un compteur aide quand tu as besoin de l’indice. Vérifie la condition d’arrêt pour les boucles à compteur.",
-                [
-                  "Utilise une variable descriptive pour la valeur courante.",
-                  "break quitte la boucle lorsqu’une recherche a réussi.",
-                  "Teste les seuils, par exemple un score de 4, de 5 et de 6.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Décisions et boucles",
-              '<main><h1>Résultats du groupe</h1><ul id="liste"></ul></main>',
-              `const scores = [2, 5, 8, 10];
-const liste = document.querySelector("#liste");
-for (const score of scores) {
-  let niveau;
-  if (score >= 8) niveau = "Objectif dépassé";
-  else if (score >= 5) niveau = "Objectif atteint";
-  else niveau = "À retravailler";
-  const item = document.createElement("li");
-  item.textContent = score + " points · " + niveau;
-  liste.append(item);
-}
-console.log(5 === "5");`,
-            ),
-            task: "Ajoute 4 et 6 au tableau. Explique pourquoi ils ne suivent pas la même branche.",
-            takeaway:
-              "Une condition permet un choix. Une boucle applique ce choix à plusieurs éléments.",
-            quiz: quiz(
-              'Quelle est la valeur de 5 === "5" ?',
-              ["true", "false", "5"],
-              1,
-              'Le nombre 5 et la chaîne "5" n’ont pas le même type, donc l’égalité stricte vaut false.',
-            ),
-            link: js + "Guide/Control_flow_and_error_handling",
-          }),
-          lesson({
-            id: "fonctions",
-            title: "Fonctions fléchées et valeurs de retour",
-            minutes: 16,
-            summary:
-              "Regroupe un calcul dans une fonction, donne-lui des paramètres et réutilise le résultat retourné.",
-            sections: [
-              section(
-                "Donner un rôle à chaque fonction",
-                "Une fonction prend éventuellement des paramètres. Elle peut calculer une valeur et la retourner. Un nom comme calculerTotal décrit ce que l’appelant obtient.",
-                [
-                  "Avec une expression seule, la flèche peut retourner directement le résultat.",
-                  "Avec un bloc entre accolades, écris return pour produire une valeur.",
-                  "Appelle calculerTotal(12, 3) pour transmettre deux arguments.",
-                ],
-              ),
-              section(
-                "Séparer calcul et affichage",
-                "La fonction de calcul peut être testée avec plusieurs valeurs. Une autre partie du programme décide comment afficher le résultat dans le DOM.",
-                [
-                  "Teste aussi une quantité de zéro.",
-                  "Déclare une valeur par défaut avec quantite = 1.",
-                  "Réutilise la même fonction au lieu de répéter le calcul dans plusieurs écouteurs.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Fonctions fléchées",
-              '<main><h1>Calculer un total</h1><output id="total" class="output"></output></main>',
-              `const calculerTotal = (prix, quantite = 1) => prix * quantite;
-const afficherMontant = montant => {
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(montant);
-};
-const total = calculerTotal(12, 3);
-document.querySelector("#total").textContent = afficherMontant(total);
-console.log(calculerTotal(12), calculerTotal(12, 0));`,
-            ),
-            task: "Ajoute une fonction qui applique une remise de 10 % et affiche le nouveau total.",
-            takeaway:
-              "Une fonction réutilisable a des entrées et une responsabilité claires.",
-            quiz: quiz(
-              "Dans une fonction fléchée avec accolades, que faut-il écrire pour renvoyer une valeur ?",
-              ["break", "continue", "return"],
-              2,
-              "return termine la fonction et transmet la valeur à l’appelant.",
-            ),
-            link: js + "Reference/Functions/Arrow_functions",
-          }),
-        ],
-      },
-      {
-        id: "dom",
-        title: "DOM et événements",
-        description: "Réagir aux actions et rendre les changements visibles.",
-        lessons: [
-          lesson({
-            id: "selection-dom",
-            title: "Sélectionner et modifier le DOM",
-            minutes: 17,
-            summary:
-              "Retrouve un élément avec un sélecteur puis modifie son texte, son style ou ses classes.",
-            sections: [
-              section(
-                "Retrouver un élément",
-                'document.querySelector prend un sélecteur CSS et renvoie le premier élément correspondant. Par exemple, #titre vise l’élément qui porte id="titre".',
-                [
-                  "La méthode renvoie null si rien ne correspond.",
-                  "document.querySelectorAll permet de récupérer plusieurs éléments.",
-                  "Choisis des identifiants cohérents entre index.html et script.js.",
-                ],
-              ),
-              section(
-                "Mettre à jour l’interface",
-                "textContent remplace le texte. style.color modifie une propriété de style. Pour plusieurs états visuels, définis les styles dans CSS et change une classe avec classList.",
-                [
-                  "Affiche une saisie comme texte avec textContent.",
-                  "Ajoute ou enlève une classe avec classList.toggle.",
-                  "Utilise aria-live pour signaler certains résultats qui changent après une action.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Modifier le DOM",
-              '<main><h1 id="titre" aria-live="polite">Un titre à transformer</h1><button id="modifier">Modifier le titre</button></main>',
-              `const titre = document.querySelector("#titre");
-const bouton = document.querySelector("#modifier");
-bouton.addEventListener("click", () => {
-  titre.textContent = "Le DOM vient de changer";
-  titre.style.color = "#2468ad";
-});`,
-            ),
-            task: "Ajoute une classe CSS puis remplace le changement de style direct par classList.toggle.",
-            takeaway:
-              "Le DOM est la représentation vivante des éléments que ton script manipule.",
-            quiz: quiz(
-              "Que renvoie querySelector quand le sélecteur ne correspond à rien ?",
-              ["Une liste vide", "null", "Le premier bouton"],
-              1,
-              "Vérifie le sélecteur et l’existence de l’élément avant de lire ses propriétés.",
-            ),
-            link: mdn + "Web/API/Document/querySelector",
-          }),
-          lesson({
-            id: "evenements",
-            title: "Clic, saisie et soumission de formulaire",
-            minutes: 20,
-            summary:
-              "Attache une fonction à l’événement adapté et récupère la valeur saisie au moment où elle change.",
-            sections: [
-              section(
-                "Écouter une action",
-                "addEventListener associe un type d’événement à une fonction. Le navigateur appelle la fonction lorsque l’action se produit. L’objet événement fournit des informations sur cette action.",
-                [
-                  "click convient à l’activation d’un bouton.",
-                  "input est déclenché pendant la saisie.",
-                  "submit se produit lorsque le formulaire est soumis, aussi au clavier.",
-                ],
-              ),
-              section(
-                "Prendre en charge un formulaire",
-                "Dans cet exercice, preventDefault permet de gérer la soumission dans la page. Lis et nettoie la saisie avec trim, puis affiche un retour compréhensible.",
-                [
-                  "Donne un label au champ.",
-                  'Garde un bouton type="submit" pour permettre la validation au clavier.',
-                  "Un formulaire relié à un serveur exige aussi une validation côté serveur.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Événements",
-              '<main><h1>Message personnalisé</h1><form id="formulaire" class="actions"><label>Prénom <input id="prenom" required maxlength="30"></label><button>Saluer</button></form><p id="saisie"></p><p id="reponse" aria-live="polite"></p></main>',
-              `const champ = document.querySelector("#prenom");
-champ.addEventListener("input", () => {
-  document.querySelector("#saisie").textContent = champ.value.length + " caractères";
-});
-document.querySelector("#formulaire").addEventListener("submit", evenement => {
-  evenement.preventDefault();
-  const prenom = champ.value.trim();
-  document.querySelector("#reponse").textContent = prenom ? "Bienvenue, " + prenom + " !" : "Écris ton prénom.";
-});`,
-            ),
-            task: 'Ajoute un bouton type="button" qui vide le champ et le résultat.',
-            takeaway:
-              "Écoute submit pour les formulaires afin de prendre en charge la souris et le clavier.",
-            quiz: quiz(
-              "Quel événement suivre pour afficher un compteur pendant la saisie ?",
-              ["input", "load", "submit"],
-              0,
-              "input se déclenche à chaque modification de la valeur par l’utilisateur.",
-            ),
-            link: mdn + "Web/API/EventTarget/addEventListener",
-          }),
-        ],
-      },
-    ],
+    chapters: beginner,
   },
   {
     id: "intermediaire",
     title: "Intermédiaire",
-    subtitle: "Tableaux, objets et données distantes",
+    subtitle: "POO et méthodes avancées",
     color: levelColors[1],
     objective:
-      "Organiser des données, les transformer puis lire une API ou un stockage local sans recharger la page.",
+      "Maîtriser la POO en JavaScript, méthodes array modernes, destructuring, modules ES6.",
     prerequisites:
-      "Savoir écrire une fonction, traiter un événement et modifier le DOM.",
+      "Niveau débutant complété. Bases JavaScript solides.",
     outcomes: [
-      "Transformer des tableaux d’objets.",
-      "Attendre une réponse et traiter les erreurs réseau.",
-      "Sauvegarder des données et séparer le code en modules.",
+      "Créer classes ES6 avec héritage",
+      "Utiliser map, filter, reduce",
+      "Maîtriser destructuring et spread",
+      "Organiser code en modules",
     ],
-    projects: javascriptProjects.intermediaire,
-    chapters: [
-      {
-        id: "donnees",
-        title: "Objets, tableaux et JSON",
-        description: "Donner une forme lisible à des données plus riches.",
-        lessons: [
-          lesson({
-            id: "objets-json",
-            title: "Objets et format JSON",
-            minutes: 19,
-            summary:
-              "Un objet JavaScript regroupe des propriétés. JSON représente des données sous forme de texte, pour les échanger ou les enregistrer.",
-            sections: [
-              section(
-                "Nommer les propriétés",
-                'Un objet comme { nom: "Léa", age: 28 } donne un nom à chaque information. Lis nom avec utilisateur.nom et emploie les crochets quand le nom de la propriété est calculé.',
-                [
-                  "Une propriété peut contenir une liste ou un autre objet.",
-                  "Un tableau d’objets représente bien une collection de projets ou de personnes.",
-                  "La déstructuration extrait des propriétés dans des variables.",
-                ],
-              ),
-              section(
-                "Passer du texte aux données",
-                "JSON.stringify transforme des données en texte. JSON.parse lit du JSON et reconstruit les valeurs correspondantes. Le JSON impose notamment des guillemets doubles autour des noms de propriétés.",
-                [
-                  "Vérifie la forme des données après un JSON.parse.",
-                  "Utilise try/catch si le texte peut être invalide.",
-                  "Les fonctions et les méthodes ne font pas partie du format JSON.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Objets et JSON",
-              '<main><h1>De l’objet au JSON</h1><pre class="output" id="json"></pre></main>',
-              `const utilisateur = { nom: "Léa", age: 28, competences: ["HTML", "JavaScript"] };
-const texte = JSON.stringify(utilisateur, null, 2);
-const { nom, competences } = JSON.parse(texte);
-document.querySelector("#json").textContent = texte;
-console.log(nom, competences.join(", "));`,
-            ),
-            task: "Ajoute une propriété projets qui contient deux objets avec un titre et un état.",
-            takeaway:
-              "Tu manipules des objets dans le programme et tu échanges leur représentation JSON sous forme de texte.",
-            quiz: quiz(
-              "Quelle méthode lit une chaîne JSON ?",
-              ["JSON.stringify", "Object.keys", "JSON.parse"],
-              2,
-              "JSON.parse transforme le texte JSON en valeur JavaScript.",
-            ),
-            link: js + "Reference/Global_Objects/JSON",
-          }),
-          lesson({
-            id: "methodes-tableaux",
-            title: "map, filter, forEach et reduce",
-            minutes: 24,
-            summary:
-              "Choisis une méthode de tableau selon le résultat attendu. Cela rend l’intention du code visible au premier regard.",
-            sections: [
-              section(
-                "Transformer et sélectionner",
-                "map fabrique un nouveau tableau à partir des résultats de la fonction. filter garde les éléments pour lesquels la fonction renvoie une valeur vraie.",
-                [
-                  "map transforme chaque projet en un titre.",
-                  "filter sélectionne les projets déjà publiés.",
-                  "Tu peux enchaîner filter puis map pour préparer une liste de titres.",
-                ],
-              ),
-              section(
-                "Parcourir et accumuler",
-                "forEach appelle une fonction pour chaque élément, par exemple pour écrire dans la console. reduce accumule une valeur en traversant le tableau, comme une somme ou un regroupement.",
-                [
-                  "Donne une valeur initiale à reduce, par exemple 0 pour une somme.",
-                  "Quand une fonction reçoit un objet du tableau, évite de le modifier par inadvertance.",
-                  "Une boucle for...of reste pratique si tu dois t’arrêter en cours de parcours.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Méthodes de tableaux",
-              '<main><h1>Projets publiés</h1><pre class="output" id="resultat"></pre></main>',
-              `const projets = [
-  { titre: "Portfolio", publie: true, vues: 12 },
-  { titre: "Carnet", publie: false, vues: 0 },
-  { titre: "Météo", publie: true, vues: 8 }
-];
-const publies = projets.filter(projet => projet.publie);
-const titres = publies.map(projet => projet.titre);
-const total = publies.reduce((somme, projet) => somme + projet.vues, 0);
-publies.forEach(projet => console.log(projet.titre, projet.vues));
-document.querySelector("#resultat").textContent = titres.join(", ") + " · " + total + " vues";`,
-            ),
-            task: "Ajoute un projet publié de 5 vues et affiche seulement les titres dont le nombre de vues dépasse 10.",
-            takeaway:
-              "Sélectionne avec filter, transforme avec map et calcule une valeur finale avec reduce.",
-            quiz: quiz(
-              "Quelle méthode garde seulement les éléments qui satisfont une condition ?",
-              ["forEach", "filter", "map"],
-              1,
-              "filter renvoie un nouveau tableau contenant les éléments retenus.",
-            ),
-            link: js + "Reference/Global_Objects/Array",
-          }),
-        ],
-      },
-      {
-        id: "asynchrone",
-        title: "Promesses et appels API",
-        description: "Attendre des données et réagir aux états d’une requête.",
-        lessons: [
-          lesson({
-            id: "promesses",
-            title: "Promesses, async et await",
-            minutes: 22,
-            summary:
-              "Une promesse représente le résultat futur d’une opération. Avec await, une fonction async attend le résultat pendant que l’interface peut continuer à répondre.",
-            sections: [
-              section(
-                "Lire les états d’une promesse",
-                "Une promesse est en attente, puis résolue avec une valeur ou rejetée avec une erreur. Une fonction async retourne toujours une promesse.",
-                [
-                  "await reprend l’exécution de cette fonction quand le résultat arrive.",
-                  "try/catch permet de traiter un rejet attendu.",
-                  "finally remet l’interface dans un état utilisable après un succès ou un échec.",
-                ],
-              ),
-              section(
-                "Informer pendant l’attente",
-                "Avant de démarrer une opération lente, indique l’attente dans l’interface. Remplace cette indication par le résultat ou par un message d’erreur précis.",
-                [
-                  "L’exemple simule une opération de 700 ms pour observer l’ordre des événements.",
-                  "Évite les demandes en double quand un bouton lance la même tâche.",
-                  "Définis ce que l’utilisateur peut encore faire pendant le chargement.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Attendre une promesse",
-              '<main><h1>Une opération asynchrone</h1><button id="charger">Lancer</button><p id="etat" role="status">Prêt.</p></main>',
-              `const bouton = document.querySelector("#charger");
-const etat = document.querySelector("#etat");
-const attendre = delai => new Promise(resolve => setTimeout(resolve, delai));
-bouton.addEventListener("click", async () => {
-  bouton.disabled = true;
-  etat.textContent = "Chargement simulé…";
-  try {
-    await attendre(700);
-    etat.textContent = "Les données simulées sont prêtes.";
-  } catch (erreur) {
-    etat.textContent = erreur.message;
-  } finally {
-    bouton.disabled = false;
-  }
-});`,
-            ),
-            task: "Remplace la résolution par un rejet pour vérifier le message d’erreur et la réactivation du bouton.",
-            takeaway:
-              "Les états d’attente, de réussite et d’échec font partie du fonctionnement d’une interface.",
-            quiz: quiz(
-              "Quelle partie s’exécute après le try ou le catch ?",
-              ["finally", "await", "else"],
-              0,
-              "finally sert ici à réactiver le bouton dans les deux cas.",
-            ),
-            link: js + "Guide/Using_promises",
-          }),
-          lesson({
-            id: "fetch-api",
-            title: "Interroger une API avec fetch",
-            minutes: 24,
-            summary:
-              "Envoie une requête HTTP, vérifie la réponse puis utilise le JSON pour mettre à jour la page.",
-            sections: [
-              section(
-                "Comprendre une requête",
-                "Une API expose des adresses appelées endpoints. Avec GET, tu peux lire des informations. L’API de géocodage accepte ici un nom de ville et renvoie des coordonnées.",
-                [
-                  "URLSearchParams encode les paramètres de recherche.",
-                  "await fetch renvoie un objet Response.",
-                  "response.ok indique une réponse HTTP de succès. Vérifie-le avant response.json().",
-                ],
-              ),
-              section(
-                "Traiter les résultats",
-                "Un service peut répondre avec une liste vide, une erreur ou une structure différente de celle attendue. Vérifie chaque cas et explique-le dans la page.",
-                [
-                  "Sépare l’erreur HTTP du cas où aucune ville ne correspond.",
-                  "Le mini-projet météo enchaîne deux appels, géocodage puis mesures actuelles.",
-                  "L’atelier autorise les API utilisées dans les exercices. Tu peux changer d’API dans ton propre projet local.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Une requête fetch",
-              '<main><h1>Trouver des coordonnées</h1><button id="charger">Chercher Toamasina</button><p id="etat" role="status"></p></main>',
-              `const bouton = document.querySelector("#charger");
-const etat = document.querySelector("#etat");
-bouton.addEventListener("click", async () => {
-  etat.textContent = "Recherche en cours…";
-  bouton.disabled = true;
-  try {
-    const params = new URLSearchParams({ name: "Toamasina", count: "1", language: "fr" });
-    const reponse = await fetch("https://geocoding-api.open-meteo.com/v1/search?" + params, { signal: AbortSignal.timeout(8000) });
-    if (!reponse.ok) throw new Error("HTTP " + reponse.status);
-    const { results } = await reponse.json();
-    const ville = results?.[0];
-    etat.textContent = ville ? ville.name + " · " + ville.latitude + ", " + ville.longitude : "Ville introuvable.";
-  } catch (erreur) { etat.textContent = "Recherche indisponible : " + erreur.message; }
-  finally { bouton.disabled = false; }
-});`,
-            ),
-            task: "Remplace le nom de la ville par une autre puis ajoute un champ pour que l’utilisateur choisisse le lieu.",
-            takeaway:
-              "Lis le contrat de l’API et traite les réponses possibles avant d’afficher un résultat.",
-            quiz: quiz(
-              "Quelle propriété vérifier pour détecter un code HTTP 404 ?",
-              ["response.style", "response.length", "response.ok"],
-              2,
-              "fetch peut fournir une réponse HTTP en erreur. response.ok permet d’identifier les réponses de succès.",
-            ),
-            link: mdn + "Web/API/Fetch_API/Using_Fetch",
-          }),
-        ],
-      },
-      {
-        id: "stockage-modules",
-        title: "Stockage local et premiers modules",
-        description: "Retrouver les données et partager les fonctions.",
-        lessons: [
-          lesson({
-            id: "local-storage",
-            title: "Conserver des données avec localStorage",
-            minutes: 20,
-            summary:
-              "Enregistre une petite valeur dans le navigateur et recharge-la au démarrage. Les clés et les valeurs de localStorage sont des chaînes.",
-            sections: [
-              section(
-                "Sauvegarder et relire",
-                "setItem enregistre une valeur sous une clé. getItem relit la valeur et renvoie null si la clé n’existe pas. Pour une liste ou un objet, utilise JSON.stringify et JSON.parse.",
-                [
-                  "Choisis une clé stable, par exemple prefere-theme.",
-                  "Définis une valeur par défaut à la première ouverture.",
-                  "removeItem efface une clé précise.",
-                ],
-              ),
-              section(
-                "Limiter ce que tu conserves",
-                "Le stockage local convient aux préférences et aux petits brouillons. Dans l’atelier, il est propre à l’exercice. Dans une application, pense à la taille disponible et aux données à partager entre appareils.",
-                [
-                  "Enregistre quand une valeur change.",
-                  "Traite le cas d’une ancienne sauvegarde invalide.",
-                  "Teste une relance de l’aperçu pour vérifier que la préférence revient.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Préférence enregistrée",
-              '<main><h1>Une préférence locale</h1><label>Mode <select id="mode"><option value="clair">Clair</option><option value="sombre">Sombre</option></select></label><p id="etat" role="status"></p></main>',
-              `const mode = document.querySelector("#mode");
-const cle = "theme-exercice";
-const sauvegarde = localStorage.getItem(cle);
-mode.value = sauvegarde === "sombre" ? "sombre" : "clair";
-function afficher() {
-  document.body.classList.toggle("sombre", mode.value === "sombre");
-  document.querySelector("#etat").textContent = "Mode choisi : " + mode.value;
-}
-mode.addEventListener("change", () => {
-  localStorage.setItem(cle, mode.value);
-  afficher();
-});
-afficher();`,
-              { css: "body.sombre { background: #122b43; color: #edf6ff; }" },
-            ),
-            task: "Choisis Sombre, relance l’aperçu puis ajoute un bouton qui supprime la préférence et remet le mode Clair.",
-            takeaway:
-              "Sauvegarde une petite donnée utile et prévois toujours son absence au premier lancement.",
-            quiz: quiz(
-              "Que renvoie getItem pour une clé absente ?",
-              ["Une chaîne vide", "null", "false"],
-              1,
-              "getItem renvoie null lorsque la clé n’a pas encore été enregistrée.",
-            ),
-            link: mdn + "Web/API/Window/localStorage",
-          }),
-          lesson({
-            id: "modules-es",
-            title: "Exporter et importer une fonction",
-            minutes: 18,
-            summary:
-              "Découpe le code en fichiers et indique explicitement quelles fonctions les autres fichiers peuvent utiliser.",
-            sections: [
-              section(
-                "Créer un module",
-                "Un module a sa propre portée. export rend une valeur disponible. import la récupère à partir du chemin du fichier ou d’un paquet géré par l’outillage.",
-                [
-                  "Place la fonction de calcul dans calcul.js.",
-                  'Dans script.js, importe-la avec import { calculer } from "./calcul.js".',
-                  "Utilise un serveur local pour tester les modules sur ton ordinateur.",
-                ],
-              ),
-              section(
-                "Vérifier les noms et chemins",
-                "Un import nommé doit reprendre le nom exporté, sauf renommage explicite avec as. Un import relatif commence généralement par ./ ou ../.",
-                [
-                  "Ouvre calcul.js dans l’explorateur de l’atelier pour voir son contenu.",
-                  "Vérifie les majuscules dans les noms de fichiers.",
-                  'Utilise type="module" dans le HTML pour charger ton fichier d’entrée.',
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Deux fichiers JavaScript",
-              '<main><h1>Un calcul réutilisé</h1><output id="total" class="output"></output></main>',
-              `import { calculer } from "./calcul.js";
-document.querySelector("#total").textContent = "Total : " + calculer(7, 4);`,
-              {
-                modules: {
-                  "calcul.js":
-                    "export const calculer = (prix, quantite) => prix * quantite;",
-                },
-              },
-            ),
-            task: "Ajoute un fichier format.js avec une fonction pour afficher le total puis importe-la.",
-            takeaway:
-              "Un module rend les dépendances entre tes fichiers explicites.",
-            quiz: quiz(
-              "Quel mot-clé expose une fonction à un autre fichier ?",
-              ["return", "import", "export"],
-              2,
-              "export rend la fonction disponible pour un import depuis un autre module.",
-            ),
-            link: js + "Guide/Modules",
-          }),
-        ],
-      },
-    ],
+    projects: [],
+    chapters: intermediate,
   },
   {
     id: "avance",
     title: "Avancé",
-    subtitle: "Modules, performance et écosystème",
+    subtitle: "DOM, CSS, Async et Fetch API",
     color: levelColors[2],
     objective:
-      "Rendre une application plus fiable en comprenant l’ordre d’exécution, la durée de vie des objets et les frontières entre modules.",
+      "Créer applications web complètes : manipuler DOM, gérer événements, CSS dynamique, appels API avec Fetch.",
     prerequisites:
-      "Être à l’aise avec les tableaux, les objets, les promesses et les premiers modules ES.",
+      "Niveaux débutant et intermédiaire complétés. Maîtrise POO.",
     outcomes: [
-      "Prévoir l’ordre des tâches et nettoyer les ressources.",
-      "Utiliser classes, prototypes, champs privés et modules.",
-      "Situer Node.js, npm, React, Vue et TypeScript dans un projet.",
+      "Comprendre et manipuler le DOM",
+      "Gérer événements utilisateur",
+      "Modifier CSS dynamiquement",
+      "Programmer de manière asynchrone (async/await)",
+      "Consommer API REST avec Fetch",
+      "Créer application web interactive",
     ],
-    projects: javascriptProjects.avance,
-    chapters: [
-      {
-        id: "execution",
-        title: "Mécanique interne et asynchronisme",
-        description: "Comprendre quand le code s’exécute et ce qu’il conserve.",
-        lessons: [
-          lesson({
-            id: "event-loop",
-            title: "Pile d’exécution et boucle d’événements",
-            minutes: 22,
-            summary:
-              "Observe la différence entre les instructions immédiates, les microtâches de promesses et les tâches de temporisation.",
-            sections: [
-              section(
-                "Suivre la pile d’appels",
-                "Quand une fonction en appelle une autre, JavaScript garde la trace des appels en cours dans une pile. Une fois la fonction terminée, l’exécution reprend à l’appel précédent.",
-                [
-                  "Le code synchrone courant va jusqu’à la fin de sa tâche.",
-                  "Un long calcul synchrone peut rendre la page momentanément moins réactive.",
-                  "setTimeout demande une exécution ultérieure, même avec un délai de zéro.",
-                ],
-              ),
-              section(
-                "Prédire l’ordre",
-                "Une fois la pile vide, les réactions de promesses sont exécutées dans la file des microtâches avant la prochaine tâche. Vérifie cet ordre dans la console.",
-                [
-                  "Dans l’exemple, Début et Fin sont synchrones.",
-                  "Le then de la promesse s’exécute ensuite.",
-                  "Le timer affiche son message après ces microtâches.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Event Loop",
-              '<main><h1>Dans quel ordre ?</h1><pre class="output" id="ordre"></pre></main>',
-              `function tracer(texte) {
-  console.log(texte);
-  document.querySelector("#ordre").textContent += texte + "\\n";
-}
-tracer("Début");
-setTimeout(() => tracer("Tâche du timer"), 0);
-Promise.resolve().then(() => tracer("Microtâche de promesse"));
-tracer("Fin");`,
-            ),
-            task: "Prédit l’ordre avant de lancer l’aperçu. Ajoute queueMicrotask et explique sa position.",
-            takeaway:
-              "Finir le code synchrone libère la pile. Les microtâches passent avant la prochaine tâche.",
-            quiz: quiz(
-              "Après Début et Fin, quel message arrive dans cet exemple ?",
-              [
-                "Tâche du timer",
-                "Microtâche de promesse",
-                "Un message au hasard",
-              ],
-              1,
-              "La réaction then rejoint la file des microtâches, traitée avant la prochaine tâche du timer.",
-            ),
-            link: js + "Event_loop",
-          }),
-          lesson({
-            id: "closures-memoire",
-            title: "Portée, closures et durée de vie",
-            minutes: 24,
-            summary:
-              "Une closure permet à une fonction de retrouver les variables qui existaient à sa création. Cette propriété aide à organiser l’état et demande d’en comprendre la durée de vie.",
-            sections: [
-              section(
-                "Conserver une variable dans une fonction",
-                "creerCompteur crée une variable nombre puis retourne une fonction qui la modifie. Chaque appel à creerCompteur crée un compteur indépendant.",
-                [
-                  "let et const ont une portée de bloc.",
-                  "La fonction retournée garde accès aux variables de son environnement lexical.",
-                  "Deux fonctions créées par deux appels distincts peuvent garder des valeurs différentes.",
-                ],
-              ),
-              section(
-                "Relâcher les ressources",
-                "Le ramasse-miettes peut récupérer les objets devenus inaccessibles. Un timer ou un écouteur encore actif peut maintenir des références dont l’interface n’a plus besoin.",
-                [
-                  "Garde l’identifiant d’un intervalle pour appeler clearInterval.",
-                  "Retire un écouteur lorsqu’un composant disparaît ou annule-le avec un signal.",
-                  "Le Memory nettoie ses timers avant une nouvelle partie.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Deux closures",
-              '<main><h1>Compteurs indépendants</h1><div class="actions"><button id="a">Compteur A</button><button id="b">Compteur B</button><button id="arreter">Détacher les écouteurs</button></div><p id="etat" role="status"></p></main>',
-              `function creerCompteur(nom) {
-  let nombre = 0;
-  return () => {
-    nombre += 1;
-    document.querySelector("#etat").textContent = nom + " : " + nombre;
-  };
-}
-const controleur = new AbortController();
-for (const nom of ["a", "b"]) {
-  document.querySelector("#" + nom).addEventListener("click", creerCompteur(nom), { signal: controleur.signal });
-}
-document.querySelector("#arreter").addEventListener("click", () => {
-  controleur.abort();
-  document.querySelector("#etat").textContent = "Les deux écouteurs sont détachés.";
-});`,
-            ),
-            task: "Clique plusieurs fois sur A puis sur B. Donne à chaque compteur une valeur initiale différente.",
-            takeaway:
-              "Une closure conserve une référence à son environnement. Nettoie les tâches qui gardent inutilement cet environnement en vie.",
-            quiz: quiz(
-              "Pourquoi A et B ont-ils des scores distincts ?",
-              [
-                "Chaque appel crée sa propre variable nombre",
-                "Le navigateur mélange les scores",
-                "Les deux boutons partagent une variable globale",
-              ],
-              0,
-              "creerCompteur crée un nouvel environnement à chaque appel.",
-            ),
-            link: js + "Guide/Closures",
-          }),
-          lesson({
-            id: "requetes-paralleles",
-            title: "Promise.all et gestion des erreurs",
-            minutes: 21,
-            summary:
-              "Démarre plusieurs opérations indépendantes ensemble et traite un échec en conservant une interface compréhensible.",
-            sections: [
-              section(
-                "Lancer des tâches indépendantes",
-                "Promise.all attend toutes les promesses qui lui sont fournies. Le tableau final garde l’ordre des entrées, même quand une opération se termine avant une autre.",
-                [
-                  "Appelle les fonctions avant d’attendre le groupe.",
-                  "Regroupe les opérations qui doivent toutes réussir ensemble.",
-                  "Utilise Promise.allSettled quand des résultats partiels restent utiles.",
-                ],
-              ),
-              section(
-                "Gérer un rejet",
-                "Si l’une des promesses échoue, await Promise.all déclenche le catch. Les autres opérations peuvent continuer. Annule les requêtes qui deviennent inutiles si elles acceptent un signal.",
-                [
-                  "Affiche un message d’erreur contextualisé.",
-                  "Réactive les commandes dans finally.",
-                  "Utilise la console pour conserver les détails techniques du diagnostic.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Travail en parallèle",
-              '<main><h1>Deux tâches en parallèle</h1><button id="lancer">Charger les deux</button><label><input id="echec" type="checkbox"> Simuler un échec</label><p id="etat" role="status"></p></main>',
-              `const bouton = document.querySelector("#lancer");
-const etat = document.querySelector("#etat");
-const tache = (nom, delai, echoue = false) => new Promise((resolve, reject) => {
-  setTimeout(() => echoue ? reject(new Error(nom + " indisponible")) : resolve(nom), delai);
-});
-bouton.addEventListener("click", async () => {
-  bouton.disabled = true;
-  etat.textContent = "Deux opérations simulées en cours…";
-  try {
-    const resultats = await Promise.all([tache("Profil", 550), tache("Projets", 250, document.querySelector("#echec").checked)]);
-    etat.textContent = resultats.join(" et ") + " chargés.";
-  } catch (erreur) { etat.textContent = erreur.message; }
-  finally { bouton.disabled = false; }
-});`,
-            ),
-            task: "Remplace Promise.all par Promise.allSettled et affiche uniquement les valeurs qui ont réussi.",
-            takeaway:
-              "Choisis le regroupement selon ce que l’interface peut faire avec des données partielles.",
-            quiz: quiz(
-              "Que fait Promise.all si une des opérations rejette ?",
-              [
-                "Il ignore l’erreur",
-                "Il transforme le résultat en chaîne vide",
-                "La promesse du groupe est rejetée",
-              ],
-              2,
-              "Le rejet du groupe permet de traiter l’échec dans catch.",
-            ),
-            link: js + "Reference/Global_Objects/Promise/all",
-          }),
-        ],
-      },
-      {
-        id: "architecture",
-        title: "Classes, prototypes et modules",
-        description: "Isoler les responsabilités et les données internes.",
-        lessons: [
-          lesson({
-            id: "classes-prototypes",
-            title: "Classes, héritage et champs privés",
-            minutes: 24,
-            summary:
-              "Définis les données et les actions d’un objet avec une classe. Les méthodes définies dans la classe sont partagées via son prototype.",
-            sections: [
-              section(
-                "Construire une instance",
-                "constructor initialise les propriétés de chaque instance créée avec new. Les méthodes définies dans la classe agissent sur cette instance à travers this.",
-                [
-                  "Une classe Score peut porter la logique d’un compteur.",
-                  "extends permet à une classe de spécialiser une autre classe.",
-                  "super appelle le constructeur parent ou une méthode de la classe parente.",
-                ],
-              ),
-              section(
-                "Protéger les invariants",
-                "Un champ privé commence par #. Il peut être lu ou modifié depuis la classe qui le déclare. Propose une méthode publique pour modifier sa valeur avec une règle.",
-                [
-                  "Garde les détails de calcul à l’intérieur de la classe.",
-                  "Teste les méthodes sans dépendre de la page HTML.",
-                  "Le Memory sépare les données d’une carte et les règles de la partie.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Classe Score",
-              '<main><h1>Une classe de score</h1><button id="gagner">Gagner une manche</button><output class="output" id="score">0</output></main>',
-              `class Score {
-  #points = 0;
-  ajouter(points) { this.#points += points; }
-  lire() { return this.#points; }
-}
-class ScoreAvecBonus extends Score {
-  gagner() { super.ajouter(2); }
-}
-const partie = new ScoreAvecBonus();
-document.querySelector("#gagner").addEventListener("click", () => {
-  partie.gagner();
-  document.querySelector("#score").textContent = partie.lire() + " points";
-});`,
-            ),
-            task: "Ajoute une méthode remettreAZero dans Score. Appelle-la depuis un nouveau bouton.",
-            takeaway:
-              "Une classe rend les règles d’un objet explicites et garde ses données internes sous contrôle.",
-            quiz: quiz(
-              "Quel préfixe déclare un champ privé dans une classe ?",
-              ["$", "#", "@"],
-              1,
-              "Un nom comme #points déclare un champ privé propre à la classe.",
-            ),
-            link: js + "Reference/Classes",
-          }),
-          lesson({
-            id: "architecture-modules",
-            title: "Organiser le code par responsabilité",
-            minutes: 22,
-            summary:
-              "Sépare les calculs, les données et l’affichage. Tu peux alors relire ou réutiliser une partie du programme sans parcourir tout le projet.",
-            sections: [
-              section(
-                "Tracer des frontières claires",
-                "Un fichier de calcul peut recevoir des valeurs et retourner un résultat. Un fichier d’interface lit le DOM et appelle le calcul. Cette séparation facilite les essais avec plusieurs entrées.",
-                [
-                  "Expose les seules fonctions dont les autres modules ont besoin.",
-                  "Évite les dépendances circulaires entre fichiers de haut niveau.",
-                  "Donne aux modules un nom qui décrit leur rôle, comme pistes.js ou jeu.js.",
-                ],
-              ),
-              section(
-                "Utiliser les exports adaptés",
-                "Un fichier peut avoir plusieurs exports nommés et au plus un export default. Préfère une convention cohérente dans le projet. Lis la déclaration export pour écrire l’import correspondant.",
-                [
-                  "L’import d’un export par défaut s’écrit sans accolades.",
-                  "Les exports nommés s’importent avec accolades.",
-                  "Teste l’import et le contrat de chaque fonction avant d’ajouter de l’interface.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Organiser des modules",
-              '<main><h1>Une fonction de formatage</h1><p id="sortie" class="output"></p></main>',
-              `import formater from "./format.js";
-import { projets } from "./projets.js";
-document.querySelector("#sortie").textContent = formater(projets.length);`,
-              {
-                modules: {
-                  "format.js":
-                    'export default function formater(nombre) { return nombre + " projets disponibles"; }',
-                  "projets.js":
-                    'export const projets = [{ titre: "Météo" }, { titre: "Memory" }];',
-                },
-              },
-            ),
-            task: "Ajoute un export nommé dans format.js pour afficher un résultat au singulier quand nombre vaut 1.",
-            takeaway:
-              "Des modules courts et orientés vers un rôle simplifient les changements à venir.",
-            quiz: quiz(
-              "Comment importer un export par défaut ?",
-              [
-                'import formater from "./format.js"',
-                "import { default() }",
-                "export formater",
-              ],
-              0,
-              "L’import par défaut choisit un nom local, sans accolades.",
-            ),
-            link: js + "Guide/Modules",
-          }),
-        ],
-      },
-      {
-        id: "ecosysteme",
-        title: "Outillage et écosystème moderne",
-        description: "Passer d’un script à un projet organisé.",
-        lessons: [
-          lesson({
-            id: "node-npm-build",
-            title: "Node.js, npm et outils de build",
-            minutes: 23,
-            summary:
-              "Comprends le rôle de chaque outil dans un projet local avant de lancer des commandes dans le terminal.",
-            sections: [
-              section(
-                "Préparer un projet",
-                "Node.js exécute JavaScript sur ton ordinateur ou sur un serveur. npm installe les paquets du projet. package.json décrit les dépendances et les scripts. package-lock.json garde les versions résolues.",
-                [
-                  "Ouvre le terminal dans le dossier qui contient package.json.",
-                  "npm ci installe les versions du fichier de verrouillage lorsqu’il est présent et synchronisé.",
-                  "npm run dev appelle le script dev défini dans package.json.",
-                ],
-              ),
-              section(
-                "Développer et préparer une livraison",
-                "Vite fournit un serveur de développement puis une commande de build. Webpack assemble aussi des modules et des ressources selon sa configuration. Le résultat peut ensuite être servi par un hébergement web adapté.",
-                [
-                  "Le serveur local permet de tester pendant l’écriture du code.",
-                  "Une commande de build prépare les fichiers à servir.",
-                  "L’exemple ci-dessous affiche les commandes pour ton terminal. L’atelier exécute le JavaScript de la page.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Repères pour VS Code",
-              '<main><h1>Dans le terminal du projet</h1><pre id="commandes" class="output"></pre></main>',
-              `const commandes = ["npm ci", "npm run dev", "npm run build"];
-document.querySelector("#commandes").textContent = commandes.join("\\n");
-console.log("Repère le dossier qui contient package.json avant de lancer ces commandes.");`,
-            ),
-            task: "Ouvre le package.json de DevAfrica et retrouve les scripts dev et build. Explique quand utiliser chacun.",
-            takeaway:
-              "Node exécute les outils, npm installe les dépendances et Vite prépare l’application.",
-            quiz: quiz(
-              "Quel fichier déclare les scripts dev et build ?",
-              ["styles.css", "package.json", "index.html"],
-              1,
-              "La propriété scripts de package.json définit les commandes disponibles via npm run.",
-            ),
-            link: "https://vite.dev/guide/",
-          }),
-          lesson({
-            id: "react-vue-typescript",
-            title: "React, Vue et TypeScript",
-            minutes: 19,
-            summary:
-              "Situe les outils d’interface et le typage pour choisir la suite de ton apprentissage.",
-            sections: [
-              section(
-                "Construire en composants",
-                "React est une bibliothèque d’interface centrée sur les composants. Vue propose un cadre progressif avec composants et réactivité. Avec ces outils, des données et un état déterminent ce que l’écran affiche.",
-                [
-                  "Les compétences en JavaScript, DOM et événements restent utiles.",
-                  "Un composant réunit une responsabilité d’interface identifiable.",
-                  "Le parcours React reprend les concepts avec des exemples JSX exécutables.",
-                ],
-              ),
-              section(
-                "Décrire les formes des données",
-                "TypeScript ajoute des types vérifiés par ses outils avant exécution. Le code livré au navigateur est du JavaScript. Les données reçues d’une API demandent toujours des contrôles à l’exécution.",
-                [
-                  "Commence par typer les paramètres, les retours et les objets de ton domaine.",
-                  "Utilise un type union quand une donnée a plusieurs états possibles.",
-                  "L’atelier peut transformer un fichier .ts en JavaScript. VS Code et le compilateur TypeScript vérifient les types.",
-                ],
-              ),
-            ],
-            files: jsFiles(
-              "Une notion de TypeScript",
-              '<main><h1>Choisir la suite</h1><p id="suite" class="output"></p></main>',
-              `import { decrire } from "./outils.ts";
-document.querySelector("#suite").textContent = decrire({ nom: "React", role: "bibliothèque d’interface" });`,
-              {
-                modules: {
-                  "outils.ts":
-                    'type Outil = { nom: string; role: string };\n\nexport function decrire(outil: Outil): string {\n  return outil.nom + " · " + outil.role;\n}',
-                },
-              },
-            ),
-            task: "Ajoute une propriété optionnelle au type Outil et affiche-la quand elle est renseignée.",
-            takeaway:
-              "Les composants organisent l’interface. Les types décrivent la forme des données utilisées par le code.",
-            quiz: quiz(
-              "Quel outil ajoute des annotations de types à JavaScript ?",
-              ["Vue", "React", "TypeScript"],
-              2,
-              "TypeScript étend JavaScript avec une syntaxe de types et des vérifications statiques.",
-            ),
-            link: "https://www.typescriptlang.org/docs/handbook/typescript-from-scratch.html",
-          }),
-        ],
-      },
-    ],
+    projects: [],
+    chapters: advanced,
   },
 ];
+

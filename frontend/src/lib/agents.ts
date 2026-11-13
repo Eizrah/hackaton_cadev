@@ -12,7 +12,7 @@ export async function askTutor(
 ): Promise<string> {
   if (import.meta.env.VITE_AGENT_MODE === "api") {
     const response = await apiRequest<{ answer: string }>(
-      "agents/learning/chat/",
+      "api/agents/learning/chat/",
       { method: "POST", body: JSON.stringify({ messages, language, ...(context ? { context } : {}) }) },
     );
     if (typeof response.answer !== "string")
