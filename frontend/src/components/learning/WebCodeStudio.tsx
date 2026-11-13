@@ -60,6 +60,7 @@ import {
 } from "../../lib/compilerProtocol";
 import SqlStudioPanel from "./SqlStudioPanel";
 import { useSqlStudio } from "../../lib/sql/useSqlStudio";
+import { codeExecutionApi, type SupportedLanguage } from "../../api/codeExecution";
 import "./web-learning.css";
 
 const codeKeywords =
@@ -314,6 +315,56 @@ export default function WebCodeStudio({
       setBusy(false);
     }
   }
+  
+  // Mapper les langages compiler vers l'API Docker
+  function mapLanguageToDockerAPI(compilerLang: string): SupportedLanguage | null {
+    const mapping: Record<string, SupportedLanguage> = {
+      'python': 'python',
+      'nodejs': 'javascript',
+      'typescript': 'typescript',
+      'c': 'c',
+      'cpp': 'cpp',
+      'java': 'java',
+      'php': 'php',
+    };
+    return mapping[compilerLang] || null;
+  }
+  
+  // Exécuter du code via l'API Docker
+  async function runWithDockerAPI(language: SupportedLanguage, sources: Record<string, string>, stdinInput: string) {
+    try {
+      // Prendre le premier fichier source (ou combiner si nécessaire)
+      const mainFile = Object.keys(sources)[0];
+      const code = sources[mainFile];
+      
+      const response = await codeExecutionApi.execute({
+        language,
+        code,
+        stdin: stdinInput
+      });
+      
+      // Convertir la réponse API au format CompilerResult
+      const result: CompilerResult = {
+        status: response.data.status === 'success' ? 'ok' : 
+                response.data.status === 'timeout' ? 'timeout' : 'runtime-error',
+        stage: 'run',
+        diagnostics: '',
+        stdout: response.data.stdout,
+        stderr: response.data.stderr,
+        exitCode: response.data.status === 'success' ? 0 : 1
+      };
+      
+      return result;
+    } catch (error: any) {
+      // Gérer les erreurs réseau ou API
+      throw new Error(
+        error.response?.data?.erreur || 
+        error.message || 
+        'Service d\'exécution indisponible'
+      );
+    }
+  }
+  
   async function run() {
     if (building.current) return;
     setTab("preview");
@@ -326,6 +377,38 @@ export default function WebCodeStudio({
       return;
     }
     if (compilerLanguage && files.local) {
+      const dockerLanguage = mapLanguageToDockerAPI(compilerLanguage);
+      
+      // Si le langage est supporté par Docker API, utiliser Docker
+      if (dockerLanguage) {
+        building.current = true;
+        setBusy(true);
+        setCompilerError("");
+        setCompilerResult(null);
+        requestAnimationFrame(() =>
+          localOutput.current?.focus({ preventScroll: true }),
+        );
+        
+        try {
+          const result = await runWithDockerAPI(
+            dockerLanguage,
+            files.local.sources,
+            stdin
+          );
+          setCompilerResult(result);
+          setRanFiles(files);
+        } catch (error) {
+          setCompilerError(
+            error instanceof Error ? error.message : "Service d'exécution indisponible",
+          );
+        } finally {
+          building.current = false;
+          setBusy(false);
+        }
+        return;
+      }
+      
+      // Sinon, fallback sur l'ancienne méthode compileInStudio
       const controller = new AbortController();
       compilerRequest.current = controller;
       building.current = true;

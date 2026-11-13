@@ -17,6 +17,279 @@ const example = (project: WebProject, entry: string) => ({
 
 const beginner: WebLevel["chapters"] = [
   {
+    id: "introduction-spring-boot",
+    title: "Introduction à Spring Boot",
+    description:
+      "Découvre Spring Boot, son écosystème et sa philosophie avant de créer ton premier projet.",
+    lessons: [
+      lesson({
+        id: "quest-ce-que-spring-boot",
+        title: "Qu'est-ce que Spring Boot ?",
+        minutes: 18,
+        summary:
+          "Spring Boot est un framework Java qui simplifie le développement d'applications enterprise. Il s'appuie sur l'inversion de contrôle (IoC) et l'injection de dépendances (DI) pour créer des applications robustes et testables.",
+        files: {
+          html: "",
+          css: "",
+          entry: "notes.md",
+          local: {
+            runtime: "java",
+            sources: {
+              "notes.md": `# Spring Boot
+
+## Framework Java Enterprise
+- Surcouche de Spring Framework
+- Auto-configuration intelligente
+- Embedded server (Tomcat)
+- Production-ready
+
+## Architecture
+- IoC (Inversion of Control)
+- DI (Dependency Injection)
+- Annotations (@SpringBootApplication, @RestController, @Service, @Entity)
+
+## Écosystème
+- Spring Data JPA (accès données)
+- Spring MVC (contrôleurs REST)
+- Spring Security (authentification)
+- Spring Boot Actuator (monitoring)
+`,
+            },
+          },
+        },
+        sections: [
+          section(
+            "Spring Boot : simplifier Spring Framework",
+            "Spring Boot est une surcouche de Spring Framework qui élimine la configuration XML complexe grâce à l'auto-configuration et aux conventions.",
+            [
+              "Spring Framework : framework Java enterprise complet (depuis 2003), très puissant mais verbeux.",
+              "Spring Boot (2014) : simplifie Spring avec auto-configuration, starters, embedded server.",
+              "Convention over Configuration : Spring Boot devine la configuration à partir des dépendances présentes.",
+              "Embedded server : Tomcat, Jetty ou Undertow embarqué, pas besoin de déploiement externe.",
+            ],
+          ),
+          section(
+            "Architecture : IoC et injection de dépendances",
+            "Spring Boot s'appuie sur l'inversion de contrôle (IoC) : le framework crée et assemble les objets (beans) à ta place.",
+            [
+              "IoC (Inversion of Control) : Spring contrôle la création et le cycle de vie des objets, pas ton code.",
+              "DI (Dependency Injection) : Spring injecte les dépendances via constructeur, setter ou champ.",
+              "ApplicationContext : conteneur Spring qui gère tous les beans de l'application.",
+              "Annotations : @Component, @Service, @Repository, @Controller marquent les beans.",
+            ],
+          ),
+          section(
+            "Annotations Spring Boot essentielles",
+            "Spring Boot utilise massivement les annotations Java pour configurer l'application de façon déclarative.",
+            [
+              "@SpringBootApplication : marque la classe principale (combine @Configuration, @EnableAutoConfiguration, @ComponentScan).",
+              "@RestController : déclare un contrôleur REST (combine @Controller + @ResponseBody).",
+              "@Service : marque un service métier (logique business).",
+              "@Repository : marque un DAO/Repository (accès données).",
+              "@Entity : marque une entité JPA (table de base de données).",
+              "@Autowired : demande l'injection d'une dépendance (optionnel sur constructeur unique).",
+            ],
+          ),
+          section(
+            "Spring Data JPA : accès données simplifié",
+            "Spring Data JPA est une abstraction au-dessus de JPA/Hibernate. Tu définis une interface, Spring génère l'implémentation.",
+            [
+              "JPA (Java Persistence API) : spécification Java pour mapping objet-relationnel.",
+              "Hibernate : implémentation JPA la plus utilisée (incluse dans Spring Boot).",
+              "Repository pattern : interface extends JpaRepository<Entity, ID>.",
+              "Méthodes dérivées : findByNom(), findByAgeGreaterThan() générées automatiquement.",
+              "Pas de SQL à écrire pour les opérations CRUD basiques.",
+            ],
+          ),
+          section(
+            "Écosystème Spring",
+            "Spring Boot fait partie d'un écosystème complet pour tous les besoins d'une application enterprise.",
+            [
+              "Spring Boot Starters : dépendances pré-packagées (spring-boot-starter-web, -data-jpa, -security).",
+              "Spring MVC : framework web pour contrôleurs REST et pages web.",
+              "Spring Security : authentification, autorisation, protection CSRF, OAuth2.",
+              "Spring Boot Actuator : endpoints de monitoring (/actuator/health, /metrics).",
+              "Spring Cloud : microservices (service discovery, config server, circuit breaker).",
+              "Spring Batch : traitement batch (jobs, steps).",
+            ],
+          ),
+          section(
+            "Avantages de Spring Boot",
+            "Spring Boot accélère le développement Java enterprise avec des conventions et de l'auto-configuration.",
+            [
+              "Auto-configuration : Spring Boot configure automatiquement les beans selon les dépendances présentes.",
+              "Embedded server : pas besoin de déployer sur Tomcat externe, tout est dans le JAR.",
+              "Production-ready : metrics, health checks, externalized config out-of-the-box.",
+              "Écosystème mature : solutions éprouvées pour tous les besoins enterprise.",
+              "Très utilisé en entreprise : standard pour applications Java backend.",
+              "Tests facilités : @SpringBootTest, @WebMvcTest, @DataJpaTest pour tester chaque couche.",
+            ],
+          ),
+          section(
+            "Comparaison avec d'autres frameworks backend",
+            "Spring Boot se distingue par sa robustesse enterprise et son typage fort Java, au prix d'une verbosité accrue.",
+            [
+              "vs Django (Python) : Les deux suivent MVC avec ORM. Spring Boot plus verbeux (Java), Django plus concis (Python). Spring Boot typage fort, Django typage dynamique.",
+              "vs Express (Node.js) : Express minimaliste et flexible, Spring Boot structuré et opinionated. Express JavaScript léger, Spring Boot Java lourd mais robuste.",
+              "vs Laravel (PHP) : Laravel conventions élégantes (Eloquent, Blade), Spring Boot annotations et configuration. Laravel PHP accessible, Spring Boot Java enterprise.",
+              "Tous permettent de créer des APIs REST et des applications complètes.",
+            ],
+          ),
+        ],
+        task: "Lis la documentation Spring Boot et Spring Data JPA. Compare les philosophies : Spring Boot \"Auto-configuration\" vs Laravel \"Convention over Configuration\".",
+        takeaway:
+          "Spring Boot simplifie Spring Framework avec auto-configuration, embedded server et injection de dépendances. Spring Data JPA génère les implémentations de repositories.",
+        quiz: quiz(
+          "Quelle annotation marque la classe principale Spring Boot ?",
+          [
+            "@SpringBootApplication",
+            "@RestController",
+            "@Component",
+          ],
+          0,
+          "@SpringBootApplication combine @Configuration, @EnableAutoConfiguration et @ComponentScan.",
+        ),
+        link: boot + "index.html",
+      }),
+      lesson({
+        id: "structure-projet-spring-boot",
+        title: "Créer un projet Spring Boot et comprendre sa structure",
+        minutes: 20,
+        summary:
+          "Un projet Spring Boot commence par Spring Initializr et Maven/Gradle. La structure organise entités (JPA), repositories, services, contrôleurs (REST), configuration et tests.",
+        files: {
+          html: "",
+          css: "",
+          entry: "structure.md",
+          local: {
+            runtime: "java",
+            sources: {
+              "structure.md": `# Structure Spring Boot
+
+## Dossiers principaux
+- src/main/java/ : Code source
+- src/main/resources/ : Configuration
+- src/test/java/ : Tests
+- target/ : Fichiers compilés
+- pom.xml : Dépendances Maven
+
+## Package structure
+- model/ : Entités JPA (@Entity)
+- repository/ : Repositories JPA
+- service/ : Services métier
+- controller/ : Contrôleurs REST
+
+## Fichiers clés
+- DemoApplication.java : Point d'entrée
+- application.properties : Configuration
+- pom.xml : Dépendances Maven
+`,
+            },
+          },
+        },
+        sections: [
+          section(
+            "Installation et prérequis",
+            "Pour créer un projet Spring Boot, installe JDK 17+ et Maven/Gradle, puis utilise Spring Initializr.",
+            [
+              "Télécharge JDK 17 ou supérieur depuis oracle.com ou adoptium.net.",
+              "Installe Maven depuis maven.apache.org (ou Gradle depuis gradle.org).",
+              "Vérifie l'installation avec java -version et mvn -v.",
+              "Ouvre start.spring.io et configure : Java, Maven, Spring Boot 3.x, dépendances (Spring Web, Spring Data JPA, H2 Database).",
+              "Génère le projet ZIP, extrais-le et ouvre dans ton IDE.",
+            ],
+          ),
+          section(
+            "Structure type d'un projet Spring Boot",
+            "Spring Boot impose une structure Maven/Gradle standard. Les packages organisent le code par couche.",
+            [
+              "src/main/java/ : code source Java de l'application.",
+              "src/main/java/com/example/demo/ : package racine (nom du projet).",
+              "src/main/java/com/example/demo/DemoApplication.java : classe principale avec @SpringBootApplication.",
+              "src/main/java/com/example/demo/model/ : entités JPA (@Entity) représentant les tables.",
+              "src/main/java/com/example/demo/repository/ : interfaces Repository pour accès DB.",
+              "src/main/java/com/example/demo/service/ : services métier (logique business).",
+              "src/main/java/com/example/demo/controller/ : contrôleurs REST (@RestController).",
+              "src/main/resources/ : fichiers de configuration et ressources.",
+              "src/main/resources/application.properties : configuration Spring Boot.",
+              "src/main/resources/static/ : fichiers statiques (HTML, CSS, JS).",
+              "src/test/java/ : tests unitaires et d'intégration.",
+              "target/ : fichiers compilés (.class) et JAR final (généré par Maven).",
+            ],
+          ),
+          section(
+            "Fichiers clés à comprendre",
+            "Certains fichiers sont essentiels pour comprendre et configurer ton application Spring Boot.",
+            [
+              "pom.xml : descripteur Maven, liste des dépendances (spring-boot-starter-web, spring-boot-starter-data-jpa).",
+              "mvnw, mvnw.cmd : Maven Wrapper, permet de lancer Maven sans l'installer globalement.",
+              "DemoApplication.java : point d'entrée avec main() et @SpringBootApplication. SpringApplication.run() démarre le contexte.",
+              "application.properties : configuration (spring.datasource.url, spring.jpa.hibernate.ddl-auto, server.port).",
+              "application.yml : alternative YAML à application.properties (plus lisible).",
+            ],
+          ),
+          section(
+            "Architecture en couches Spring Boot",
+            "Spring Boot suit une architecture en couches : Controller → Service → Repository → Entity.",
+            [
+              "Entity (model/) : classes @Entity JPA représentant les tables (Animal.java ↔ table animals).",
+              "Repository (repository/) : interfaces extends JpaRepository<Entity, ID> pour accès DB.",
+              "Service (service/) : classes @Service contenant la logique métier (validation, calculs, orchestration).",
+              "Controller (controller/) : classes @RestController exposant les endpoints REST.",
+              "DTO (dto/) : Data Transfer Objects pour séparer API et model (optionnel).",
+            ],
+          ),
+          section(
+            "Exemple : Structure avec le modèle Animal",
+            "Prenons un exemple concret : une API de gestion d'animaux (refuge ou zoo) avec H2 (base en mémoire) et JPA.",
+            [
+              "model/Animal.java : entité JPA avec @Entity, @Id, @GeneratedValue, @Column.",
+              "repository/AnimalRepository.java : interface extends JpaRepository<Animal, Long>.",
+              "service/AnimalService.java : service @Service avec logique métier.",
+              "controller/AnimalController.java : @RestController avec @GetMapping, @PostMapping, etc.",
+              "application.properties : spring.datasource.url=jdbc:h2:mem:testdb, spring.jpa.hibernate.ddl-auto=create.",
+            ],
+          ),
+          section(
+            "Premier projet Spring Boot minimal",
+            "Un projet Spring Boot minimal démarre un serveur embedded Tomcat et expose un endpoint REST.",
+            [
+              "Sur start.spring.io : Java 17, Maven, Spring Boot 3.x, dépendance Spring Web.",
+              "Génère et extrais le ZIP.",
+              "Ouvre dans IDE (IntelliJ IDEA, Eclipse, VS Code).",
+              "Lance avec mvn spring-boot:run ou directement depuis l'IDE.",
+              "Serveur démarre sur http://localhost:8080.",
+              "Crée un @RestController avec @GetMapping(\"/\") return \"Bonjour Spring Boot !\".",
+            ],
+          ),
+          section(
+            "Exemple complet : API CRUD avec Animal",
+            "Avec JPA et H2, tu peux créer une API CRUD complète en quelques classes. Cet exemple sera le fil rouge du cours.",
+            [
+              "Crée model/Animal.java : @Entity avec id, nom, espece, age, disponible, dateAjout.",
+              "Crée repository/AnimalRepository.java : interface extends JpaRepository<Animal, Long>.",
+              "Crée controller/AnimalController.java : @RestController, @RequestMapping(\"/api/animals\").",
+              "Dans le contrôleur : @GetMapping, @GetMapping(\"/{id}\"), @PostMapping, @PutMapping(\"/{id}\"), @DeleteMapping(\"/{id}\").",
+              "Lance l'application : mvn spring-boot:run.",
+              "Teste avec curl ou Postman : GET http://localhost:8080/api/animals.",
+              "Ce modèle Animal sera utilisé dans tous les frameworks backend (Django, Express, Laravel, Spring Boot) pour faciliter la comparaison.",
+            ],
+          ),
+        ],
+        task: "Visite start.spring.io et génère un projet avec Spring Web et Spring Data JPA. Lance-le avec mvn spring-boot:run. Consulte la documentation JPA pour comprendre les entités.",
+        takeaway:
+          "Un projet Spring Boot s'organise en couches : Entity (JPA), Repository (accès DB), Service (logique), Controller (REST). Maven gère les dépendances, Initializr génère la structure.",
+        quiz: quiz(
+          "Quel fichier contient la configuration Spring Boot ?",
+          ["pom.xml", "application.properties", "DemoApplication.java"],
+          1,
+          "application.properties (ou application.yml) contient la configuration Spring Boot.",
+        ),
+        link: jpa + "jpa/repositories.html",
+      }),
+    ],
+  },
+  {
     id: "spring-initialisation-ioc",
     title: "Initialisation et injection de dépendances",
     description:

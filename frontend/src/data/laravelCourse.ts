@@ -13,6 +13,274 @@ const example = (project: WebProject, entry: string) => ({
 
 const beginner: WebLevel["chapters"] = [
   {
+    id: "introduction-laravel",
+    title: "Introduction à Laravel",
+    description:
+      "Découvre Laravel, son écosystème et sa philosophie avant de créer ton premier projet.",
+    lessons: [
+      lesson({
+        id: "quest-ce-que-laravel",
+        title: "Qu'est-ce que Laravel ?",
+        minutes: 18,
+        summary:
+          "Laravel est un framework PHP full-stack qui suit le principe \"Convention over Configuration\". Il offre une architecture MVC complète avec Eloquent ORM, Blade templates et Artisan CLI.",
+        files: {
+          html: "",
+          css: "",
+          entry: "notes.md",
+          local: {
+            runtime: "php",
+            sources: {
+              "notes.md": `# Laravel
+
+## Framework PHP full-stack
+- Architecture MVC (Model-View-Controller)
+- Philosophie "Convention over Configuration"
+- Eloquent ORM élégant
+- Blade templates
+- Artisan CLI
+
+## Écosystème
+- Composer (dépendances PHP)
+- Eloquent ORM (base de données)
+- Blade (templates)
+- Artisan (ligne de commande)
+- Laravel Sail (Docker)
+- Laravel Forge/Vapor (déploiement)
+`,
+            },
+          },
+        },
+        sections: [
+          section(
+            "Laravel : Framework PHP moderne",
+            "Laravel est un framework web PHP qui facilite le développement d'applications en fournissant des outils et des conventions. Il suit l'architecture MVC et inclut tout ce dont tu as besoin pour créer une application web complète.",
+            [
+              "PHP 8.2+ requis : Laravel profite des dernières fonctionnalités PHP (typage, attributs, enums).",
+              "Framework full-stack : contrairement à des micro-frameworks, Laravel fournit auth, validation, queue, cache, email, etc.",
+              "Convention over Configuration : Laravel impose des conventions (noms de fichiers, structure) qui accélèrent le développement.",
+            ],
+          ),
+          section(
+            "Architecture MVC de Laravel",
+            "Laravel organise ton code selon le pattern MVC : les Modèles gèrent les données, les Vues affichent l'interface, les Contrôleurs orchestrent la logique.",
+            [
+              "Model (app/Models/) : classes Eloquent qui représentent tes tables (Animal, User, Post).",
+              "View (resources/views/) : templates Blade (.blade.php) qui génèrent le HTML.",
+              "Controller (app/Http/Controllers/) : classes qui reçoivent les requêtes, préparent les données et choisissent la vue.",
+            ],
+          ),
+          section(
+            "Eloquent ORM : accès élégant aux données",
+            "Eloquent est l'ORM de Laravel. Il transforme les tables en classes PHP et les lignes en objets. Tu manipules la base avec des méthodes PHP au lieu d'écrire du SQL.",
+            [
+              "Active Record pattern : chaque instance d'un modèle correspond à une ligne de table.",
+              "Syntaxe expressive : Animal::where('disponible', true)->get() au lieu de SELECT * FROM animals WHERE disponible = 1.",
+              "Relations simples : hasMany(), belongsTo(), belongsToMany() définissent les liens entre modèles.",
+            ],
+          ),
+          section(
+            "Artisan CLI : productivité maximale",
+            "Artisan est l'outil en ligne de commande de Laravel. Il génère des fichiers, gère les migrations, démarre le serveur et bien plus.",
+            [
+              "php artisan make:controller AnimalController : génère un contrôleur.",
+              "php artisan make:model Animal -m : crée un modèle + migration.",
+              "php artisan migrate : exécute les migrations (crée/modifie les tables).",
+              "php artisan serve : démarre un serveur de développement sur http://127.0.0.1:8000.",
+            ],
+          ),
+          section(
+            "Blade : templates expressifs",
+            "Blade est le moteur de templates de Laravel. Il ajoute des directives (@ syntax) au HTML pour afficher des données, boucler, conditionner.",
+            [
+              "@foreach($animals as $animal) ... @endforeach : boucle sur une collection.",
+              "{{ $animal->nom }} : affiche une variable (échappement automatique).",
+              "@if($animal->disponible) ... @endif : condition.",
+              "Les templates Blade sont compilés en PHP pur pour les performances.",
+            ],
+          ),
+          section(
+            "Écosystème Laravel",
+            "Laravel dispose d'un écosystème riche d'outils officiels et communautaires pour tous les besoins.",
+            [
+              "Laravel Sail : environnement Docker pré-configuré (PHP, MySQL, Redis).",
+              "Laravel Breeze/Jetstream : authentification complète (login, register, 2FA).",
+              "Laravel Sanctum : authentification API (tokens, SPA).",
+              "Laravel Horizon : supervision des queues (jobs asynchrones).",
+              "Laravel Forge : déploiement automatisé sur serveurs (AWS, DigitalOcean).",
+              "Laravel Vapor : déploiement serverless sur AWS Lambda.",
+            ],
+          ),
+          section(
+            "Avantages de Laravel",
+            "Laravel accélère le développement grâce à ses conventions, sa documentation et son écosystème intégré.",
+            [
+              "Développement rapide : conventions pré-établies, génération de code via Artisan.",
+              "Documentation excellente : docs.laravel.com est claire, complète et à jour.",
+              "Communauté active : Laracasts (vidéos), forums, packages Packagist.",
+              "Sécurité intégrée : CSRF protection, SQL injection prevention, XSS protection.",
+              "Tests facilitésLaravel inclut PHPUnit et des helpers pour tester routes, DB, vues.",
+            ],
+          ),
+          section(
+            "Comparaison avec d'autres frameworks backend",
+            "Laravel se distingue par son élégance et ses conventions, contrairement aux approches plus flexibles ou strictes d'autres frameworks.",
+            [
+              "vs Django (Python) : Les deux suivent MVC/MTV et incluent un ORM puissant. Laravel est plus flexible sur la structure, Django plus strict. Laravel utilise Blade, Django utilise Jinja2.",
+              "vs Express (Node.js) : Express est \"unopinionated\" (peu de conventions), Laravel impose structure et conventions. Express demande plus de décisions, Laravel guide le développement.",
+              "vs Spring Boot (Java) : Spring Boot est orienté entreprise, plus verbeux. Laravel est plus accessible, syntax PHP plus légère. Les deux offrent injection de dépendances et écosystème complet.",
+              "Tous permettent de créer des APIs REST et des applications web complètes.",
+            ],
+          ),
+        ],
+        task: "Lis la documentation officielle Laravel et Eloquent. Compare les philosophies : Laravel \"Convention over Configuration\" vs Express \"Unopinionated\".",
+        takeaway:
+          "Laravel est un framework PHP MVC complet qui accélère le développement avec Eloquent ORM, Blade templates et Artisan CLI.",
+        quiz: quiz(
+          "Quelle est la principale philosophie de Laravel ?",
+          [
+            "Convention over Configuration : conventions pré-établies",
+            "Unopinionated : peu de conventions imposées",
+            "Batteries included : tout fourni sans conventions",
+          ],
+          0,
+          "Laravel impose des conventions qui accélèrent le développement.",
+        ),
+        link: docs + "structure",
+      }),
+      lesson({
+        id: "structure-projet-laravel",
+        title: "Créer un projet Laravel et comprendre sa structure",
+        minutes: 20,
+        summary:
+          "Un projet Laravel commence par Composer et Artisan. La structure organise modèles (Eloquent), vues (Blade), contrôleurs (MVC), routes, migrations et configuration.",
+        files: {
+          html: "",
+          css: "",
+          entry: "structure.md",
+          local: {
+            runtime: "php",
+            sources: {
+              "structure.md": `# Structure Laravel
+
+## Dossiers principaux
+- app/Models/ : Modèles Eloquent
+- app/Http/Controllers/ : Contrôleurs
+- routes/ : Définition des routes
+- resources/views/ : Templates Blade
+- database/migrations/ : Schéma DB
+- config/ : Configuration
+
+## Fichiers clés
+- artisan : CLI Laravel
+- composer.json : Dépendances
+- .env : Variables d'environnement
+`,
+            },
+          },
+        },
+        sections: [
+          section(
+            "Installation et prérequis",
+            "Pour créer un projet Laravel, installe PHP 8.2+ et Composer, puis utilise la commande create-project.",
+            [
+              "Télécharge PHP depuis php.net (version 8.2 ou supérieure recommandée).",
+              "Installe Composer depuis getcomposer.org (gestionnaire de dépendances PHP).",
+              "Vérifie l'installation avec php -v et composer -V.",
+              "Dans un dossier, exécute composer create-project laravel/laravel nom-projet.",
+              "Entre dans nom-projet et lance php artisan serve.",
+            ],
+          ),
+          section(
+            "Structure type d'un projet Laravel",
+            "Laravel impose une structure de dossiers claire. Chaque dossier a un rôle précis dans l'architecture MVC.",
+            [
+              "app/ : code métier de l'application (Models, Controllers, Services).",
+              "app/Models/ : modèles Eloquent (Animal.php, User.php).",
+              "app/Http/Controllers/ : contrôleurs qui gèrent les requêtes.",
+              "bootstrap/ : fichiers d'initialisation du framework (ne pas modifier).",
+              "config/ : fichiers de configuration (database.php, app.php, etc.).",
+              "database/ : migrations, seeders (données de test), factories.",
+              "public/ : point d'entrée web (index.php), assets (CSS, JS, images).",
+              "resources/views/ : templates Blade (.blade.php).",
+              "routes/ : définition des routes (web.php pour pages, api.php pour APIs).",
+              "storage/ : fichiers générés (logs, cache, sessions, uploads).",
+              "vendor/ : dépendances Composer (ignoré par Git).",
+            ],
+          ),
+          section(
+            "Fichiers clés à comprendre",
+            "Certains fichiers sont essentiels pour comprendre et configurer ton application Laravel.",
+            [
+              "artisan : CLI Laravel. Tape php artisan list pour voir toutes les commandes.",
+              "composer.json : liste des dépendances PHP. composer install les installe dans vendor/.",
+              ".env : variables d'environnement (DB_CONNECTION, DB_DATABASE, APP_KEY). Ne jamais committer ce fichier !",
+              ".env.example : template pour .env, committé dans Git.",
+              "routes/web.php : routes pour les pages web (avec sessions, CSRF, cookies).",
+              "routes/api.php : routes pour les APIs (sans état, préfixe /api).",
+              "config/database.php : configuration des connexions DB (MySQL, SQLite, PostgreSQL).",
+            ],
+          ),
+          section(
+            "Architecture MVC dans Laravel",
+            "Laravel suit strictement le pattern MVC. Comprendre ce découpage est essentiel.",
+            [
+              "Model (app/Models/) : représente une table. Animal.php ↔ table animals.",
+              "View (resources/views/) : templates Blade. animals/index.blade.php affiche la liste.",
+              "Controller (app/Http/Controllers/) : AnimalController gère les requêtes CRUD.",
+              "Routes (routes/) : associent URLs et contrôleurs. Route::get('/animals', [AnimalController::class, 'index']).",
+            ],
+          ),
+          section(
+            "Exemple : Structure avec le modèle Animal",
+            "Prenons un exemple concret : une API de gestion d'animaux (refuge ou zoo) avec SQLite et Eloquent.",
+            [
+              "app/Models/Animal.php : modèle Eloquent (extends Model).",
+              "app/Http/Controllers/AnimalController.php : contrôleur avec méthodes CRUD.",
+              "routes/api.php : Route::apiResource('animals', AnimalController::class).",
+              "database/migrations/xxxx_create_animals_table.php : schéma de la table.",
+              ".env : DB_CONNECTION=sqlite, DB_DATABASE=/absolute/path/database.sqlite.",
+            ],
+          ),
+          section(
+            "Premier projet Laravel minimal",
+            "Un projet Laravel minimal démarre un serveur et affiche une page. Artisan génère la structure.",
+            [
+              "composer create-project laravel/laravel mon-projet : crée le projet.",
+              "cd mon-projet : entre dans le dossier.",
+              "php artisan serve : démarre le serveur sur http://127.0.0.1:8000.",
+              "Ouvre http://127.0.0.1:8000 dans ton navigateur.",
+              "Modifier routes/web.php : Route::get('/', fn() => 'Bonjour Laravel !').",
+            ],
+          ),
+          section(
+            "Exemple complet : API CRUD avec Animal",
+            "Avec Eloquent et SQLite, tu peux créer une API CRUD complète en quelques commandes Artisan. Cet exemple sera le fil rouge du cours.",
+            [
+              "php artisan make:model Animal -m : crée le modèle + migration.",
+              "Édite database/migrations/xxxx_create_animals_table.php : ajoute colonnes nom, espece, age, disponible, date_ajout.",
+              "php artisan migrate : crée la table animals dans SQLite.",
+              "php artisan make:controller AnimalController --api : génère le contrôleur API.",
+              "Dans routes/api.php : Route::apiResource('animals', AnimalController::class).",
+              "GET /api/animals : liste, POST /api/animals : création, PUT /api/animals/{id} : modification, DELETE /api/animals/{id} : suppression.",
+              "Ce modèle Animal sera utilisé dans tous les frameworks backend (Django, Express, Laravel, Spring Boot) pour faciliter la comparaison.",
+            ],
+          ),
+        ],
+        task: "Crée un projet Laravel avec composer create-project. Lance php artisan serve et ouvre http://127.0.0.1:8000. Consulte la documentation Eloquent pour comprendre les modèles.",
+        takeaway:
+          "Un projet Laravel s'organise selon MVC : Models (Eloquent), Views (Blade), Controllers. Artisan génère les fichiers, Eloquent gère la base de données.",
+        quiz: quiz(
+          "Quel fichier définit les routes API dans Laravel ?",
+          ["routes/web.php", "routes/api.php", "app/Models/Animal.php"],
+          1,
+          "routes/api.php définit les endpoints API (préfixe /api).",
+        ),
+        link: docs + "eloquent",
+      }),
+    ],
+  },
+  {
     id: "laravel-initialisation",
     title: "Initialisation et routage",
     description: "Installe un projet PHP et relie une URL à une réponse.",

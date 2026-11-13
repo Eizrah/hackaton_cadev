@@ -32,8 +32,216 @@ export const reactLevels: WebLevel[] = [
         id: "fondations",
         title: "Fondations et environnement React",
         description:
-          "Comprendre le modèle de composants et préparer un projet.",
+          "Comprendre React, sa philosophie, son écosystème et préparer un projet.",
         lessons: [
+          lesson({
+            id: "introduction-react",
+            title: "Qu'est-ce que React ?",
+            minutes: 20,
+            summary:
+              "React est une bibliothèque JavaScript pour construire des interfaces utilisateur. Comprends sa philosophie, son architecture, son écosystème et sa différence avec Vue.",
+            sections: [
+              section(
+                "React : Bibliothèque UI",
+                "React se distingue comme une bibliothèque UI : elle se concentre sur le rendu de composants. Pour d'autres besoins (routage, state management), tu ajoutes des outils externes selon tes préférences.",
+                [
+                  "React est une BIBLIOTHÈQUE UI créée par Facebook (Meta) en 2013. Elle gère le rendu des composants.",
+                  "Vue est un FRAMEWORK complet avec un écosystème officiel intégré (Vue Router, Pinia, Vite).",
+                  "React laisse le choix : React Router OU TanStack Router, Redux OU Zustand OU Jotai pour le state management.",
+                  "Cette flexibilité donne plus de liberté mais nécessite de choisir et configurer les outils soi-même.",
+                ],
+              ),
+              section(
+                "Philosophie React : UI as a function of state",
+                "React considère l'interface utilisateur comme une fonction de l'état : UI = f(state). Quand l'état change, React recalcule l'interface et met à jour le DOM efficacement.",
+                [
+                  "Composants : blocs de construction réutilisables qui retournent du JSX.",
+                  "JSX : syntaxe qui mélange JavaScript et HTML dans le même fichier.",
+                  "Unidirectionnalité des données : les données descendent (parent → enfant via props).",
+                  "Virtual DOM : React crée une représentation en mémoire, calcule les différences et met à jour le DOM réel.",
+                ],
+              ),
+              section(
+                "Écosystème React",
+                "L'écosystème React est vaste et diversifié. Tu choisis les outils qui correspondent à tes besoins.",
+                [
+                  "React DOM : pour les applications web dans le navigateur.",
+                  "React Native : pour créer des applications mobiles iOS et Android.",
+                  "Next.js : framework fullstack avec SSR (Server-Side Rendering), SSG (Static Site Generation), API routes.",
+                  "Remix : framework fullstack moderne axé sur les standards web.",
+                  "React Router / TanStack Router : routage côté client pour les SPA.",
+                  "Redux / Zustand / Jotai : state management global.",
+                  "TanStack Query : gestion des données serveur (fetch, cache, synchronisation).",
+                  "Vite : build tool ultra-rapide pour développement et production.",
+                ],
+              ),
+              section(
+                "React vs Vue : Différences clés",
+                "Bien que les deux permettent de construire des interfaces modernes, leurs approches diffèrent fondamentalement.",
+                [
+                  "Bibliothèque vs Framework : React = bibliothèque UI, tu choisis tes outils. Vue = framework complet avec écosystème officiel.",
+                  "JSX vs Templates : React mélange JavaScript et HTML dans JSX. Vue sépare HTML (template), JS (script), CSS (style) dans des fichiers .vue.",
+                  "Hooks vs Composition API : React utilise useState, useEffect. Vue utilise ref, reactive avec Proxies.",
+                  "Popularité : React a un écosystème massif et plus d'offres d'emploi. Vue est plus simple pour les débutants.",
+                  "Flexibilité vs Convention : React offre plus de liberté (et de décisions). Vue guide avec des conventions officielles.",
+                ],
+              ),
+              section(
+                "Concepts clés React",
+                "Quelques concepts fondamentaux pour comprendre comment React fonctionne.",
+                [
+                  "Virtual DOM : représentation en mémoire du DOM. React compare les versions et met à jour uniquement ce qui a changé.",
+                  "Reconciliation : algorithme qui calcule les différences entre deux versions du Virtual DOM.",
+                  "Composants fonctionnels : fonctions JavaScript qui retournent du JSX (approche moderne).",
+                  "Hooks : fonctions spéciales (useState, useEffect, etc.) qui ajoutent des capacités aux composants fonctionnels.",
+                  "Re-render : quand l'état change, React réexécute le composant pour recalculer l'interface.",
+                ],
+              ),
+            ],
+            files: reactFiles(
+              "Première impression React",
+              `function App() {
+  const bibliotheque = "React";
+  const type = "Bibliothèque UI";
+  const createur = "Facebook (Meta)";
+  const annee = 2013;
+  
+  return (
+    <main>
+      <div className="card">
+        <h2>{bibliotheque}</h2>
+        <p>Type : {type}</p>
+        <p>Créateur : {createur} ({annee})</p>
+        <p>Philosophie : UI = f(state)</p>
+        <p>Syntaxe : JSX (JavaScript + HTML)</p>
+        <p>Écosystème : React Router, Next.js, Redux, TanStack Query</p>
+      </div>
+    </main>
+  );
+}`,
+            ),
+            task: "Observe comment les variables JavaScript sont insérées dans le JSX avec des accolades {}. Modifie les valeurs et vois le résultat.",
+            takeaway:
+              "React est une bibliothèque UI flexible qui te laisse choisir tes outils. Il utilise JSX et considère l'interface comme une fonction de l'état.",
+            quiz: quiz(
+              "Quelle est la différence principale entre React et Vue ?",
+              [
+                "React est une bibliothèque UI, Vue est un framework complet",
+                "React ne peut pas faire de SPA",
+                "Vue est plus populaire que React",
+              ],
+              0,
+              "React laisse le choix des outils externes. Vue fournit un écosystème officiel intégré.",
+            ),
+            link: react + "learn",
+          }),
+          lesson({
+            id: "structure-projet-react",
+            title: "Créer un projet React et comprendre sa structure",
+            minutes: 22,
+            summary:
+              "Utilise Vite pour créer un projet React moderne. Comprends la structure des dossiers, les fichiers clés et le rôle de JSX.",
+            sections: [
+              section(
+                "Prérequis et création du projet",
+                "Node.js version 18+ est nécessaire. La commande npm create vite@latest utilise Vite pour générer un projet React rapide et moderne.",
+                [
+                  "npm create vite@latest mon-app -- --template react crée un projet React.",
+                  "cd mon-app puis npm install pour installer les dépendances.",
+                  "npm run dev lance le serveur de développement Vite.",
+                  "L'URL (souvent http://localhost:5173/) s'affiche dans le terminal.",
+                ],
+              ),
+              section(
+                "Structure des dossiers React",
+                "Un projet React suit une organisation flexible. Voici les conventions courantes.",
+                [
+                  "📁 src/ : Code source de ton application.",
+                  "📁 src/components/ : Composants réutilisables (Button.jsx, Card.jsx, Modal.jsx).",
+                  "📁 src/pages/ ou src/views/ : Pages principales de l'application (Home.jsx, About.jsx, Profile.jsx).",
+                  "📁 src/hooks/ : Custom hooks réutilisables (useAuth.js, useFetch.js).",
+                  "📁 src/utils/ : Fonctions utilitaires JavaScript (formatDate.js, validation.js).",
+                  "📁 src/assets/ : Images, fonts, fichiers statiques traités par Vite.",
+                  "📁 public/ : Fichiers statiques servis tels quels (favicon.ico, robots.txt). Non traités par Vite.",
+                ],
+              ),
+              section(
+                "Fichiers principaux du projet",
+                "Certains fichiers jouent un rôle central dans le fonctionnement de l'application React.",
+                [
+                  "📄 index.html : Point d'entrée HTML. Contient <div id='root'></div> où React monte l'application.",
+                  "📄 src/main.jsx : Point d'entrée JavaScript. Appelle createRoot et render pour monter App dans #root.",
+                  "📄 src/App.jsx : Composant racine de l'application. Point de départ de l'arbre de composants.",
+                  "📄 vite.config.js : Configuration Vite (plugins, alias, optimisations).",
+                  "📄 package.json : Dépendances npm et scripts. Lance npm run dev, npm run build.",
+                ],
+              ),
+              section(
+                "JSX : JavaScript + HTML",
+                "JSX est une extension de syntaxe JavaScript qui ressemble à du HTML. Il est transpilé en appels React.createElement.",
+                [
+                  "JSX permet d'écrire du HTML dans JavaScript : return <div>Hello</div>",
+                  "Utilise className au lieu de class (mot réservé JavaScript).",
+                  "Insère des expressions JavaScript avec {} : <p>{name}</p>",
+                  "Fragments <></> pour grouper des éléments sans nœud DOM supplémentaire.",
+                  "JSX est transpilé : <div>Hello</div> devient React.createElement('div', null, 'Hello').",
+                ],
+              ),
+              section(
+                "Composants React : Blocs de construction",
+                "Un composant React est une fonction JavaScript qui retourne du JSX.",
+                [
+                  "Nom de composant avec majuscule : function Button() {} (convention).",
+                  "Props = entrées du composant (en lecture seule).",
+                  "State = données internes modifiables avec useState.",
+                  "Re-render : quand state/props changent, React réexécute le composant.",
+                  "Export/Import : export default App puis import App from './App'.",
+                ],
+              ),
+            ],
+            files: reactFiles(
+              "Structure projet React",
+              `// Dans src/main.jsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+// Dans src/App.jsx
+function App() {
+  const projectName = "Mon App React";
+  const folders = "components, pages, hooks, utils, assets";
+  
+  return (
+    <main>
+      <div className="card">
+        <h2>{projectName}</h2>
+        <p><strong>📁 Dossiers clés :</strong> {folders}</p>
+        <p><strong>📄 Fichiers :</strong> main.jsx, App.jsx, vite.config.js</p>
+        <p><strong>🔧 Commandes :</strong> npm run dev, npm run build</p>
+        <p><strong>🧩 JSX :</strong> JavaScript + HTML dans le même fichier</p>
+      </div>
+    </main>
+  );
+}`,
+            ),
+            task: "Crée un projet React avec npm create vite@latest. Explore src/components, src/main.jsx et src/App.jsx.",
+            takeaway:
+              "Un projet React suit une structure flexible : components (réutilisables), pages (vues principales), hooks (logique), utils (fonctions). JSX mélange JavaScript et HTML.",
+            quiz: quiz(
+              "Quel dossier contient les composants réutilisables ?",
+              ["src/pages/", "src/components/", "src/assets/"],
+              1,
+              "src/components/ contient les composants réutilisables. src/pages/ contient les pages principales.",
+            ),
+            link: "https://vite.dev/guide/",
+          }),
           lesson({
             id: "composants-dom",
             title: "Composants, rendu React et DOM",

@@ -36,6 +36,346 @@ app.listen(3000, "127.0.0.1", error => {
 
 const beginner: WebLevel["chapters"] = [
   {
+    id: "introduction-nodejs-express",
+    title: "Introduction à Node.js et Express",
+    description:
+      "Découvre Node.js, Express et leur écosystème avant de créer ton premier projet.",
+    lessons: [
+      lesson({
+        id: "quest-ce-que-nodejs-express",
+        title: "Qu'est-ce que Node.js et Express ?",
+        minutes: 18,
+        summary:
+          "Node.js est un environnement d'exécution JavaScript côté serveur basé sur V8. Express est un framework minimaliste qui simplifie la création de serveurs HTTP et d'APIs.",
+        files: {
+          html: "",
+          css: "",
+          entry: "notes.md",
+          local: {
+            runtime: "node",
+            sources: {
+              "notes.md": `# Node.js et Express
+
+## Node.js
+- Environnement d'exécution JavaScript côté serveur
+- Basé sur le moteur V8 de Chrome
+- Modèle asynchrone non-bloquant
+- npm : gestionnaire de paquets
+
+## Express
+- Framework web minimaliste
+- Philosophie "unopinionated"
+- Système de middlewares
+- Routage flexible
+
+## Écosystème
+- Sequelize / Mongoose (ORM/ODM)
+- Socket.IO (temps réel)
+- PM2 (supervision)
+- Jest / Mocha (tests)
+`,
+            },
+          },
+        },
+        sections: [
+          section(
+            "Node.js : JavaScript côté serveur",
+            "Node.js permet d'exécuter JavaScript en dehors du navigateur. Il utilise le moteur V8 de Chrome et un modèle événementiel non-bloquant pour gérer les opérations d'entrée-sortie de façon asynchrone.",
+            [
+              "V8 compile JavaScript en code machine natif pour des performances élevées.",
+              "Le modèle asynchrone permet de traiter des milliers de connexions simultanées sans bloquer.",
+              "npm (Node Package Manager) donne accès à des centaines de milliers de bibliothèques.",
+            ],
+          ),
+          section(
+            "Express : un framework minimaliste et flexible",
+            "Express est une bibliothèque qui facilite la création de serveurs HTTP. Son approche \"unopinionated\" te laisse choisir l'architecture et les outils.",
+            [
+              "Les middlewares forment une chaîne de traitement pour chaque requête.",
+              "Le routage associe des URLs et des méthodes HTTP à des fonctions.",
+              "Express ne force aucune structure : tu peux organiser ton code comme tu veux.",
+            ],
+          ),
+          section(
+            "Écosystème et outils courants",
+            "L'écosystème Node.js offre des solutions pour tous les besoins : bases de données, authentification, tests, déploiement.",
+            [
+              "Sequelize (SQL) ou Mongoose (MongoDB) pour l'accès aux données.",
+              "Socket.IO pour les connexions temps réel (WebSocket).",
+              "PM2 pour la supervision de processus en production.",
+              "Jest ou Mocha pour les tests automatisés.",
+              "Passport.js pour l'authentification multi-stratégies.",
+            ],
+          ),
+          section(
+            "Avantages de Node.js et Express",
+            "Node.js partage le même langage entre frontend et backend. Express offre rapidité et flexibilité pour construire des APIs modernes.",
+            [
+              "JavaScript full-stack : même langage, même syntaxe, partage de code possible.",
+              "Performance : I/O non-bloquant, idéal pour les APIs temps réel.",
+              "Communauté massive : npm contient plus d'un million de paquets.",
+              "Flexibilité : adapte l'architecture à tes besoins (MVC, microservices, serverless).",
+            ],
+          ),
+          section(
+            "Comparaison avec d'autres frameworks backend",
+            "Express se distingue par sa légèreté et sa flexibilité, contrairement aux frameworks plus structurés comme Django ou Laravel.",
+            [
+              "vs Django (Python) : Express est moins structuré, plus flexible. Django impose MTV et inclut un ORM puissant. Node.js permet JavaScript partout.",
+              "vs Laravel (PHP) : Laravel suit des conventions strictes (Eloquent, Blade). Express laisse plus de choix mais demande plus de décisions.",
+              "vs Spring Boot (Java) : Spring Boot est plus lourd, orienté entreprise. Express est plus léger et rapide à démarrer.",
+              "Tous permettent de créer des APIs REST et des applications complètes.",
+            ],
+          ),
+        ],
+        task: "Lis la documentation officielle de Node.js et Express. Compare les philosophies : Django \"batteries included\" vs Express \"unopinionated\".",
+        takeaway:
+          "Node.js exécute JavaScript côté serveur. Express simplifie la création de serveurs avec une approche flexible basée sur les middlewares.",
+        quiz: quiz(
+          "Quelle est la principale philosophie d'Express ?",
+          [
+            "Unopinionated : peu de conventions imposées",
+            "Batteries included : tout est fourni",
+            "Convention over configuration : conventions strictes",
+          ],
+          0,
+          "Express te laisse choisir ton architecture et tes outils.",
+        ),
+        link: "https://expressjs.com/en/starter/hello-world.html",
+      }),
+      lesson({
+        id: "structure-projet-express",
+        title: "Créer un projet Express et comprendre sa structure",
+        minutes: 20,
+        summary:
+          "Un projet Express commence par npm init et l'installation d'Express. La structure typique sépare modèles, contrôleurs, routes et configuration pour organiser le code.",
+        sections: [
+          section(
+            "Installation et prérequis",
+            "Pour créer un projet Express, installe Node.js et npm, puis initialise un nouveau projet avec npm init.",
+            [
+              "Télécharge Node.js depuis nodejs.org (LTS recommandé).",
+              "Vérifie l'installation avec node --version et npm --version.",
+              "Dans un dossier vide, exécute npm init -y pour créer package.json.",
+              "Installe Express avec npm install express.",
+            ],
+          ),
+          section(
+            "Structure type d'un projet Express",
+            "Express ne force aucune structure, mais une organisation MVC (Modèle-Vue-Contrôleur) adaptée facilite la maintenance.",
+            [
+              "node_modules/ : dépendances installées par npm (ignoré par Git).",
+              "models/ : définitions des modèles de données (Sequelize, Mongoose).",
+              "controllers/ : logique métier, traitement des requêtes.",
+              "routes/ : définition des endpoints et association aux contrôleurs.",
+              "middlewares/ : fonctions réutilisables (authentification, validation).",
+              "config/ : configuration (connexion DB, variables d'environnement).",
+              "public/ : fichiers statiques (HTML, CSS, JS, images).",
+            ],
+          ),
+          section(
+            "Fichiers clés à comprendre",
+            "Chaque fichier a un rôle précis dans l'application Express. Comprendre leur fonction aide à naviguer dans le code.",
+            [
+              "server.js (ou index.js) : point d'entrée, crée l'app Express, configure les middlewares, démarre le serveur sur un port.",
+              "package.json : métadonnées du projet, scripts (start, dev, test), liste des dépendances.",
+              "package-lock.json : versions exactes des dépendances installées, garantit la reproductibilité.",
+              ".env : variables d'environnement (clés secrètes, ports, URLs de DB). Ne jamais committer ce fichier !",
+              ".gitignore : liste des fichiers à ignorer (node_modules/, .env).",
+            ],
+          ),
+          section(
+            "Exemple : Structure avec le modèle Animal",
+            "Prenons un exemple concret : une API de gestion d'animaux (refuge ou zoo) avec SQLite et Sequelize.",
+            [
+              "models/Animal.js : définit le modèle Animal (nom, espèce, âge, disponible, date_ajout).",
+              "controllers/animalController.js : fonctions CRUD (list, getById, create, update, delete).",
+              "routes/animals.js : définit les routes GET /animals, POST /animals, etc.",
+              "config/database.js : configure Sequelize avec SQLite (fichier database.sqlite).",
+              "server.js : importe les routes, configure express.json(), lance app.listen().",
+            ],
+          ),
+          section(
+            "Premier serveur Express minimal",
+            "Un serveur Express minimal tient en quelques lignes. Ce code crée une route et démarre le serveur.",
+            [
+              "const express = require('express'); // Import Express",
+              "const app = express(); // Crée l'application",
+              "app.get('/', (req, res) => res.send('Bonjour !')); // Route racine",
+              "app.listen(3000, () => console.log('Serveur sur http://localhost:3000')); // Démarre",
+              "Lance avec node server.js et ouvre http://localhost:3000 dans ton navigateur.",
+            ],
+          ),
+          section(
+            "Exemple complet : API CRUD avec Animal",
+            "Avec Sequelize et SQLite, tu peux créer une API CRUD complète en quelques fichiers. Cet exemple sera le fil rouge du cours.",
+            [
+              "GET /api/animals : liste tous les animaux (avec filtres optionnels).",
+              "GET /api/animals/:id : obtient un animal par son ID.",
+              "POST /api/animals : crée un nouvel animal (JSON dans le body).",
+              "PUT /api/animals/:id : modifie un animal existant.",
+              "DELETE /api/animals/:id : supprime un animal.",
+              "Ce modèle Animal sera utilisé dans tous les frameworks backend (Django, Laravel, Spring Boot) pour faciliter la comparaison.",
+            ],
+          ),
+        ],
+        files: nodeFiles("Structure projet Express", {
+          entry: "server.js",
+          sources: {
+            "server.js": `const express = require('express');
+const app = express();
+
+// Configuration
+app.use(express.json());
+app.use(express.static('public'));
+
+// Routes
+app.get('/', (req, res) => {
+  res.send('API Animals - Bienvenue !');
+});
+
+// Démarrage
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(\`Serveur démarré sur http://localhost:\${PORT}\`);
+});
+`,
+            "models/Animal.js": `const { DataTypes } = require('sequelize');
+
+module.exports = (sequelize) => {
+  const Animal = sequelize.define('Animal', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    nom: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'Le nom ne peut pas être vide' }
+      }
+    },
+    espece: {
+      type: DataTypes.STRING(50),
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'L\\'espèce ne peut pas être vide' }
+      }
+    },
+    age: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      validate: {
+        min: { args: [0], msg: 'L\\'âge doit être positif' }
+      }
+    },
+    disponible: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true
+    },
+    date_ajout: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW
+    }
+  }, {
+    tableName: 'animals',
+    timestamps: true
+  });
+  
+  return Animal;
+};
+`,
+            "config/database.js": `const { Sequelize } = require('sequelize');
+require('dotenv').config();
+
+const sequelize = new Sequelize({
+  dialect: 'sqlite',
+  storage: process.env.DB_PATH || './database.sqlite',
+  logging: false
+});
+
+module.exports = sequelize;
+`,
+          },
+          home: `<h1>🐾 API de gestion d'animaux</h1>
+<p>Cette API permet de gérer un refuge ou un zoo. Chaque animal a un nom, une espèce, un âge et un statut de disponibilité.</p>
+
+<h2>Endpoints disponibles</h2>
+<div class="card">
+  <strong>GET</strong> <code>/api/animals</code> - Liste tous les animaux
+</div>
+<div class="card">
+  <strong>GET</strong> <code>/api/animals/:id</code> - Obtient un animal par ID
+</div>
+<div class="card">
+  <strong>POST</strong> <code>/api/animals</code> - Crée un nouvel animal
+</div>
+<div class="card">
+  <strong>PUT</strong> <code>/api/animals/:id</code> - Modifie un animal
+</div>
+<div class="card">
+  <strong>DELETE</strong> <code>/api/animals/:id</code> - Supprime un animal
+</div>
+
+<h2>Exemple de données</h2>
+<pre>{
+  "nom": "Simba",
+  "espece": "Lion",
+  "age": 5,
+  "disponible": true
+}</pre>`,
+          dependencies: {
+            "sequelize": "^6.35.0",
+            "sqlite3": "^5.1.6",
+            "dotenv": "^17.0.0"
+          },
+          notes: `## Structure du projet
+
+\`\`\`
+projet-express/
+├── node_modules/
+├── models/
+│   └── Animal.js
+├── controllers/
+│   └── animalController.js
+├── routes/
+│   └── animals.js
+├── config/
+│   └── database.js
+├── public/
+├── .env
+├── package.json
+└── server.js
+\`\`\`
+
+## Modèle Animal
+
+Ce modèle sera le fil rouge pour tous les frameworks backend (Django, Express, Laravel, Spring Boot).
+
+Champs :
+- id : INTEGER (auto-increment, PK)
+- nom : STRING(100) (obligatoire)
+- espece : STRING(50) (obligatoire)
+- age : INTEGER (obligatoire, ≥ 0)
+- disponible : BOOLEAN (défaut: true)
+- date_ajout : DATE (auto)
+`,
+        }),
+        task: "Crée un dossier, exécute npm init -y et npm install express. Crée server.js avec le code minimal et lance-le. Consulte la documentation Sequelize pour comprendre les modèles.",
+        takeaway:
+          "Un projet Express s'organise en modèles, contrôleurs et routes. Le fichier server.js est le point d'entrée qui configure l'app et démarre le serveur.",
+        quiz: quiz(
+          "Quel fichier est le point d'entrée d'une application Express ?",
+          ["package.json", "server.js ou index.js", "models/Animal.js"],
+          1,
+          "server.js (ou index.js) crée l'app Express et démarre le serveur.",
+        ),
+        link: "https://expressjs.com/en/starter/generator.html",
+      }),
+    ],
+  },
+  {
     id: "node-fondations",
     title: "Fondations de Node.js et npm",
     description:
