@@ -102,28 +102,14 @@ function SocialOptions() {
       <div className="register-social-buttons">
         <button
           type="button"
-           onClick={async () => {
-  await fetch('http://localhost:8000/api/auth/csrf/', { credentials: 'include' })
-  const csrfToken = document.cookie
-    .split('; ')
-    .find(c => c.startsWith('csrftoken='))
-    ?.split('=')[1] ?? ''
-
-  const form = document.createElement('form')
-  form.method = 'POST'
-  form.action = 'http://localhost:8000/social-auth/login/google-oauth2/'
-
-  const input = document.createElement('input')
-  input.type = 'hidden'
-  input.name = 'csrfmiddlewaretoken'
-  input.value = csrfToken
-
-  form.appendChild(input)
-  document.body.appendChild(form)
-  form.submit()
-  document.body.removeChild(form)
-}}
-
+          onClick={() => {
+            // POST sans CSRF car /social-auth/ est exempté via DisableCSRFMiddleware
+            const form = document.createElement('form')
+            form.method = 'POST'
+            form.action = 'http://localhost:8000/social-auth/login/google-oauth2/'
+            document.body.appendChild(form)
+            form.submit()
+          }}
           aria-label={t(
             "Google, connexion à configurer",
             "Google, sign-in not configured",
@@ -137,29 +123,14 @@ function SocialOptions() {
         </button>
         <button
           type="button"
-      onClick={async () => {
-  // récupère d'abord le cookie CSRF depuis Django
-  await fetch('http://localhost:8000/api/auth/csrf/', { credentials: 'include' })
-  const csrfToken = document.cookie
-    .split('; ')
-    .find(c => c.startsWith('csrftoken='))
-    ?.split('=')[1] ?? ''
-
-  const form = document.createElement('form')
-  form.method = 'POST'
-  form.action = 'http://localhost:8000/social-auth/login/github/'
-
-  const input = document.createElement('input')
-  input.type = 'hidden'
-  input.name = 'csrfmiddlewaretoken'
-  input.value = csrfToken
-
-  form.appendChild(input)
-  document.body.appendChild(form)
-  form.submit()
-  document.body.removeChild(form)
-}}
-
+          onClick={() => {
+            // POST sans CSRF car /social-auth/ est exempté via DisableCSRFMiddleware
+            const form = document.createElement('form')
+            form.method = 'POST'
+            form.action = 'http://localhost:8000/social-auth/login/github/'
+            document.body.appendChild(form)
+            form.submit()
+          }}
           aria-label={t(
             "GitHub, connexion à configurer",
             "GitHub, sign-in not configured",

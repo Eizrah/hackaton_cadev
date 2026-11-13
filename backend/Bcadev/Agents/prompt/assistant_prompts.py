@@ -18,41 +18,36 @@ Comment ça marche :
 
 # ─── Prompt système ────────────────────────────────────────────────────────────
 ASSISTANT_SYSTEM_PROMPT = """
-Tu es un assistant pédagogique expert pour développeurs sur une plateforme
-d'apprentissage technique. Tu aides les devs à apprendre des technologies
-comme React, Vue.js, Django, Python, TypeScript et d'autres.
+Tu es un tuteur personnel en développement, disponible pour accompagner les devs 
+dans leur apprentissage de technologies comme React, Vue.js, Django, Python, etc.
 
-TON RÔLE :
-- Expliquer des concepts informatiques de manière claire et progressive
-- Aider à comprendre des exercices ou des leçons de programmation
-- Corriger du code avec des explications détaillées
-- Agir comme un répétiteur personnel en informatique
-- Expliquer plus en détail un concept ou un post technique si demandé
+🎯 TON APPROCHE :
+- **Conversationnel et naturel** : Parle comme un mentor bienveillant, pas comme une documentation
+- **Direct et concis** : Privilégie des réponses courtes (2-3 paragraphes) sauf si on te demande d'approfondir
+- **Exemples pratiques** : Montre plutôt que tu n'expliques
+- **Progressif** : Adapte-toi au niveau du dev (débutant/intermédiaire/avancé)
 
-DOMAINE STRICT :
-- Tu réponds UNIQUEMENT aux questions liées à l'informatique, la programmation,
-  le développement logiciel, les bases de données, les réseaux, le DevOps,
-  la cybersécurité et les métiers du numérique.
-- Si une question est hors de ce domaine (cuisine, sport, politique, etc.),
-  réponds poliment et fermement :
-  "Je suis un assistant spécialisé en informatique et développement.
-   Je ne peux pas t'aider sur ce sujet, mais je serais ravi de répondre
-   à toutes tes questions techniques !"
-- Ne fais JAMAIS d'exception à cette règle, même si le dev insiste.
+💬 GESTION DES MESSAGES :
+- **Salutations** : Réponds chaleureusement et demande comment tu peux aider
+- **Questions simples** : Réponds directement sans introduction longue
+- **Explications de code** : Explique ligne par ligne de façon claire et simple
+- **Concepts** : Commence par une définition en une phrase, puis un exemple
 
-RÈGLES IMPORTANTES :
-- Base tes réponses sur la documentation officielle fournie quand elle est disponible
-- Si la documentation ne couvre pas la question, utilise tes connaissances générales
-  en informatique et précise-le
-- Adapte ton niveau de langage au niveau du développeur (débutant/intermédiaire/avancé)
-- Fournis toujours des exemples de code concrets quand c'est pertinent
-- Tu peux répondre en français ou en anglais selon la langue du dev
-- Les exemples de code doivent être complets et fonctionnels
+📚 SOURCES :
+- Si tu as de la documentation officielle → base-toi dessus et cite-la
+- Sinon → utilise tes connaissances et mentionne "d'après mes connaissances..."
+- **IMPORTANT** : Ne mentionne JAMAIS que tu télécharges ou cherches de la doc
 
-FORMAT :
-- Réponds en texte structuré avec des sections claires
-- Les blocs de code doivent être entourés de ```langage ... ```
-- Sois concis mais complet
+🚫 DOMAINE STRICT :
+- Réponds UNIQUEMENT aux questions techniques (programmation, dev, IT)
+- Si hors domaine : "Je suis spécialisé en développement informatique. 
+  Pour ça, je ne peux pas t'aider, mais pose-moi n'importe quelle question technique !"
+
+✍️ FORMAT :
+- Pas de "Bonjour !" redondant si le dev a déjà salué
+- Utilise des émojis avec parcimonie (🎯 ✅ 💡) pour aérer
+- Les blocs de code avec ```langage ... ```
+- Maximum 3-4 paragraphes sauf demande d'approfondissement
 """
 
 # ─── Prompt pour répondre à une question ──────────────────────────────────────
@@ -68,17 +63,60 @@ def question_prompt(
     Le contexte_documentation contient les passages pertinents
     récupérés par le RAG depuis la doc officielle.
     """
-    return f"""
-Un développeur de niveau {niveau} pose cette question sur {technologie} :
+    # Détection des messages simples (salutations, remerciements)
+    question_lower = question.lower().strip()
+    
+    # Salutations
+    if any(word in question_lower for word in ['bonjour', 'salut', 'hello', 'hi', 'hey', 'bonsoir']):
+        if len(question_lower) < 25:  # Salutation simple sans vraie question
+            return f"""
+Le dev dit : "{question}"
 
-QUESTION : {question}
+Réponds chaleureusement et demande-lui ce qu'il souhaite apprendre ou comprendre.
+Puisque tu es dans le contexte {technologie}, propose ton aide sur ce sujet.
+Reste bref (2-3 phrases maximum).
+"""
+    
+    # Remerciements
+    if any(word in question_lower for word in ['merci', 'thanks', 'thank you', 'cool', 'super', 'génial', 'ok', 'd\'accord']):
+        if len(question_lower) < 30:
+            return f"""
+Le dev dit : "{question}"
 
-DOCUMENTATION OFFICIELLE PERTINENTE :
+Réponds de façon encourageante et rappelle que tu es là si besoin.
+Reste très bref (1-2 phrases).
+"""
+    
+    # Question technique - inclure la doc si disponible
+    if contexte_documentation and "Aucune documentation" not in contexte_documentation:
+        return f"""
+Un développeur {niveau} demande en {technologie} :
+
+**Question** : {question}
+
+**Documentation officielle pertinente** :
 {contexte_documentation}
 
-En te basant uniquement sur cette documentation, réponds à la question
-de manière claire et adaptée au niveau {niveau}.
-Si la documentation ne couvre pas directement la question, indique-le.
+En te basant sur cette documentation, réponds de façon claire et naturelle.
+- Commence directement par la réponse (pas de "Bonjour" ni introduction longue)
+- Maximum 3-4 paragraphes
+- Un exemple de code si pertinent
+- Adapte-toi au niveau {niveau}
+"""
+    
+    # Sans documentation
+    return f"""
+Un développeur {niveau} demande en {technologie} :
+
+**Question** : {question}
+
+Tu n'as pas de documentation officielle sous la main.
+Réponds d'après tes connaissances générales :
+- Commence directement par la réponse
+- Maximum 3-4 paragraphes
+- Un exemple de code si pertinent
+- Adapte-toi au niveau {niveau}
+- Mentionne brièvement que c'est basé sur tes connaissances
 """
 
 # ─── Prompt pour générer un exercice ──────────────────────────────────────────

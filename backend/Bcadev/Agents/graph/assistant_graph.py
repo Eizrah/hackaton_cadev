@@ -103,6 +103,9 @@ def preparer_contexte(state: AssistantState) -> AssistantState:
     1. Appelle get_niveau_dev pour connaître le niveau et les compétences du dev
     2. Si une technologie est spécifiée, s'assure que la doc est dans ChromaDB
     3. Récupère les passages pertinents via le RAG
+    
+    OPTIMISATION : Le chargement de la doc ne se fait qu'une fois par technologie.
+    ChromaDB garde ensuite les embeddings en cache pour les requêtes suivantes.
     """
     # 1. récupère le profil du dev
     try:
@@ -116,9 +119,32 @@ def preparer_contexte(state: AssistantState) -> AssistantState:
         niveau_lisible = "intermédiaire"
         competences_dev = []
 
-    # 2. charge la doc si une technologie est spécifiée
+    # Détection rapide : messages simples (salutations, remerciements)
+    question_lower = state.get("question", "").lower().strip()
+    is_simple_message = (
+        len(question_lower) < 30 and 
+        any(word in question_lower for word in [
+            'bonjour', 'salut', 'hello', 'hi', 'hey', 'bonsoir',
+            'merci', 'thanks', 'thank you', 'cool', 'super', 'génial', 'ok'
+        ])
+    )
+    
+    # Si message simple, skip le RAG pour répondre plus vite
+    if is_simple_message:
+        return {
+            **state,
+            "niveau_dev": niveau_dev,
+            "niveau_lisible": niveau_lisible,
+            "competences_dev": competences_dev,
+            "contexte_rag": "",
+            "rag_disponible": False,
+        }
+
+    # 2. charge la doc si une technologie est spécifiée (cache ChromaDB)
     if state.get("technologie"):
         try:
+            # Cette fonction vérifie d'abord si la doc existe déjà
+            # Si oui, elle ne fait rien → pas de téléchargement répété
             charger_doc_technologie.invoke({"technologie": state["technologie"]})
         except Exception as e:
             logger.warning(f"Impossible de charger la doc {state['technologie']} : {e}")
