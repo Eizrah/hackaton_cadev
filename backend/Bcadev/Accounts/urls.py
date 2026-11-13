@@ -19,10 +19,14 @@ urlpatterns = [
     path('rechercher/', RechercherDevsView.as_view(), name='rechercher-devs-simple'),
 
     # Notifications
+    path('notifications/', MesNotifsView.as_view(), name='mes-notifications'),
+    path('notifications/count/', CompterNotifsNonLuesView.as_view(), name='compter-notifications'),
+    path('notifications/marquer-toutes/', MarquerToutesNotifsLuesView.as_view(), name='marquer-toutes-notifications'),
+    path('notifications/<int:notif_id>/marquer/', MarquerNotifLueView.as_view(), name='marquer-notification'),
+    # Anciennes routes notifications (à garder pour compatibilité)
     path('notifications/lire-tout/', LireToutesNotifsView.as_view(), name='lire-tout-notifs'),
     path('notifications/<int:id_notif>/', LireNotifView.as_view(), name='lire-notif'),
     path('notifications/<int:id_notif>/supprimer/', SupprimerNotifView.as_view(), name='supprimer-notif'),
-    path('notifications/', NotificationsView.as_view(), name='notifications'),
 
     # OAuth & CSRF
     path('oauth/token/', OAuthTokenView.as_view(), name='oauth-token'),

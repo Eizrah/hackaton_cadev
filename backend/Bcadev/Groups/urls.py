@@ -9,6 +9,9 @@ from .views import (
     MessagesGroupeView,
     EnvoyerAudioGroupeView,
     EnvoyerFichierGroupeView,
+    MesInvitationsView,
+    AccepterInvitationView,
+    RefuserInvitationView,
 )
 
 urlpatterns = [
@@ -21,6 +24,11 @@ urlpatterns = [
     # gestion des membres
     path('<uuid:id_group>/membres/', MembreView.as_view(), name='membres'),
     path('<uuid:id_group>/membres/<str:email>/', GererMembreView.as_view(), name='gerer-membre'),
+
+    # invitations
+    path('invitations/', MesInvitationsView.as_view(), name='mes-invitations'),
+    path('invitations/<uuid:id_invitation>/accepter/', AccepterInvitationView.as_view(), name='accepter-invitation'),
+    path('invitations/<uuid:id_invitation>/refuser/', RefuserInvitationView.as_view(), name='refuser-invitation'),
 
     # messagerie de groupe
     path('<uuid:id_group>/messages/', MessagesGroupeView.as_view(), name='messages-groupe'),

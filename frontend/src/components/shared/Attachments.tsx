@@ -54,7 +54,8 @@ export function AttachmentCard({ file, onRemove, preview = true }: { file: Store
     <div>
       {url ? <a
         href={url}
-        download={file.name}>
+        target="_blank"
+        rel="noopener noreferrer">
         {file.name}
         <Download size={14} />
       </a> : <span>

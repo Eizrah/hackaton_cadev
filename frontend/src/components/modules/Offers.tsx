@@ -28,7 +28,7 @@ interface Offre {
   feu_vert: boolean
 }
 
-export default function Offers({ profile, onNotice, onNavigate }: { profile: Profile; onNotice: (text: string) => void; onNavigate: (path: string) => void }) {
+export default function Offers({ profile, onNotice, onNavigate }: { profile: Profile; onNotice: (text: string) => void; onNavigate: (path: string) => void; route?: string[] }) {
   const { t } = useI18n();
   
   // État

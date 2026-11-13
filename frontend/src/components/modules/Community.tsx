@@ -1320,27 +1320,37 @@ export default function Community({
           onClose={() => setReport(null)}
         >
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               const detail = String(new FormData(e.currentTarget).get("reason") || "").trim();
               if (!reportCategory || (reportCategory === "Autres" && !detail)) return;
               const reason = `${reportCategory}${detail ? ` : ${detail}` : ""}`;
               // signalement backend
-              import("../../api/publication").then(({ publicationApi }) => {
-                publicationApi.signalerPost(String(report.id), reason).catch(() => {/* silencieux */});
-              });
-              // log local
               try {
-                const id = Date.now();
-                const reports = JSON.parse(localStorage.getItem("devafrica:reports") || "[]");
-                localStorage.setItem(
-                  "devafrica:reports",
-                  JSON.stringify([...reports, { id, target: report.id, reason, date: new Date().toISOString() }])
+                await import("../../api/publication").then(({ publicationApi }) => 
+                  publicationApi.signalerPost(String(report.id), reason)
                 );
-                setReviews((current) => [makeReview("report", id, report.title || report.author, reason), ...current]);
-              } catch {/* silencieux */}
-              onNotice(t("Signalement envoyé. Merci de contribuer à une communauté bienveillante.", "Report sent. Thank you for helping keep the community welcoming."));
-              setReport(null);
+                
+                // log local
+                try {
+                  const id = Date.now();
+                  const reports = JSON.parse(localStorage.getItem("devafrica:reports") || "[]");
+                  localStorage.setItem(
+                    "devafrica:reports",
+                    JSON.stringify([...reports, { id, target: report.id, reason, date: new Date().toISOString() }])
+                  );
+                  setReviews((current) => [makeReview("report", id, report.title || report.author, reason), ...current]);
+                } catch {/* silencieux */}
+                
+                onNotice(t("Signalement envoyé. Merci de contribuer à une communauté bienveillante.", "Report sent. Thank you for helping keep the community welcoming."));
+                setReport(null);
+              } catch (err: any) {
+                if (err.response?.data?.erreur) {
+                  onNotice(err.response.data.erreur);
+                } else {
+                  onNotice(t("Erreur lors de l'envoi du signalement.", "Error sending report."));
+                }
+              }
             }}
           >
             <p>{t("Explique la raison de ton signalement.", "Explain why you are reporting this post.")}</p>

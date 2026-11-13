@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from .models import Developper, Experience, Possession
+from .models import Developper, Experience, Possession, Notif
 from fonction_utils.gestion_fichier import valider_image, valider_fichier, valider_diplome_certificat
 
 
@@ -131,3 +131,10 @@ class DevelopperSerializer(serializers.ModelSerializer):
             'presentation', 'possessions'
         ]
         read_only_fields = ['email', 'point_penalite', 'possessions']
+
+
+class NotifSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notif
+        fields = ['id', 'type', 'message', 'lu', 'date', 'post_id', 'commentaire_id', 'offre_id', 'groupe_id']
+        read_only_fields = ['id', 'date']

@@ -47,7 +47,8 @@ class CreerForumPostView(APIView):
                     creer_notif(
                         post.developper,
                         'post_refuse',
-                        f'Votre post a été refusé : {raison}'
+                        f'Votre post a été refusé : {raison}',
+                        post_id=post.id_publication
                     )
                     return Response({
                         'message': 'Votre post a été refusé par l\'IA. Vous pouvez le modifier.',
@@ -160,7 +161,8 @@ class DetailForumPostView(APIView):
                     creer_notif(
                         post.developper,
                         'post_refuse',
-                        f'Votre post modifié a été refusé : {resultat.get("raison", "Contenu non conforme.")}'
+                        f'Votre post modifié a été refusé : {resultat.get("raison", "Contenu non conforme.")}',
+                        post_id=post.id_publication
                     )
             except Exception:
                 pass
@@ -273,7 +275,9 @@ class CommentaireView(APIView):
                 creer_notif(
                     post.developper,
                     'commentaire',
-                    f'{request.user.pseudo} a commenté votre post.'
+                    f'{request.user.pseudo} a commenté votre post.',
+                    post_id=post.id_publication,
+                    envoyeur=request.user
                 )
 
             # notifie l'auteur du commentaire parent s'il y a une réponse
@@ -285,8 +289,11 @@ class CommentaireView(APIView):
                     if parent.developper != request.user:
                         creer_notif(
                             parent.developper,
-                            'commentaire',
-                            f'{request.user.pseudo} a répondu à votre commentaire.'
+                            'reponse_commentaire',
+                            f'{request.user.pseudo} a répondu à votre commentaire.',
+                            post_id=post.id_publication,
+                            commentaire_id=parent.id_commentaire,
+                            envoyeur=request.user
                         )
                 except Commentaire.DoesNotExist:
                     pass
@@ -403,8 +410,10 @@ class NoteView(APIView):
             if post.developper != request.user:
                 creer_notif(
                     post.developper,
-                    'commentaire',
-                    f'{request.user.pseudo} a aimé votre post.'
+                    'like',
+                    f'{request.user.pseudo} a aimé votre post.',
+                    post_id=post.id_publication,
+                    envoyeur=request.user
                 )
             return Response({
                 'message': 'Note ajoutée.',
