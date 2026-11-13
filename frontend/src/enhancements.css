@@ -139,11 +139,176 @@
 .floating-tutor-welcome > svg { color:#297cbb; }
 .floating-tutor-welcome h3 { font-size:17px;color:#315f80;line-height:1.5; }
 .floating-tutor-welcome p { font-size:12px;line-height:1.9; }
-.floating-tutor-message { background:#f0f6fb;border:1px solid #deebf5;border-radius:14px;padding:13px;margin-bottom:14px;overflow-wrap:anywhere; }
-.floating-tutor-message.user { margin-left:35px;background:#e8f2ff;border-color:#d6e6fb; }
-.floating-tutor-message strong { font-size:10px;color:#347bb1; }
-.floating-tutor-message p { white-space:pre-wrap;font-size:12px;line-height:1.85;margin:7px 0 0; }
-.floating-tutor-message pre { background:#15364f;color:#dceeff;font-size:10px;padding:12px;overflow:auto;border-radius:10px; }
+/* ─── FloatingTutor Messages (Modern Design) ──────────────────────────────── */
+
+.floating-tutor-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 18px;
+  animation: message-slide-in 0.3s ease-out;
+}
+
+@keyframes message-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Avatar pour l'assistant */
+.floating-tutor-message .message-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e90ff, #1565c0);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(30, 144, 255, 0.25);
+}
+
+/* Container du contenu */
+.floating-tutor-message .message-content {
+  flex: 1;
+  min-width: 0;
+  max-width: 85%;
+}
+
+/* Header du message (nom) */
+.floating-tutor-message .message-header {
+  margin-bottom: 6px;
+}
+
+.floating-tutor-message strong {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5a7a95;
+  letter-spacing: -0.01em;
+}
+
+/* Corps du message */
+.floating-tutor-message .message-body {
+  background: #f7f9fb;
+  border: 1px solid #e8eef4;
+  border-radius: 12px;
+  padding: 12px 14px;
+  line-height: 1.6;
+}
+
+.floating-tutor-message.assistant .message-body {
+  background: #f0f6fb;
+  border-color: #deebf5;
+}
+
+.floating-tutor-message.user {
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+}
+
+.floating-tutor-message.user .message-content {
+  max-width: 80%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.floating-tutor-message.user .message-body {
+  background: #e3f2ff;
+  border-color: #c5e0ff;
+}
+
+.floating-tutor-message p {
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 0;
+  color: #2c4a5f;
+}
+
+.floating-tutor-message p:not(:last-child) {
+  margin-bottom: 10px;
+}
+
+/* Blocs de code */
+.floating-tutor-message pre {
+  background: #1a2332;
+  color: #e1e8f0;
+  font-size: 11px;
+  padding: 12px;
+  overflow-x: auto;
+  border-radius: 8px;
+  margin: 10px 0;
+  border: 1px solid #2d3a4d;
+}
+
+.floating-tutor-message code {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  line-height: 1.6;
+}
+
+/* Actions sous les messages utilisateur */
+.message-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.floating-tutor-message:hover .message-actions {
+  opacity: 1;
+}
+
+.message-action-btn {
+  background: transparent;
+  border: none;
+  color: #7b93aa;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  transition: all 0.2s;
+}
+
+.message-action-btn:hover {
+  background: #e8f0f7;
+  color: #2e6aa3;
+}
+
+.message-action-btn:active {
+  transform: scale(0.95);
+}
+
+.action-feedback {
+  color: #27ae60;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .floating-tutor-message .message-content {
+    max-width: 90%;
+  }
+  
+  .floating-tutor-message.user .message-content {
+    max-width: 85%;
+  }
+  
+  .message-actions {
+    opacity: 1; /* Toujours visible sur mobile */
+  }
+}
 .floating-tutor-composer { display:flex;gap:8px;align-items:flex-end;padding:12px 14px 7px;border-top:1px solid #dfebf5;background:#fbfdff; }
 .floating-tutor-composer textarea { width:100%;min-width:0;resize:none;padding:10px;border:1px solid #cfe0ee;border-radius:13px;font:inherit;font-size:12px;line-height:1.65;color:#345d7b;background:white; }
 .floating-tutor-composer .btn-primary { border-radius:13px;padding:12px;flex-shrink:0; }
