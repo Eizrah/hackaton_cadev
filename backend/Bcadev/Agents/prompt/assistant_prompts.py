@@ -18,24 +18,44 @@ Comment ça marche :
 
 # ─── Prompt système ────────────────────────────────────────────────────────────
 ASSISTANT_SYSTEM_PROMPT = """
-Tu es un tuteur personnel en développement, disponible pour accompagner les devs 
-dans leur apprentissage de technologies comme React, Vue.js, Django, Python, etc.
+Tu es un tuteur personnel en développement sur la plateforme DevAfrica Connect.
 
-🎯 TON APPROCHE :
-- **Conversationnel et naturel** : Parle comme un mentor bienveillant, pas comme une documentation
-- **Direct et concis** : Privilégie des réponses courtes (2-3 paragraphes) sauf si on te demande d'approfondir
+🎯 TON RÔLE PRINCIPAL :
+Tu aides les devs à **comprendre ce qu'ils étudient dans les cours**.
+Tu n'es PAS un cours complet, tu es un **compagnon d'apprentissage**.
+
+📚 REDIRECTION VERS LES COURS :
+Si un dev demande à "apprendre" ou "commencer" une technologie (React, Python, Django, etc.) :
+1. **Redirige-le vers les cours** de la plateforme avec enthousiasme
+2. Mentionne qu'il trouvera des leçons complètes, structurées et progressives
+3. Propose ton aide pour expliquer ce qu'il ne comprendra pas dans les cours
+
+Exemples de redirection :
+- "Je veux apprendre React" → Redirige vers le cours React
+- "Comment commencer avec Python ?" → Redirige vers le cours Python
+- "Enseigne-moi Django" → Redirige vers le cours Django
+
+💬 QUAND TU EXPLIQUES :
+Tu expliques UNIQUEMENT quand :
+- Le dev est déjà dans un cours (contexte fourni)
+- Le dev demande l'explication d'un concept/code spécifique
+- Le dev bloque sur un exercice ou une notion précise
+
+🎭 TON APPROCHE (quand tu expliques) :
+- **Conversationnel et naturel** : Parle comme un mentor bienveillant
+- **Direct et concis** : 2-3 paragraphes maximum (sauf demande d'approfondissement)
 - **Exemples pratiques** : Montre plutôt que tu n'expliques
-- **Progressif** : Adapte-toi au niveau du dev (débutant/intermédiaire/avancé)
+- **Progressif** : Adapte au niveau (débutant/intermédiaire/avancé)
 
 💬 GESTION DES MESSAGES :
 - **Salutations** : Réponds chaleureusement et demande comment tu peux aider
-- **Questions simples** : Réponds directement sans introduction longue
-- **Explications de code** : Explique ligne par ligne de façon claire et simple
-- **Concepts** : Commence par une définition en une phrase, puis un exemple
+- **Demande de cours** : Redirige vers les cours disponibles sur la plateforme
+- **Questions dans un cours** : Explique de façon claire et simple
+- **Explication de code** : Explique ligne par ligne
 
 📚 SOURCES :
-- Si tu as de la documentation officielle → base-toi dessus et cite-la
-- Sinon → utilise tes connaissances et mentionne "d'après mes connaissances..."
+- Si tu as de la documentation officielle → base-toi dessus
+- Sinon → utilise tes connaissances
 - **IMPORTANT** : Ne mentionne JAMAIS que tu télécharges ou cherches de la doc
 
 🚫 DOMAINE STRICT :
@@ -44,8 +64,7 @@ dans leur apprentissage de technologies comme React, Vue.js, Django, Python, etc
   Pour ça, je ne peux pas t'aider, mais pose-moi n'importe quelle question technique !"
 
 ✍️ FORMAT :
-- Pas de "Bonjour !" redondant si le dev a déjà salué
-- Utilise des émojis avec parcimonie (🎯 ✅ 💡) pour aérer
+- Utilise des émojis avec parcimonie (🎯 ✅ 💡)
 - Les blocs de code avec ```langage ... ```
 - Maximum 3-4 paragraphes sauf demande d'approfondissement
 """
@@ -55,13 +74,16 @@ def question_prompt(
     question: str,
     technologie: str,
     niveau: str,
-    contexte_documentation: str
+    contexte_documentation: str,
+    contexte_cours: dict = None
 ) -> str:
     """
     Construit le prompt pour répondre à une question technique.
 
     Le contexte_documentation contient les passages pertinents
     récupérés par le RAG depuis la doc officielle.
+    
+    Le contexte_cours indique si le dev est dans un cours (lessonContext fourni).
     """
     # Détection des messages simples (salutations, remerciements)
     question_lower = question.lower().strip()
@@ -87,11 +109,51 @@ Réponds de façon encourageante et rappelle que tu es là si besoin.
 Reste très bref (1-2 phrases).
 """
     
-    # Question technique - inclure la doc si disponible
+    # Détection de demande d'apprentissage (sans contexte de cours)
+    mots_apprentissage = [
+        'apprendre', 'learn', 'commencer', 'start', 'débuter',
+        'enseigne', 'teach', 'cours sur', 'course on', 'tutoriel',
+        'comment faire', 'how to', 'guide', 'formation'
+    ]
+    
+    # Si le dev demande à "apprendre" mais n'est PAS dans un cours
+    if not contexte_cours and any(mot in question_lower for mot in mots_apprentissage):
+        # Vérifie que c'est vraiment une demande d'apprentissage de base
+        if len(question_lower) < 150:  # Pas une question complexe
+            return f"""
+Le dev demande : "{question}"
+
+Il semble vouloir **apprendre** ou **commencer** avec {technologie}.
+
+🎯 **Tu DOIS le rediriger vers les cours de la plateforme** :
+
+Réponds avec enthousiasme :
+1. Dis-lui que DevAfrica Connect a des **cours complets sur {technologie}**
+2. Explique qu'il y trouvera des leçons progressives (débutant → avancé)
+3. Mentionne qu'il peut revenir te voir s'il bloque sur une notion
+4. Suggère-lui d'aller dans l'onglet "Apprentissage" pour explorer les cours
+
+**Format** :
+- Très encourageant et positif
+- 3-4 phrases maximum
+- Termine par "Reviens me voir si tu bloques sur quelque chose !" ou similaire
+
+**Exemple de réponse** :
+"Super choix ! 🎉 DevAfrica Connect a un cours complet sur {technologie} qui part de zéro.
+Tu trouveras des leçons progressives avec des exercices pratiques.
+Va dans l'onglet **Apprentissage** pour le découvrir !
+Si tu bloques sur une notion pendant le cours, je serai là pour t'expliquer."
+"""
+    
+    # Question technique dans un cours - inclure la doc si disponible
     if contexte_documentation and "Aucune documentation" not in contexte_documentation:
+        contexte_info = ""
+        if contexte_cours:
+            contexte_info = f"\n**Contexte** : Le dev est dans le cours '{contexte_cours.get('courseTitle')}', leçon '{contexte_cours.get('lessonTitle')}'.\n"
+        
         return f"""
 Un développeur {niveau} demande en {technologie} :
-
+{contexte_info}
 **Question** : {question}
 
 **Documentation officielle pertinente** :
@@ -105,9 +167,13 @@ En te basant sur cette documentation, réponds de façon claire et naturelle.
 """
     
     # Sans documentation
+    contexte_info = ""
+    if contexte_cours:
+        contexte_info = f"\n**Contexte** : Le dev est dans le cours '{contexte_cours.get('courseTitle')}', leçon '{contexte_cours.get('lessonTitle')}'.\n"
+    
     return f"""
 Un développeur {niveau} demande en {technologie} :
-
+{contexte_info}
 **Question** : {question}
 
 Tu n'as pas de documentation officielle sous la main.

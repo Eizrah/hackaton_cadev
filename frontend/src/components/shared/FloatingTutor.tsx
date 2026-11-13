@@ -6,6 +6,7 @@ import { createLocalId } from "../../lib/format";
 import { useLocalData } from "../../lib/storage";
 import { useI18n } from "../../i18n/context";
 import { LessonHelpRegistration, TutorOverlay } from "../../lib/tutorOverlayContext";
+import TutorMessageComponent from "./TutorMessage";
 type Thread = { id: number; title: string; messages: TutorMessage[]; createdAt: string; context?: LearningTutorContext };
 const subscribeRoute = (update: () => void) => { for (const event of ["devafrica:navigate", "hashchange", "popstate"]) window.addEventListener(event, update); return () => { for (const event of ["devafrica:navigate", "hashchange", "popstate"]) window.removeEventListener(event, update); }; };
 const routeSnapshot = () => window.location.hash;
@@ -114,20 +115,14 @@ export default function FloatingTutor({ children }: { children: ReactNode }) {
                 {codeMode ? t("Demande le rôle d’une balise, d’une variable ou d’une ligne. Ton code est joint à cette discussion.", "Ask about a tag, a variable or a line. Your code is attached to this conversation.") : t("Écris un mot, un acronyme ou copie une phrase de la leçon. Je t’aide à en comprendre le sens avec un exemple.", "Enter a word or acronym, or paste a sentence from your lesson. I can help explain its meaning with an example.")}
               </p>
             </div>}
-            {thread?.messages.map((message, index) => <article
+            {thread?.messages.map((message, index) => <TutorMessageComponent
               key={index}
-              className={`floating-tutor-message ${message.role}`}>
-              <strong>
-                {message.role === "user" ? t("Toi", "You") : t("Agent apprentissage", "Learning agent")}
-              </strong>
-              {message.content.split(/```(?:[a-zA-Z0-9]+)?\n?/).map((part, i) => i % 2 ? <pre key={i}>
-                <code>
-                  {part.trim()}
-                </code>
-              </pre> : <p key={i}>
-                {part}
-              </p>)}
-            </article>)}
+              message={message}
+              onResend={message.role === "user" && index === thread.messages.length - 1 ? () => {
+                setQuestion(message.content);
+                void send();
+              } : undefined}
+            />)}
             {busy && <p
               className="tutor-loading"
               role="status">

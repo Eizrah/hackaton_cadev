@@ -48,6 +48,23 @@ class ChatAgentView(APIView):
     
     permission_classes = [IsAuthenticated]
     
+    def _extraire_code_context(self, context):
+        """
+        Extrait le contexte de code si présent.
+        Retourne (code, file, explanation) ou (None, None, None).
+        """
+        if not context:
+            return None, None, None
+        
+        code = context.get('code', '').strip()
+        file = context.get('file', '')
+        explanation = context.get('explanation', '')
+        
+        if code:
+            return code, file, explanation
+        
+        return None, None, None
+    
     def post(self, request):
         try:
             # Extraction des données
@@ -81,14 +98,57 @@ class ChatAgentView(APIView):
             # Récupérer l'email du développeur authentifié
             email_dev = request.user.email if request.user.is_authenticated else ""
             
+            # Extraire le contexte de cours si disponible
+            contexte_cours = None
+            if context and 'courseTitle' in context:
+                contexte_cours = {
+                    'courseTitle': context.get('courseTitle'),
+                    'lessonTitle': context.get('lessonTitle'),
+                    'lessonContent': context.get('lessonContent', '')[:500]
+                }
+            
+            # Extraire le contexte de code si présent
+            code, file, explanation = self._extraire_code_context(context)
+            
+            if code:
+                # Mode explication de code
+                logger.info(f"Explication de code ({file}) pour {email_dev}")
+                
+                # Enrichir la question avec le code
+                last_user_message = f"""
+[FICHIER: {file}]
+
+CODE:
+```
+{code[:3000]}
+```
+
+QUESTION: {last_user_message}
+
+CONTEXTE DU COURS:
+{explanation[:500] if explanation else 'Pas de contexte supplémentaire'}
+"""
+            elif contexte_cours:
+                # Mode cours - ajouter restriction stricte au contexte
+                logger.info(f"Question de {email_dev} dans cours {contexte_cours['courseTitle']}")
+                
+                last_user_message = f"""
+[CONTEXTE: Tu es dans le cours "{contexte_cours['courseTitle']}", leçon "{contexte_cours['lessonTitle']}"]
+
+{last_user_message}
+
+[IMPORTANT: Reste dans le contexte de {technologie}. Ne parle PAS d'autres technologies sauf si explicitement demandé par l'utilisateur.]
+"""
+            
             # Appeler le service IA
-            logger.info(f"Question de {email_dev} sur {technologie}: {last_user_message[:100]}")
+            logger.info(f"Question sur {technologie}: {last_user_message[:100]}")
             
             answer = repondre_question(
                 question=last_user_message,
                 technologie=technologie,
                 niveau="I",  # Par défaut intermédiaire, sera affiné par le profil
-                email_dev=email_dev
+                email_dev=email_dev,
+                contexte_cours=contexte_cours
             )
             
             logger.info(f"Réponse générée ({len(answer)} caractères)")

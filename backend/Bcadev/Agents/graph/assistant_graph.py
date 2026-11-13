@@ -83,6 +83,7 @@ class AssistantState(TypedDict):
     code_soumis: Optional[str]      # code soumis pour correction
     enonce_exercice: Optional[str]  # énoncé de l'exercice pour la correction
     domaine_interet: Optional[str]  # domaine pour les recommandations
+    contexte_cours: Optional[dict]  # contexte du cours (si le dev est dans une leçon)
 
     # ── résultats intermédiaires ──
     niveau_dev: str                 # "D", "I" ou "A"
@@ -189,13 +190,17 @@ def generer_avec_rag(state: AssistantState) -> AssistantState:
         llm = get_llm_assistant()
         tache = state["tache"]
 
+        # Récupérer le contexte de cours s'il existe (pour savoir si le dev est dans un cours)
+        contexte_cours = state.get("contexte_cours")
+
         # construit le prompt selon le type de tâche
         if tache == TACHE_QUESTION:
             human_prompt = question_prompt(
                 question=state["question"],
                 technologie=state["technologie"],
                 niveau=state["niveau_lisible"],
-                contexte_documentation=state["contexte_rag"]
+                contexte_documentation=state["contexte_rag"],
+                contexte_cours=contexte_cours
             )
         elif tache == TACHE_EXERCICE:
             human_prompt = exercice_prompt(
@@ -243,6 +248,9 @@ def generer_sans_rag(state: AssistantState) -> AssistantState:
         llm = get_llm_assistant()
         tache = state["tache"]
 
+        # Récupérer le contexte de cours s'il existe
+        contexte_cours = state.get("contexte_cours")
+
         # contexte vide avec avertissement pour le LLM
         contexte_vide = (
             "Aucune documentation officielle disponible. "
@@ -254,7 +262,8 @@ def generer_sans_rag(state: AssistantState) -> AssistantState:
                 question=state["question"],
                 technologie=state.get("technologie", "général"),
                 niveau=state["niveau_lisible"],
-                contexte_documentation=contexte_vide
+                contexte_documentation=contexte_vide,
+                contexte_cours=contexte_cours
             )
         elif tache == TACHE_EXERCICE:
             human_prompt = exercice_prompt(

@@ -66,6 +66,7 @@ def _etat_initial(tache: str, email_dev: str, **kwargs) -> dict:
         "code_soumis": kwargs.get("code_soumis"),
         "enonce_exercice": kwargs.get("enonce_exercice"),
         "domaine_interet": kwargs.get("domaine_interet"),
+        "contexte_cours": kwargs.get("contexte_cours"),  # Nouveau : contexte de la leçon
         # résultats intermédiaires — initialisés à vide
         # le graphe les remplira pendant l'exécution
         "niveau_dev": "I",
@@ -82,7 +83,8 @@ def repondre_question(
     question: str,
     technologie: str,
     niveau: str,
-    email_dev: str = ""
+    email_dev: str = "",
+    contexte_cours: dict = None
 ) -> str:
     """
     Répond à une question technique via le graphe assistant.
@@ -98,12 +100,14 @@ def repondre_question(
     - technologie : "react", "vue", "django", "python", "typescript"
     - niveau : "D", "I" ou "A" — sera affiné par le profil réel du dev
     - email_dev : email pour récupérer le profil complet (optionnel)
+    - contexte_cours : dict contenant courseTitle, lessonTitle, etc. (si dans un cours)
     """
     etat = _etat_initial(
         tache=TACHE_QUESTION,
         email_dev=email_dev,
         technologie=technologie,
         question=question,
+        contexte_cours=contexte_cours
     )
     return _invoquer_graphe(etat)
 
