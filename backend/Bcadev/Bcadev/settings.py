@@ -85,6 +85,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'Bcadev.middleware.DisableCSRFMiddleware',  # Doit être AVANT CsrfViewMiddleware
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -265,3 +266,17 @@ SOCIAL_AUTH_SANITIZE_REDIRECTS = False
 SOCIAL_AUTH_ALLOW_LOGIN_WITH_GET = True
 # Force social_django à accepter les requêtes GET pour les URLs de login
 SOCIAL_AUTH_GITHUB_AUTH_EXTRA_ARGUMENTS = {}
+
+# Exemptions CSRF pour OAuth (car vient d'un domaine externe)
+CSRF_TRUSTED_ORIGINS += [
+    'https://github.com',
+    'https://accounts.google.com',
+]
+
+# Configuration des cookies pour OAuth cross-origin
+SESSION_COOKIE_SAMESITE = 'Lax'  # Permet OAuth redirects
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = False  # True en production avec HTTPS
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False  # JS doit pouvoir lire le CSRF token
