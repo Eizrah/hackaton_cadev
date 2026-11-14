@@ -1,5 +1,16 @@
 import client from './client'
 
+export interface DjangoExperience {
+  id: number
+  nom_poste: string
+  description: string
+  nbr_annee_exp: number
+  diplome: string | null
+  certificat: string | null
+  fichier_diplome_url?: string | null
+  fichier_certificat_url?: string | null
+}
+
 export interface DjangoProfile {
   identifiant: string
   email: string
@@ -12,6 +23,7 @@ export interface DjangoProfile {
   presentation: string | null
   lien_portfolio: string | null
   photoprofil: string | null
+  experiences: DjangoExperience[]
   possessions: Array<{
     competence: string
     competence_nom: string
@@ -23,7 +35,11 @@ export interface DjangoProfile {
 
 export const authApi = {
   inscription: (data: object | FormData) =>
-    client.post<{ identifiant: string; tokens: { access: string; refresh: string } }>('/api/auth/inscription/', data),
+    client.post<{
+      identifiant: string
+      profil: DjangoProfile
+      tokens: { access: string; refresh: string }
+    }>('/api/auth/inscription/', data),
 
   connexion: (email: string, password: string) =>
     client.post('/api/auth/connexion/', { email, password }),
@@ -39,7 +55,7 @@ export const authApi = {
 
   // modification des infos de base (nom, prénom, age, photo, bio...)
   updateProfil: (data: object | FormData) =>
-    client.put<{ profil: DjangoProfile }>('/api/auth/profil/infos/', data),
+    client.put<{ profil: DjangoProfile; experiences_enregistrees: number[] }>('/api/auth/profil/infos/', data),
 
   // modification email ou pseudo — mot de passe requis
   modifierEmailPseudo: (data: { email?: string; pseudo?: string; mot_de_passe: string }) =>
@@ -70,6 +86,10 @@ export const authApi = {
     client.delete('/api/auth/supprimer-compte/', {
       data: { password, refresh }
     }),
+
+  // Catalogue partagé par l'inscription, le profil et les offres.
+  getCompetencesDisponibles: (signal?: AbortSignal) =>
+    client.get<Array<{ id_competence: string; nom_competence: string }>>('/api/learning/competences/', { signal }),
 }
 
 

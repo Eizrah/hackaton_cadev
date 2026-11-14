@@ -63,13 +63,8 @@ def _construire_profil_dev(dev) -> str:
         dev.possessions.values_list('competence__nom_competence', flat=True)
     )
 
-    # récupère les expériences
-    try:
-        experiences = list(
-            dev.experience_set.values_list('nom_poste', flat=True)
-        )
-    except Exception:
-        experiences = []
+    # Le parcours utilise le même lien inverse que la fiche de profil.
+    experiences = list(dev.experiences.values_list('nom_poste', flat=True))
 
     profil = f"""
 PROFIL DU DÉVELOPPEUR :

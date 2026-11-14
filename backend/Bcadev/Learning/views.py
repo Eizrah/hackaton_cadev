@@ -1,14 +1,15 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import Competence, Apprentissage
 from .serializers import CompetenceSerializer, ApprentissageSerializer
 
 # ─── Compétences ──────────────────────────────────────────────────────────────
 
 class ListeCompetencesView(APIView):
-    permission_classes = [IsAuthenticated]
+    # La liste contient les cours et doit être accessible pendant l'inscription.
+    permission_classes = [AllowAny]
 
     def get(self, request):
         # filtre optionnel par domaine : ?domaine=frontend

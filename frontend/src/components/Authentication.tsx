@@ -1,5 +1,5 @@
 import Modal from "./Modal";
-import { bannedLoginError, loginWithDjango } from "../lib/auth";
+import { bannedLoginError, loginWithDjango, mapDjangoProfile, profileForm, withLocalProfile } from "../lib/auth";
 import { authApi } from "../api/auth";
 import { apiError } from "../api/client";
 import { usePeople } from "../data/people";
@@ -314,11 +314,12 @@ export default function Authentication({
       );
       return;
     }
-    let publicId: string | undefined;
+    const registered = completeProfile(personal, experiences, skills, email, documents);
+    let saved = registered;
     if (import.meta.env.VITE_AUTH_MODE === "api") {
       setLogging(true);
       try {
-        const { data } = await authApi.inscription({
+        const form = await profileForm({
           email: email.trim(),
           nom: personal.lastName.trim(),
           prenom: personal.firstName.trim(),
@@ -327,11 +328,16 @@ export default function Authentication({
           niveau: personal.level === "Débutant" ? "D" : personal.level === "Intermédiaire" ? "I" : "A",
           pays: personal.country,
           noms_competences: skills.map(skill => skill.name.trim()),
+          competences: skills.flatMap(skill => skill.competenceId ? [skill.competenceId] : []),
           sexe: "M",
           password,
           password_confirm: confirmation,
-        });
-        publicId = data.identifiant;
+        }, "experiences", experiences);
+        const { data } = await authApi.inscription(form);
+        const profile = mapDjangoProfile(data.profil);
+        saved = withLocalProfile(profile, { ...registered, id: profile.id }, profile.experiences.flatMap(row =>
+          row.serverId !== undefined ? [row.serverId] : [],
+        ));
         localStorage.setItem("access_token", data.tokens.access);
         localStorage.setItem("refresh_token", data.tokens.refresh);
       } catch (error) {
@@ -345,20 +351,7 @@ export default function Authentication({
       }
     }
 
-    const registered = completeProfile(
-      personal,
-      experiences.map(entry => ({
-        ...entry,
-        position: entry.position.trim(),
-        description: entry.description.trim(),
-        diploma: entry.diploma.trim(),
-        certificate: entry.certificate.trim(),
-      })),
-      skills.map(skill => ({ ...skill, name: skill.name.trim() })),
-      email,
-      documents,
-    );
-    setProfile(publicId ? { ...registered, publicId, id: `dev-${publicId}` } : registered);
+    setProfile(saved);
     setPassword("");
     setConfirmation("");
     setDone(true);
@@ -564,10 +557,9 @@ export default function Authentication({
               <div
                 className="registration-demo-message"
                 role="status">
-                {t(
-                  "Profil de démonstration enregistré sur cet appareil. Aucun compte serveur n’a été créé et aucun mot de passe n’a été conservé.",
-                  "Demo profile saved on this device. No server account was created and no password was stored.",
-                )}
+                {import.meta.env.VITE_AUTH_MODE === "api"
+                  ? t("Compte créé. Retrouve tes expériences et compétences dans ton profil.", "Account created. Find your experience and skills in your profile.")
+                  : t("Profil de démonstration enregistré sur cet appareil.", "Demo profile saved on this device.")}
               </div>
               <button
                 className="register-continue"
@@ -590,7 +582,8 @@ export default function Authentication({
                   <>
                     <ExperienceFields
                       value={experiences}
-                      onChange={setExperiences} />
+                      onChange={setExperiences}
+                      onBusy={busy => setUploadCount(n => Math.max(0, n + (busy ? 1 : -1)))} />
                     <SkillFields
                       value={skills}
                       onChange={setSkills}

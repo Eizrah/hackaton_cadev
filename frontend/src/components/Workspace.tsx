@@ -22,7 +22,7 @@ import NotificationCenter from "./shared/NotificationCenter";
 import { useToast } from "../lib/toastContext";
 import { usePeople } from "../data/people";
 import { authApi } from "../api/auth";
-import { mapDjangoProfile } from "../lib/auth";
+import { mapDjangoProfile, profileForm, withLocalProfile } from "../lib/auth";
 import Community from "./modules/Community";
 import ProfileView, { ProfileEditor } from "./modules/Profile";
 import Learning from "./modules/Learning";
@@ -350,6 +350,14 @@ export default function Workspace({
                 profile={profile}
                 onCredentialsSaved={({ email, pseudo }) => setProfile(current => ({ ...current, email, pseudo }))}
                 onSave={async (next) => {
+                  const before = new Map(profile.experiences.map(row => [row.id, row]));
+                  const kept = new Set(next.experiences.map(row => row.id));
+                  const removed = profile.experiences.flatMap(row =>
+                    row.serverId !== undefined && !kept.has(row.id) ? [row.serverId] : [],
+                  );
+                  const edited = next.experiences.filter(row =>
+                    row.serverId === undefined || JSON.stringify(row) !== JSON.stringify(before.get(row.id)),
+                  );
                   const payload = {
                     nom: next.lastName,
                     prenom: next.firstName,
@@ -359,24 +367,21 @@ export default function Workspace({
                     presentation: next.bio,
                     lien_portfolio: next.portfolio,
                     noms_competences: next.skillDetails.map(skill => skill.name.trim()),
+                    experiences_a_supprimer: removed,
                   };
-                  let data: object | FormData = payload;
-                  if (next.photo !== profile.photo && next.photo.startsWith("data:image/")) {
-                    const form = new FormData();
-                    for (const [key, value] of Object.entries(payload)) {
-                      form.append(key, Array.isArray(value) ? JSON.stringify(value) : String(value));
-                    }
-                    form.append("photoprofil", await (await fetch(next.photo)).blob(), "profil.jpg");
-                    data = form;
-                  } else if (next.photo !== profile.photo && !next.photo) {
-                    data = { ...payload, photoprofil: null };
+                  const fields: Parameters<typeof profileForm>[0] = payload;
+                  if (next.photo !== profile.photo) {
+                    if (next.photo.startsWith("data:image/")) {
+                      fields.photoprofil = await (await fetch(next.photo)).blob();
+                    } else if (!next.photo) fields.photoprofil = null;
                   }
-                  const response = await authApi.updateProfil(data);
-                  const saved = mapDjangoProfile(response.data.profil);
-                  setProfile(current => ({
-                    ...next, ...saved, id: current.id, role: next.role,
-                    experience: next.experience, experiences: next.experiences, documents: next.documents,
-                  }));
+                  const form = await profileForm(fields, "experiences_a_enregistrer", edited);
+                  const { data } = await authApi.updateProfil(form);
+                  const written = new Map(edited.map((row, i) => [row.id, data.experiences_enregistrees[i]]));
+                  const merged = withLocalProfile(mapDjangoProfile(data.profil), next, next.experiences.map(row =>
+                    written.get(row.id) ?? row.serverId,
+                  ));
+                  setProfile(merged);
                   setNotice(t("Profil mis à jour.", "Profile updated."));
                   navigate("profil");
                 }}

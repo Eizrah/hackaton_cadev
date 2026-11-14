@@ -1,7 +1,9 @@
-import os
+from functools import partial
+
+from django.db import transaction
 from django.db.models.signals import post_delete, pre_save
 from django.dispatch import receiver
-from .models import Developper
+from .models import Developper, Experience
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -12,48 +14,34 @@ from .models import Developper
 # On supprime ensuite le fichier physique correspondant dans media/.
 # ─────────────────────────────────────────────────────────────────────────────
 @receiver(post_delete, sender=Developper)
-def supprimer_photo_profil(sender, instance, **kwargs):
-    # Vérifie que le dev avait bien une photo de profil
-    if instance.photoprofil:
-        # Vérifie que le fichier existe physiquement sur le disque
-        if os.path.isfile(instance.photoprofil.path):
-            # Supprime le fichier du dossier media/profil_pictures/
-            os.remove(instance.photoprofil.path)
+def supprimer_photo_profil(sender, instance, using, **kwargs):
+    supprimer_fichier_apres_commit(instance.photoprofil, using)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SIGNAL : Suppression de l'ancienne photo quand un Dev change sa photo
 #
-# pre_save → ce signal se déclenche AVANT que les modifications
-# soient sauvegardées en base de données.
-# On compare l'ancienne photo avec la nouvelle — si elles sont différentes,
-# on supprime l'ancienne du disque pour ne pas accumuler des fichiers inutiles.
+# Retire l'ancienne photo une fois la modification confirmée en base.
 # ─────────────────────────────────────────────────────────────────────────────
 @receiver(pre_save, sender=Developper)
-def supprimer_ancienne_photo(sender, instance, **kwargs):
-    # Si c'est une création (pas encore de pk), on ne fait rien
-    if not instance.pk:
+def supprimer_ancienne_photo(sender, instance, using, update_fields, **kwargs):
+    if not instance.pk or (update_fields is not None and 'photoprofil' not in update_fields):
         return
     
     try:
         # Récupère l'état actuel du dev en base AVANT la modification
-        ancienne = Developper.objects.get(pk=instance.pk)
+        ancienne = Developper.objects.using(using).get(pk=instance.pk)
     except Developper.DoesNotExist:
         return
     
-    # Compare l'ancienne photo avec la nouvelle
     if ancienne.photoprofil and ancienne.photoprofil != instance.photoprofil:
-        # Si elles sont différentes, supprime l'ancienne du disque
-        if os.path.isfile(ancienne.photoprofil.path):
-            os.remove(ancienne.photoprofil.path)
-
-from .models import Experience
+        supprimer_fichier_apres_commit(ancienne.photoprofil, using)
 
 
-def supprimer_fichier(path):
-    """Supprime un fichier physique s'il existe."""
-    if path and os.path.isfile(path):
-        os.remove(path)
+def supprimer_fichier_apres_commit(fichier, using):
+    # Un enregistrement du profil peut encore échouer après le signal.
+    if fichier:
+        transaction.on_commit(partial(fichier.storage.delete, fichier.name), using=using, robust=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -61,29 +49,27 @@ def supprimer_fichier(path):
 # expérience est supprimée.
 # ─────────────────────────────────────────────────────────────────────────────
 @receiver(post_delete, sender=Experience)
-def supprimer_fichiers_experience(sender, instance, **kwargs):
-    if instance.fichier_diplome:
-        supprimer_fichier(instance.fichier_diplome.path)
-    if instance.fichier_certificat:
-        supprimer_fichier(instance.fichier_certificat.path)
+def supprimer_fichiers_experience(sender, instance, using, **kwargs):
+    supprimer_fichier_apres_commit(instance.fichier_diplome, using)
+    supprimer_fichier_apres_commit(instance.fichier_certificat, using)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SIGNAL : Suppression des anciens fichiers quand une expérience est modifiée.
 # ─────────────────────────────────────────────────────────────────────────────
 @receiver(pre_save, sender=Experience)
-def supprimer_anciens_fichiers_experience(sender, instance, **kwargs):
+def supprimer_anciens_fichiers_experience(sender, instance, using, **kwargs):
     if not instance.pk:
         return
     try:
-        ancienne = Experience.objects.get(pk=instance.pk)
+        ancienne = Experience.objects.using(using).get(pk=instance.pk)
     except Experience.DoesNotExist:
         return
 
     # supprime l'ancien diplôme si changé
     if ancienne.fichier_diplome and ancienne.fichier_diplome != instance.fichier_diplome:
-        supprimer_fichier(ancienne.fichier_diplome.path)
+        supprimer_fichier_apres_commit(ancienne.fichier_diplome, using)
 
     # supprime l'ancien certificat si changé
     if ancienne.fichier_certificat and ancienne.fichier_certificat != instance.fichier_certificat:
-        supprimer_fichier(ancienne.fichier_certificat.path)
+        supprimer_fichier_apres_commit(ancienne.fichier_certificat, using)

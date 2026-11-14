@@ -425,15 +425,34 @@ export default function ProfileView({
                     className="profile-experience-item"
                     key={entry.id}>
                     <span className="experience-year">
-                      {entry.year ||
-                        t("Année non renseignée", "Year unavailable")}
+                      {[entry.year, entry.nbr_annee_exp && `${entry.nbr_annee_exp} ${t("an(s) d’expérience", "year(s) of experience")}`]
+                        .filter(Boolean).join(" · ")}
                     </span>
-                    <h3>
-                      {entry.position}
-                    </h3>
-                    <p>
-                      {entry.description}
-                    </p>
+                    <h3>{entry.position}</h3>
+                    <p>{entry.description}</p>
+                    {(entry.diploma || entry.certificate || entry.diplomaUrl || entry.certificateUrl || entry.diplomaFile || entry.certificateFile) && (
+                      <div className="experience-credentials">
+                        {entry.diploma && (
+                          <span className="credential-badge">
+                            <GraduationCap size={14} />
+                            {entry.diploma}
+                          </span>
+                        )}
+                        {entry.certificate && (
+                          <span className="credential-badge">
+                            <GraduationCap size={14} />
+                            {entry.certificate}
+                          </span>
+                        )}
+                        {isOwn && ([
+                          [safePortfolio(entry.diplomaUrl || ""), entry.diplomaFile, t("Ouvrir le diplôme", "Open diploma")],
+                          [safePortfolio(entry.certificateUrl || ""), entry.certificateFile, t("Ouvrir le certificat", "Open certificate")],
+                        ] as const).map(([url, file, label]) => file
+                          ? <AttachmentCard key={label} file={file} preview={false} />
+                          : url && <a key={label} href={url} target="_blank" rel="noopener noreferrer">{label}</a>
+                        )}
+                      </div>
+                    )}
                   </article>
                 ))}
               </div>
@@ -462,14 +481,6 @@ export default function ProfileView({
                 file={document.file}
                 preview={false} />
             </div>)}
-          </section>}
-          {profile.experiences.some(e => e.diploma || e.certificate) && <section className="panel">
-            <h2>
-              {t("Diplômes et certificats", "Diplomas and certificates")}
-            </h2>
-            {profile.experiences.map(e => <p key={e.id}>
-              {[e.diploma, e.certificate].filter(Boolean).join(" · ")}
-            </p>)}
           </section>}
           <section className="panel portfolio-panel">
             <div>
@@ -712,7 +723,8 @@ export function ProfileEditor({
           <section className="structured-editor-section">
             <ExperienceFields
               value={draft.experiences}
-              onChange={(experiences) => setDraft({ ...draft, experiences })}
+              onChange={experiences => setDraft(current => ({ ...current, experiences }))}
+              onBusy={busy => setUploadCount(n => Math.max(0, n + (busy ? 1 : -1)))}
             />
             {draft.experience && (
               <details className="profile-legacy-note">

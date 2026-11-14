@@ -40,4 +40,12 @@ urlpatterns = [
     path('sourdine/', SourdineView.as_view(), name='sourdine'),
 
     path('reinitialisation-mot-de-passe/<str:uidb64>/<str:token>/', ReinitialisationMotDePasseView.as_view(), name='reinitialisation-mot-de-passe'),
+
+    # Expériences
+    path('experiences/', ExperienceListCreateView.as_view(), name='experiences-list'),
+    path('experiences/<int:pk>/', ExperienceDetailView.as_view(), name='experiences-detail'),
+
+    # Compétences du profil (possessions)
+    path('competences/', PossessionListCreateView.as_view(), name='competences-list'),
+    path('competences/<int:pk>/', PossessionDeleteView.as_view(), name='competences-delete'),
 ]

@@ -4,17 +4,24 @@ export type CredentialAttachment = { id:string; kind:"diploma"|"certificate"; fi
 export type DeveloperLevel = "Débutant" | "Intermédiaire" | "Avancé";
 export type Experience = {
   id: string;
+  serverId?: number;
   position: string;
   description: string;
   year: string;
+  nbr_annee_exp: string;
   diploma: string;
   certificate: string;
+  diplomaUrl?: string;
+  certificateUrl?: string;
+  diplomaFile?: StoredAttachment | null;
+  certificateFile?: StoredAttachment | null;
 };
 export type DeveloperSkill = {
   id: string;
   name: string;
   difficulty: string;
   domain: string;
+  competenceId?: string;
 };
 export type PersonalInformation = {
   firstName: string;
@@ -70,9 +77,9 @@ export const initialProfile: Profile = {
   skills: "React, TypeScript, Figma, Blender",
   skillDetails: [],
   experience:
-    "Étudiante en informatique\nDesign UI/UX et développement d’interfaces React.",
+    "Étudiante en informatique\nDesign UI/UX et développement d'interfaces React.",
   experiences: [],
-  bio: "J’aime transformer des idées en interfaces utiles et partager ce que j’apprends avec la communauté.",
+  bio: "J'aime transformer des idées en interfaces utiles et partager ce que j'apprends avec la communauté.",
   role: "Développeuse frontend · UI/UX",
   portfolio: "",
   photo: "",
@@ -80,16 +87,23 @@ export const initialProfile: Profile = {
 };
 export function newExperience(): Experience {
   return {
-    id: `exp-${createLocalId()}`,
+    id: `exp-${globalThis.crypto?.randomUUID?.() ?? createLocalId()}`,
     position: "",
     description: "",
     year: "",
+    nbr_annee_exp: "",
     diploma: "",
     certificate: "",
   };
 }
-export function newSkill(name = ""): DeveloperSkill {
-  return { id: `skill-${createLocalId()}`, name, difficulty: "", domain: "" };
+export function newSkill(name = "", competenceId?: string): DeveloperSkill {
+  return {
+    id: competenceId ?? `skill-${createLocalId()}`,
+    name,
+    difficulty: "",
+    domain: "",
+    competenceId,
+  };
 }
 function strings(value: unknown): Record<string, unknown> {
   return value && typeof value === "object"
@@ -109,13 +123,24 @@ export function migrateProfile(saved: unknown): Profile {
         const row = strings(entry);
         const get = (key: string) =>
           typeof row[key] === "string" ? (row[key] as string) : "";
+        const id = get("id") || (typeof row.id === "number" ? String(row.id) : `legacy-exp-${index}`);
+        const date = get("year");
+        const duration = get("nbr_annee_exp");
+        // Certains profils locaux ont déjà rangé une année civile dans le champ de durée.
+        const legacyDate = /^\d{4}$/.test(duration) && Number(duration) >= 1900 && Number(duration) <= currentYear;
         return {
-          id: get("id") || `legacy-exp-${index}`,
+          id,
+          serverId: typeof row.serverId === "number" ? row.serverId : (/^[1-9]\d*$/.test(id) ? Number(id) : undefined),
           position: get("position"),
           description: get("description"),
-          year: get("year"),
+          year: date || (legacyDate ? duration : ""),
+          nbr_annee_exp: legacyDate ? "" : duration,
           diploma: get("diploma"),
           certificate: get("certificate"),
+          diplomaUrl: get("diplomaUrl") || get("fichier_diplome_url") || undefined,
+          certificateUrl: get("certificateUrl") || get("fichier_certificat_url") || undefined,
+          diplomaFile: row.diplomaFile === null ? null : attachmentsFrom([row.diplomaFile])[0],
+          certificateFile: row.certificateFile === null ? null : attachmentsFrom([row.certificateFile])[0],
         };
       })
     : [];
@@ -129,6 +154,7 @@ export function migrateProfile(saved: unknown): Profile {
           name: get("name"),
           difficulty: get("difficulty") === "Facile" ? "Débutant" : get("difficulty") === "Avancée" ? "Avancé" : get("difficulty"),
           domain: get("domain"),
+          ...(get("competenceId") ? { competenceId: get("competenceId") } : {}),
         };
       })
     : text("skills")
@@ -149,7 +175,7 @@ export function migrateProfile(saved: unknown): Profile {
     lastName,
     age: text("age"),
     email: text("email"),
-    pseudo: text("pseudo",text("username")),
+    pseudo: text("pseudo", text("username")),
     level: ["Intermédiaire","intermediate"].includes(text("level")) ? "Intermédiaire" : ["Senior", "Avancé", "advanced"].includes(text("level")) ? "Avancé" : "Débutant",
     country: text("country", initialProfile.country),
     skills: skillDetails.length
@@ -202,23 +228,20 @@ export function validPseudo(value: string) {
   return /^[A-Za-z\d]{3,30}$/.test(value);
 }
 export function experienceError(rows: Experience[]): string | null {
-  const year = new Date().getFullYear();
   for (const row of rows) {
     if (!row.position.trim() || !row.description.trim())
-      return "Renseigne le poste et la description de chaque expérience, ou retire l’entrée vide.";
-    if (
-      !/^\d{4}$/.test(row.year) ||
-      Number(row.year) < 1900 ||
-      Number(row.year) > year
-    )
-      return "Saisis une année d’expérience valide.";
+      return "Renseigne le poste et la description de chaque expérience, ou retire l'entrée vide.";
+    if (row.year && !row.nbr_annee_exp) continue;
+    const n = Number(row.nbr_annee_exp);
+    if (row.nbr_annee_exp === "" || !Number.isInteger(n) || n < 0 || (n > 50 && row.serverId === undefined))
+      return "Saisis un nombre d’années d’expérience valide.";
   }
   return null;
 }
 export function skillError(rows: DeveloperSkill[]): string | null {
   const names = new Set<string>();
   for (const row of rows) {
-    if (!row.name.trim()) return "Renseigne le nom de chaque compétence, ou retire l’entrée vide.";
+    if (!row.name.trim()) return "Renseigne le nom de chaque compétence, ou retire l'entrée vide.";
     const name = row.name.trim().toLocaleLowerCase();
     if (names.has(name)) return "Cette compétence apparaît plusieurs fois.";
     names.add(name);

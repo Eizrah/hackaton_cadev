@@ -12,14 +12,21 @@ from fonction_utils.gestion_fichier import valider_image, valider_diplome_certif
 from .models import Developper, Experience, Possession, Notif
 
 
-class ExperienceSerializer(serializers.ModelSerializer):
+class ExperiencePubliqueSerializer(serializers.ModelSerializer):
     class Meta:
         model = Experience
+        fields = ['id', 'nom_poste', 'description', 'nbr_annee_exp', 'diplome', 'certificat']
+
+
+class ExperienceSerializer(ExperiencePubliqueSerializer):
+    fichier_diplome_url = serializers.FileField(source='fichier_diplome', read_only=True)
+    fichier_certificat_url = serializers.FileField(source='fichier_certificat', read_only=True)
+
+    class Meta(ExperiencePubliqueSerializer.Meta):
         fields = [
-            'nom_poste', 'description', 'nbr_annee_exp',
-            'diplome', 'certificat',
-            # champs fichiers — optionnels
-            'fichier_diplome', 'fichier_certificat'
+            *ExperiencePubliqueSerializer.Meta.fields,
+            'fichier_diplome', 'fichier_certificat',
+            'fichier_diplome_url', 'fichier_certificat_url',
         ]
 
     def validate_fichier_diplome(self, value):
@@ -33,6 +40,11 @@ class ExperienceSerializer(serializers.ModelSerializer):
         return value
 
 
+class ExperienceProfilSerializer(ExperienceSerializer):
+    # L'identifiant sert uniquement à mettre à jour une expérience du compte connecté.
+    id = serializers.IntegerField(min_value=1, required=False)
+
+
 class PossessionSerializer(serializers.ModelSerializer):
     # affiche le nom et le domaine de la compétence
     competence_nom = serializers.CharField(source='competence.nom_competence', read_only=True)
@@ -41,8 +53,8 @@ class PossessionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Possession
-        fields = ['competence', 'competence_nom', 'competence_domaine', 'competence_difficulte', 'date_ajout']
-        read_only_fields = ['competence_nom', 'competence_domaine', 'competence_difficulte', 'date_ajout']
+        fields = ['id', 'competence', 'competence_nom', 'competence_domaine', 'competence_difficulte', 'date_ajout']
+        read_only_fields = ['id', 'competence_nom', 'competence_domaine', 'competence_difficulte', 'date_ajout']
 
 
 class NomsCompetencesField(serializers.JSONField):
@@ -55,24 +67,29 @@ class NomsCompetencesField(serializers.JSONField):
 def enregistrer_competences(dev, noms):
     # Les compétences connues gardent leur lien vers le catalogue de cours.
     noms_par_cle = {nom.lower(): nom for nom in noms}
+    possessions = dev.possessions.annotate(nom_minuscule=Lower('competence__nom_competence'))
+    possessions.exclude(nom_minuscule__in=noms_par_cle).delete()
+    noms_possedes = set(possessions.values_list('nom_minuscule', flat=True))
+
+    # Quand plusieurs entrées du catalogue portent le même nom, conserver les UUID déjà liés.
     catalogue = {}
     competences = Competence.objects.annotate(nom_minuscule=Lower('nom_competence'))
-    for competence in competences.filter(nom_minuscule__in=noms_par_cle).order_by('pk'):
+    for competence in competences.filter(nom_minuscule__in=noms_par_cle.keys() - noms_possedes).order_by('pk'):
         catalogue.setdefault(competence.nom_minuscule, competence.pk)
 
-    ids = set(catalogue.values())
-    dev.possessions.exclude(competence_id__in=ids).delete()
-    for identifiant in ids:
+    for identifiant in catalogue.values():
         dev.possessions.get_or_create(competence_id=identifiant)
-    dev.competences_personnalisees = [nom for cle, nom in noms_par_cle.items() if cle not in catalogue]
+    dev.competences_personnalisees = [
+        nom for cle, nom in noms_par_cle.items() if cle not in noms_possedes and cle not in catalogue
+    ]
     dev.save(update_fields=['competences_personnalisees'])
 
 
 class InscriptionSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
-    # expériences optionnelles à l'inscription
-    experiences = ExperienceSerializer(many=True, required=False)
+    # Le compte, les expériences et leurs fichiers sont validés avant la création du compte.
+    experiences = ExperienceSerializer(many=True, required=False, write_only=True)
     # compétences déjà possédées — optionnelles
     # on passe juste les ids des compétences
     competences = serializers.ListField(
@@ -130,10 +147,11 @@ class InscriptionSerializer(serializers.ModelSerializer):
             Experience.objects.create(developper=dev, **experience)
 
         # crée les possessions de compétences
-        if noms_competences is not None:
-            enregistrer_competences(dev, noms_competences)
         for id_competence in set(competences_ids):
             dev.possessions.get_or_create(competence_id=id_competence)
+        if noms_competences is not None:
+            noms_choisis = dev.possessions.values_list('competence__nom_competence', flat=True)
+            enregistrer_competences(dev, [*noms_competences, *noms_choisis])
 
         return dev
 
@@ -168,35 +186,81 @@ class DevelopperSerializer(serializers.ModelSerializer):
         ]
 
 
-class ProfilInfosSerializer(DevelopperSerializer):
-    noms_competences = NomsCompetencesField(required=False, write_only=True)
+class ProfilPersonnelSerializer(DevelopperSerializer):
+    experiences = ExperienceSerializer(many=True, read_only=True)
 
     class Meta(DevelopperSerializer.Meta):
-        fields = [*DevelopperSerializer.Meta.fields, 'noms_competences']
+        fields = [*DevelopperSerializer.Meta.fields, 'experiences']
+
+
+class ProfilInfosSerializer(ProfilPersonnelSerializer):
+    noms_competences = NomsCompetencesField(required=False, write_only=True)
+    experiences_a_enregistrer = ExperienceProfilSerializer(many=True, required=False, write_only=True)
+    experiences_a_supprimer = serializers.ListField(
+        child=serializers.IntegerField(min_value=1), required=False, write_only=True,
+    )
+
+    class Meta(ProfilPersonnelSerializer.Meta):
+        fields = [
+            *ProfilPersonnelSerializer.Meta.fields, 'noms_competences',
+            'experiences_a_enregistrer', 'experiences_a_supprimer',
+        ]
 
     def validate_photoprofil(self, value):
         if value:
             valider_image(value)
         return value
 
+    def validate_experiences_a_enregistrer(self, experiences):
+        # Une ligne nouvelle doit être complète même si la modification du profil est partielle.
+        champs_requis = {'nom_poste', 'description', 'nbr_annee_exp'}
+        for experience in experiences:
+            if 'id' not in experience and not champs_requis <= experience.keys():
+                raise serializers.ValidationError('Indiquez le poste, la description et la durée de chaque nouvelle expérience.')
+        return experiences
+
     @transaction.atomic
     def update(self, instance, validated_data):
         # Évite qu'une sauvegarde du profil écrase un changement d'identifiants simultané.
         instance = Developper.objects.select_for_update().get(identifiant=instance.identifiant)
         noms = validated_data.pop('noms_competences', None)
+        experiences = validated_data.pop('experiences_a_enregistrer', [])
+        suppressions = set(validated_data.pop('experiences_a_supprimer', []))
+        ids = [experience['id'] for experience in experiences if 'id' in experience]
+        existantes = instance.experiences.select_for_update().in_bulk(set(ids))
+        if len(existantes) != len(ids) or suppressions.intersection(ids):
+            raise serializers.ValidationError({
+                'experiences_a_enregistrer': ['Une expérience est introuvable ou apparaît plusieurs fois.'],
+            })
+
         instance = super().update(instance, validated_data)
         if noms is not None:
             enregistrer_competences(instance, noms)
+        # Seules les suppressions choisies par l'utilisateur s'appliquent.
+        if suppressions:
+            instance.experiences.filter(pk__in=suppressions).delete()
+        # Dans le même ordre que la requête pour rattacher les brouillons à leurs identifiants.
+        self.experiences_enregistrees = []
+        for valeurs in experiences:
+            identifiant = valeurs.pop('id', None)
+            if identifiant is None:
+                experience = instance.experiences.create(**valeurs)
+            else:
+                experience = self.fields['experiences_a_enregistrer'].child.update(existantes[identifiant], valeurs)
+            self.experiences_enregistrees.append(experience.pk)
         return instance
 
 
 class ProfilMembreSerializer(DevelopperSerializer):
+    # La fiche publique expose le parcours sans les liens des justificatifs.
+    experiences = ExperiencePubliqueSerializer(many=True, read_only=True)
+
     class Meta(DevelopperSerializer.Meta):
         # Champs de la fiche visible par les membres, avec l'adresse utilisée par la messagerie.
         fields = [
             'identifiant', 'email', 'nom', 'prenom', 'pseudo', 'niveau', 'pays',
             'photoprofil', 'lien_portfolio', 'lien_github', 'presentation',
-            'possessions', 'competences_personnalisees',
+            'possessions', 'competences_personnalisees', 'experiences',
         ]
 
 

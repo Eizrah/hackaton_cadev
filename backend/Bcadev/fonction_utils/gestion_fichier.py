@@ -11,10 +11,14 @@ def getPhotoGroup(instance, filename):
     return f'group_pictures/{filename}'
 
 def getFichierDiplome(instance, filename):
-    return f'diplomes/{filename}'
+    path = f'diplomes/{filename}'
+    os.makedirs(os.path.join(settings.MEDIA_ROOT, 'diplomes'), exist_ok=True)
+    return path
 
 def getFichierCertificat(instance, filename):
-    return f'certificats/{filename}'
+    path = f'certificats/{filename}'
+    os.makedirs(os.path.join(settings.MEDIA_ROOT, 'certificats'), exist_ok=True)
+    return path
 
 def getFichierPub(instance, filename):
     # distingue forum et offre selon le type de publication

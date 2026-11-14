@@ -1,15 +1,51 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { skillCatalog, skillKey } from "../../data/skillCatalog";
+import { authApi } from "../../api/auth";
 import TechIcon from "../TechIcon";
 import { useI18n } from "../../i18n/context";
-export default function SkillSearch({ selected, onSelect }: { selected: string[]; onSelect: (name: string) => void }) {
+export default function SkillSearch({ selected, onSelect }: { selected: string[]; onSelect: (name: string, competenceId?: string) => void }) {
   const { t } = useI18n();
   const [query, setQuery] = useState(""), [open, setOpen] = useState(false), [active, setActive] = useState(0), [custom, setCustom] = useState(false), [other, setOther] = useState("");
   const id = useId(), ref = useRef<HTMLDivElement>(null), input = useRef<HTMLInputElement>(null);
-  const results = skillCatalog.filter(name => !selected.some(s => skillKey(s) === skillKey(name)) && skillKey(name).includes(skillKey(query))).slice(0, 9);
+  const [catalogue, setCatalogue] = useState<Array<{ id_competence: string; nom_competence: string }>>([]);
+  useEffect(() => {
+    if (import.meta.env.VITE_AUTH_MODE !== "api") return;
+    const request = new AbortController();
+    void authApi.getCompetencesDisponibles(request.signal).then(({ data }) => {
+      if (!request.signal.aborted && Array.isArray(data)) {
+        setCatalogue(data);
+        setActive(0);
+      }
+    }).catch(() => {
+      // Les cours disponibles dans le frontend restent sélectionnables.
+    });
+    return () => request.abort();
+  }, []);
+  const known = new Map<string, { name: string; id?: string }>();
+  for (const skill of catalogue) {
+    const key = skillKey(skill.nom_competence);
+    if (!known.has(key)) known.set(key, { name: skill.nom_competence, id: skill.id_competence });
+  }
+  for (const name of skillCatalog) {
+    const key = skillKey(name);
+    if (!known.has(key)) known.set(key, { name });
+  }
+  const results = [...known.values()]
+    .map(skill => skill.name)
+    .filter(name => !selected.some(s => skillKey(s) === skillKey(name)) && skillKey(name).includes(skillKey(query)))
+    .slice(0, 9);
   useEffect(() => { const outside = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) setOpen(false); }; document.addEventListener("mousedown", outside); return () => document.removeEventListener("mousedown", outside); }, []);
-  function choose(name: string) { if (!selected.some(s => skillKey(s) === skillKey(name))) onSelect(name.trim()); setQuery(""); setOpen(false); setCustom(false); setOther(""); input.current?.focus(); }
+  function choose(name: string) {
+    const key = skillKey(name);
+    const knownSkill = known.get(key);
+    if (!selected.some(s => skillKey(s) === key)) onSelect(knownSkill?.name ?? name.trim(), knownSkill?.id);
+    setQuery("");
+    setCustom(false);
+    setOther("");
+    input.current?.focus();
+    setOpen(false);
+  }
   function chooseAt(index: number) { if (index === results.length) { setCustom(true); setOpen(false); } else if (results[index]) choose(results[index]); }
   return <div
     className="skill-search"

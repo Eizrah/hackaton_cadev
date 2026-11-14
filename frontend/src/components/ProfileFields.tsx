@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import {
   AtSign,
   BriefcaseBusiness,
@@ -14,7 +15,6 @@ import SkillSearch from "./shared/SkillSearch";
 import CountrySelect from "./shared/CountrySelect";
 
 import {
-  currentYear,
   newExperience,
   newSkill,
   type Experience,
@@ -23,7 +23,9 @@ import {
 } from "../data/profile";
 import { SkillChip } from "./TechIcon";
 import CredentialFields from "./shared/CredentialFields";
+import { AttachmentCard, AttachmentPicker } from "./shared/Attachments";
 import type { CredentialAttachment } from "../data/profile";
+import { safePortfolio } from "../lib/urls";
 import "./profile-fields.css";
 export function PersonalFields({
   value,
@@ -149,15 +151,23 @@ export function PersonalFields({
 export function ExperienceFields({
   value,
   onChange,
+  onBusy,
 }: {
   value: Experience[];
   onChange: (value: Experience[]) => void;
+  onBusy?: (busy: boolean) => void;
 }) {
   const { t } = useI18n();
-  function update(id: string, key: keyof Experience, text: string) {
-    onChange(
-      value.map((row) => (row.id === id ? { ...row, [key]: text } : row)),
-    );
+  const latest = useRef(value);
+  useLayoutEffect(() => { latest.current = value; }, [value]);
+
+  function change(next: Experience[]) {
+    latest.current = next;
+    onChange(next);
+  }
+
+  function update(id: string, changes: Partial<Experience>) {
+    change(latest.current.map(row => row.id === id ? { ...row, ...changes } : row));
   }
   return (
     <div className="structured-fields experience-fields">
@@ -206,7 +216,7 @@ export function ExperienceFields({
             type="button"
             className="remove-entry"
             aria-label={`${t("Retirer l’expérience", "Remove experience")} ${i + 1}`}
-            onClick={() => onChange(value.filter((e) => e.id !== row.id))}
+            onClick={() => change(latest.current.filter(entry => entry.id !== row.id))}
           >
             <Trash2 size={16} />
           </button>
@@ -215,9 +225,9 @@ export function ExperienceFields({
               {t("Nom du poste", "Position")}
               <input
                 value={row.position}
-                onChange={(e) => update(row.id, "position", e.target.value)}
+                onChange={e => update(row.id, { position: e.target.value })}
                 required
-                maxLength={120}
+                maxLength={100}
                 placeholder={t(
                   "Ex. Développeur frontend, projet universitaire…",
                   "E.g. Frontend developer, university project…",
@@ -228,7 +238,7 @@ export function ExperienceFields({
               {t("Description", "Description")}
               <textarea
                 value={row.description}
-                onChange={(e) => update(row.id, "description", e.target.value)}
+                onChange={e => update(row.id, { description: e.target.value })}
                 required
                 maxLength={1500}
                 placeholder={t(
@@ -238,26 +248,55 @@ export function ExperienceFields({
               />
             </label>
             <label>
-              {t("Année de l’expérience", "Experience year")}
+              {t("Années d’expérience", "Years of experience")}
               <input
                 type="number"
                 inputMode="numeric"
-                min={1900}
-                max={currentYear}
+                min={0}
+                max={Math.max(50, Number(row.nbr_annee_exp) || 0)}
                 step={1}
-                value={row.year}
-                required
-                onChange={(e) => update(row.id, "year", e.target.value)}
-                placeholder="2026"
+                value={row.nbr_annee_exp}
+                required={!row.year}
+                onChange={e => update(row.id, { nbr_annee_exp: e.target.value })}
+                placeholder="3"
               />
+              {row.year && <small className="field-help">{t("Année enregistrée", "Saved year")} {row.year}</small>}
             </label>
+            {([
+              ["diploma", "diplomaFile", "diplomaUrl", t("Diplôme", "Diploma"), 200],
+              ["certificate", "certificateFile", "certificateUrl", t("Certificat", "Certificate"), 100],
+            ] as const).map(([name, fileKey, urlKey, label, maxLength]) => {
+              const file = row[fileKey];
+              const url = file === undefined ? safePortfolio(row[urlKey] || "") : null;
+              return <div className="credential-field" key={name}>
+                <label>
+                  {label} {t("(facultatif)", "(optional)")}
+                  <input
+                    value={row[name]}
+                    maxLength={maxLength}
+                    onChange={e => update(row.id, { [name]: e.target.value })} />
+                </label>
+                <AttachmentPicker
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+                  label={name === "diploma" ? t("Joindre le diplôme", "Attach the diploma") : t("Joindre le certificat", "Attach the certificate")}
+                  onBusy={onBusy}
+                  onAdd={([file]) => update(row.id, { [fileKey]: file })} />
+                {file && <AttachmentCard file={file} preview={false} onRemove={() => update(row.id, { [fileKey]: undefined })} />}
+                {url && <>
+                  <a href={url} target="_blank" rel="noopener noreferrer">{t("Ouvrir le document", "Open document")}</a>
+                  <button type="button" className="quiet" onClick={() => update(row.id, { [fileKey]: null })}>
+                    {t("Retirer le document", "Remove document")}
+                  </button>
+                </>}
+              </div>;
+            })}
           </div>
         </fieldset>
       ))}
       <button
         type="button"
         className="add-structured"
-        onClick={() => onChange([...value, newExperience()])}
+        onClick={() => change([...latest.current, newExperience()])}
       >
         <Plus size={17} />
         {t("Ajouter une expérience", "Add experience")}
@@ -283,7 +322,7 @@ export function SkillFields({ value, onChange, documents = [], onDocumentsChange
     </div>
     <SkillSearch
       selected={value.map(s => s.name)}
-      onSelect={name => onChange([...value, newSkill(name)])} />
+      onSelect={(name, competenceId) => onChange([...value, newSkill(name, competenceId)])} />
     {onDocumentsChange && <CredentialFields
       value={documents}
       onChange={onDocumentsChange}
