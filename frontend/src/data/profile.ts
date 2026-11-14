@@ -6,7 +6,7 @@ export type Experience = {
   id: string;
   position: string;
   description: string;
-  year: string;
+  nbr_annee_exp: string;   // nombre d'années d'expérience (0–50)
   diploma: string;
   certificate: string;
 };
@@ -15,6 +15,7 @@ export type DeveloperSkill = {
   name: string;
   difficulty: string;
   domain: string;
+  competenceId?: string;  // UUID backend
 };
 export type PersonalInformation = {
   firstName: string;
@@ -69,9 +70,9 @@ export const initialProfile: Profile = {
   skills: "React, TypeScript, Figma, Blender",
   skillDetails: [],
   experience:
-    "Étudiante en informatique\nDesign UI/UX et développement d’interfaces React.",
+    "Étudiante en informatique\nDesign UI/UX et développement d'interfaces React.",
   experiences: [],
-  bio: "J’aime transformer des idées en interfaces utiles et partager ce que j’apprends avec la communauté.",
+  bio: "J'aime transformer des idées en interfaces utiles et partager ce que j'apprends avec la communauté.",
   role: "Développeuse frontend · UI/UX",
   portfolio: "",
   photo: "",
@@ -82,13 +83,19 @@ export function newExperience(): Experience {
     id: `exp-${createLocalId()}`,
     position: "",
     description: "",
-    year: "",
+    nbr_annee_exp: "",
     diploma: "",
     certificate: "",
   };
 }
-export function newSkill(name = ""): DeveloperSkill {
-  return { id: `skill-${createLocalId()}`, name, difficulty: "", domain: "" };
+export function newSkill(name = "", competenceId?: string): DeveloperSkill {
+  return {
+    id: competenceId ?? `skill-${createLocalId()}`,
+    name,
+    difficulty: "",
+    domain: "",
+    competenceId,
+  };
 }
 function strings(value: unknown): Record<string, unknown> {
   return value && typeof value === "object"
@@ -112,7 +119,8 @@ export function migrateProfile(saved: unknown): Profile {
           id: get("id") || `legacy-exp-${index}`,
           position: get("position"),
           description: get("description"),
-          year: get("year"),
+          // supporte les anciens profils locaux (year) et l'API backend (nbr_annee_exp)
+          nbr_annee_exp: get("nbr_annee_exp") || get("year"),
           diploma: get("diploma"),
           certificate: get("certificate"),
         };
@@ -128,6 +136,7 @@ export function migrateProfile(saved: unknown): Profile {
           name: get("name"),
           difficulty: get("difficulty") === "Facile" ? "Débutant" : get("difficulty") === "Avancée" ? "Avancé" : get("difficulty"),
           domain: get("domain"),
+          ...(get("competenceId") ? { competenceId: get("competenceId") } : {}),
         };
       })
     : text("skills")
@@ -147,7 +156,7 @@ export function migrateProfile(saved: unknown): Profile {
     lastName,
     age: text("age"),
     email: text("email"),
-    pseudo: text("pseudo",text("username")),
+    pseudo: text("pseudo", text("username")),
     level: ["Intermédiaire","intermediate"].includes(text("level")) ? "Intermédiaire" : ["Senior", "Avancé", "advanced"].includes(text("level")) ? "Avancé" : "Débutant",
     country: text("country", initialProfile.country),
     skills: skillDetails.length
@@ -200,23 +209,19 @@ export function validPseudo(value: string) {
   return /^[A-Za-z\d]{3,30}$/.test(value);
 }
 export function experienceError(rows: Experience[]): string | null {
-  const year = new Date().getFullYear();
   for (const row of rows) {
     if (!row.position.trim() || !row.description.trim())
-      return "Renseigne le poste et la description de chaque expérience, ou retire l’entrée vide.";
-    if (
-      !/^\d{4}$/.test(row.year) ||
-      Number(row.year) < 1900 ||
-      Number(row.year) > year
-    )
-      return "Saisis une année d’expérience valide.";
+      return "Renseigne le poste et la description de chaque expérience, ou retire l'entrée vide.";
+    const n = Number(row.nbr_annee_exp);
+    if (row.nbr_annee_exp === "" || isNaN(n) || n < 0 || n > 50)
+      return "Saisis un nombre d'années d'expérience valide (0 à 50).";
   }
   return null;
 }
 export function skillError(rows: DeveloperSkill[]): string | null {
   const names = new Set<string>();
   for (const row of rows) {
-    if (!row.name.trim()) return "Renseigne le nom de chaque compétence, ou retire l’entrée vide.";
+    if (!row.name.trim()) return "Renseigne le nom de chaque compétence, ou retire l'entrée vide.";
     const name = row.name.trim().toLocaleLowerCase();
     if (names.has(name)) return "Cette compétence apparaît plusieurs fois.";
     names.add(name);

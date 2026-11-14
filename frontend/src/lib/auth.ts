@@ -40,12 +40,22 @@ export async function loginWithDjango(
       age: String(profil.age || ''),
       bio: profil.presentation || '',
       skillDetails: (profil.possessions || []).map((p: any) => ({
-        id: p.competence || `skill-${Math.random()}`,
+        id: String(p.id ?? `skill-${Math.random()}`),
         name: p.competence_nom || '',
-        difficulty: '',
+        difficulty: p.competence_difficulte || '',
         domain: p.competence_domaine || '',
+        competenceId: p.competence || '',  // UUID backend pour add/remove
       })),
-      experiences: [],
+      experiences: (profil.experiences || []).map((e: any) => ({
+        id: String(e.id ?? `exp-${Math.random()}`),
+        position: e.nom_poste || '',
+        nbr_annee_exp: String(e.nbr_annee_exp || ''),
+        description: e.description || '',
+        diploma: e.diplome || '',
+        certificate: e.certificat || '',
+        diplomaFileUrl: e.fichier_diplome_url || '',
+        certificateFileUrl: e.fichier_certificat_url || '',
+      })),
       documents: [],
       accountStatus: profil.banne ? 'banned' : 'active',
     }

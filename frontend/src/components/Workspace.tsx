@@ -354,6 +354,8 @@ export default function Workspace({
                   // envoi au backend
                   try {
                     const { authApi } = await import('../api/auth')
+
+                    // ── 1. Infos de base ──────────────────────────────────
                     const payload: Record<string, unknown> = {
                       nom: next.lastName,
                       prenom: next.firstName,
@@ -365,6 +367,86 @@ export default function Workspace({
                       lien_portfolio: next.portfolio || '',
                     }
                     await authApi.updateProfil(payload)
+
+                    // ── 2. Compétences — diff ancien / nouveau ────────────
+                    const oldSkillIds = new Set(
+                      profile.skillDetails
+                        .filter((s) => s.competenceId)
+                        .map((s) => s.competenceId as string),
+                    )
+                    const newSkillIds = new Set(
+                      next.skillDetails
+                        .filter((s) => s.competenceId)
+                        .map((s) => s.competenceId as string),
+                    )
+
+                    // Compétences retirées → DELETE
+                    const toRemove = profile.skillDetails.filter(
+                      (s) => s.competenceId && !newSkillIds.has(s.competenceId),
+                    )
+                    // Compétences ajoutées → POST
+                    const toAdd = next.skillDetails.filter(
+                      (s) => s.competenceId && !oldSkillIds.has(s.competenceId),
+                    )
+                    await Promise.allSettled([
+                      ...toRemove.map((s) =>
+                        // id local = competenceId quand chargé depuis l'API
+                        authApi.supprimerCompetence(Number(s.id)).catch(() => {}),
+                      ),
+                      ...toAdd.map((s) =>
+                        authApi.ajouterCompetence(s.competenceId!).catch(() => {}),
+                      ),
+                    ])
+
+                    // ── 3. Expériences ────────────────────────────────────
+                    // Anciennes expériences connues (id numérique backend)
+                    const oldExpIds = new Set(
+                      profile.experiences
+                        .map((e) => e.id)
+                        .filter((id) => !id.startsWith('exp-')),
+                    )
+                    // Nouvelles expériences connues
+                    const newExpIds = new Set(
+                      next.experiences
+                        .map((e) => e.id)
+                        .filter((id) => !id.startsWith('exp-')),
+                    )
+
+                    // Expériences supprimées → DELETE
+                    const removedExps = [...oldExpIds].filter((id) => !newExpIds.has(id))
+                    // Expériences ajoutées (id local temporaire) → POST
+                    const addedExps = next.experiences.filter((e) =>
+                      e.id.startsWith('exp-') && e.position.trim(),
+                    )
+                    // Expériences modifiées (id backend existant) → PUT
+                    const modifiedExps = next.experiences.filter(
+                      (e) => !e.id.startsWith('exp-'),
+                    )
+
+                    await Promise.allSettled([
+                      ...removedExps.map((id) =>
+                        authApi.supprimerExperience(Number(id)).catch(() => {}),
+                      ),
+                      ...addedExps.map((exp) => {
+                        const fd = new FormData()
+                        fd.append('nom_poste', exp.position.trim())
+                        fd.append('description', exp.description.trim())
+                        fd.append('nbr_annee_exp', exp.nbr_annee_exp || '0')
+                        if (exp.diploma.trim()) fd.append('diplome', exp.diploma.trim())
+                        if (exp.certificate.trim()) fd.append('certificat', exp.certificate.trim())
+                        return authApi.ajouterExperience(fd).catch(() => {})
+                      }),
+                      ...modifiedExps.map((exp) => {
+                        const fd = new FormData()
+                        fd.append('nom_poste', exp.position.trim())
+                        fd.append('description', exp.description.trim())
+                        fd.append('nbr_annee_exp', exp.nbr_annee_exp || '0')
+                        if (exp.diploma.trim()) fd.append('diplome', exp.diploma.trim())
+                        if (exp.certificate.trim()) fd.append('certificat', exp.certificate.trim())
+                        return authApi.modifierExperience(Number(exp.id), fd).catch(() => {})
+                      }),
+                    ])
+
                     setNotice(t("Profil mis à jour.", "Profile updated."))
                   } catch {
                     setNotice(t("Profil enregistré localement. Vérifiez votre connexion.", "Profile saved locally."))

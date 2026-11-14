@@ -5,14 +5,38 @@ from fonction_utils.gestion_fichier import valider_image, valider_fichier, valid
 
 
 class ExperienceSerializer(serializers.ModelSerializer):
+    # URLs absolues pour accéder aux fichiers depuis le frontend
+    fichier_diplome_url = serializers.SerializerMethodField()
+    fichier_certificat_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Experience
         fields = [
+            'id',
             'nom_poste', 'description', 'nbr_annee_exp',
             'diplome', 'certificat',
-            # champs fichiers — optionnels
-            'fichier_diplome', 'fichier_certificat'
+            'fichier_diplome', 'fichier_certificat',
+            'fichier_diplome_url', 'fichier_certificat_url',
         ]
+        read_only_fields = ['id', 'fichier_diplome_url', 'fichier_certificat_url']
+
+    def _build_url(self, request, file_field):
+        """Retourne l'URL absolue d'un fichier ou None."""
+        if not file_field:
+            return None
+        if request:
+            return request.build_absolute_uri(file_field.url)
+        # fallback sans request (rare)
+        from django.conf import settings
+        return f"{settings.MEDIA_URL}{file_field.name}"
+
+    def get_fichier_diplome_url(self, obj):
+        request = self.context.get('request')
+        return self._build_url(request, obj.fichier_diplome)
+
+    def get_fichier_certificat_url(self, obj):
+        request = self.context.get('request')
+        return self._build_url(request, obj.fichier_certificat)
 
     def validate_fichier_diplome(self, value):
         if value:
@@ -26,24 +50,29 @@ class ExperienceSerializer(serializers.ModelSerializer):
 
 
 class PossessionSerializer(serializers.ModelSerializer):
-    # affiche le nom et le domaine de la compétence
+    """Lecture : retourne les détails de la compétence."""
     competence_nom = serializers.CharField(source='competence.nom_competence', read_only=True)
     competence_domaine = serializers.CharField(source='competence.domaine', read_only=True)
     competence_difficulte = serializers.CharField(source='competence.difficulte', read_only=True)
 
     class Meta:
         model = Possession
-        fields = ['competence', 'competence_nom', 'competence_domaine', 'competence_difficulte', 'date_ajout']
-        read_only_fields = ['competence_nom', 'competence_domaine', 'competence_difficulte', 'date_ajout']
+        fields = [
+            'id',
+            'competence', 'competence_nom', 'competence_domaine',
+            'competence_difficulte', 'date_ajout'
+        ]
+        read_only_fields = [
+            'id', 'competence_nom', 'competence_domaine',
+            'competence_difficulte', 'date_ajout'
+        ]
 
 
 class InscriptionSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
-    # expériences optionnelles à l'inscription
-    experiences = ExperienceSerializer(many=True, required=False)
-    # compétences déjà possédées — optionnelles
-    # on passe juste les ids des compétences
+    # compétences déjà possédées à l'inscription — liste d'UUIDs
+    # les expériences avec fichiers se gèrent APRÈS via POST /accounts/experiences/
     competences = serializers.ListField(
         child=serializers.UUIDField(),
         required=False,
@@ -55,7 +84,7 @@ class InscriptionSerializer(serializers.ModelSerializer):
         fields = [
             'email', 'nom', 'prenom', 'pseudo', 'age',
             'niveau', 'pays', 'sexe', 'password', 'password_confirm',
-            'photoprofil', 'experiences', 'competences'
+            'photoprofil', 'competences'
         ]
 
     def validate(self, data):
@@ -74,7 +103,6 @@ class InscriptionSerializer(serializers.ModelSerializer):
         return value
 
     def validate_competences(self, value):
-        # vérifie que toutes les compétences existent
         from Learning.models import Competence
         for id_competence in value:
             if not Competence.objects.filter(id_competence=id_competence).exists():
@@ -82,7 +110,6 @@ class InscriptionSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        experiences_data = validated_data.pop('experiences', [])
         competences_ids = validated_data.pop('competences', [])
         validated_data.pop('password_confirm')
         password = validated_data.pop('password')
@@ -91,11 +118,7 @@ class InscriptionSerializer(serializers.ModelSerializer):
         dev.set_password(password)
         dev.save()
 
-        # crée les expériences liées au dev
-        for experience in experiences_data:
-            Experience.objects.create(developper=dev, **experience)
-
-        # crée les possessions de compétences
+        # crée les possessions de compétences sélectionnées à l'inscription
         from Learning.models import Competence
         for id_competence in competences_ids:
             competence = Competence.objects.get(id_competence=id_competence)
@@ -109,8 +132,12 @@ class ConnexionSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        dev = authenticate(email=data['email'], password=data['password'])
-        if not dev:
+        from .models import Developper as Dev
+        try:
+            dev = Dev.objects.get(email=data['email'])
+        except Dev.DoesNotExist:
+            raise serializers.ValidationError("Email ou mot de passe incorrect.")
+        if not dev.check_password(data['password']):
             raise serializers.ValidationError("Email ou mot de passe incorrect.")
         if dev.banne:
             raise serializers.ValidationError("Ce compte est banni.")
@@ -121,6 +148,17 @@ class ConnexionSerializer(serializers.Serializer):
 class DevelopperSerializer(serializers.ModelSerializer):
     # affiche les possessions du dev dans son profil
     possessions = PossessionSerializer(many=True, read_only=True)
+    # affiche les expériences du dev dans son profil (avec URLs fichiers)
+    experiences = serializers.SerializerMethodField()
+
+    def get_experiences(self, obj):
+        """Passe le request au contexte pour générer les URLs absolues."""
+        serializer = ExperienceSerializer(
+            obj.experiences.all(),
+            many=True,
+            context=self.context,   # propage request
+        )
+        return serializer.data
 
     class Meta:
         model = Developper
@@ -128,9 +166,9 @@ class DevelopperSerializer(serializers.ModelSerializer):
             'email', 'nom', 'prenom', 'pseudo', 'age',
             'niveau', 'pays', 'sexe', 'photoprofil',
             'lien_portfolio', 'lien_github', 'point_penalite',
-            'presentation', 'possessions'
+            'presentation', 'possessions', 'experiences'
         ]
-        read_only_fields = ['email', 'point_penalite', 'possessions']
+        read_only_fields = ['email', 'point_penalite', 'possessions', 'experiences']
 
 
 class NotifSerializer(serializers.ModelSerializer):

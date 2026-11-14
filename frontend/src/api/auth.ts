@@ -46,6 +46,40 @@ export const authApi = {
     client.delete('/api/auth/supprimer-compte/', {
       data: { password, refresh }
     }),
+
+  // ── Expériences ──────────────────────────────────────────────────────────
+
+  getExperiences: () =>
+    client.get('/api/auth/experiences/'),
+
+  ajouterExperience: (data: FormData) =>
+    client.post('/api/auth/experiences/', data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
+  modifierExperience: (id: number, data: FormData) =>
+    client.put(`/api/auth/experiences/${id}/`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
+  supprimerExperience: (id: number) =>
+    client.delete(`/api/auth/experiences/${id}/`),
+
+  // ── Compétences du profil ────────────────────────────────────────────────
+
+  getCompetencesProfil: () =>
+    client.get('/api/auth/competences/'),
+
+  ajouterCompetence: (competenceId: string) =>
+    client.post('/api/auth/competences/', { competence: competenceId }),
+
+  supprimerCompetence: (id: number) =>
+    client.delete(`/api/auth/competences/${id}/`),
+
+  // ── Catalogue de compétences disponibles (pour la barre de recherche) ───
+
+  getCompetencesDisponibles: (domaine?: string) =>
+    client.get('/api/learning/competences/' + (domaine ? `?domaine=${encodeURIComponent(domaine)}` : '')),
 }
 
 

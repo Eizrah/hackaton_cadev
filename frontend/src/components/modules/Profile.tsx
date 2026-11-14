@@ -620,15 +620,28 @@ export default function ProfileView({
                     className="profile-experience-item"
                     key={entry.id}>
                     <span className="experience-year">
-                      {entry.year ||
-                        t("Année non renseignée", "Year unavailable")}
+                      {entry.nbr_annee_exp
+                        ? `${entry.nbr_annee_exp} ${t("an(s) d'expérience", "year(s) of experience")}`
+                        : t("Expérience non renseignée", "Experience not specified")}
                     </span>
-                    <h3>
-                      {entry.position}
-                    </h3>
-                    <p>
-                      {entry.description}
-                    </p>
+                    <h3>{entry.position}</h3>
+                    <p>{entry.description}</p>
+                    {(entry.diploma || entry.certificate) && (
+                      <div className="experience-credentials">
+                        {entry.diploma && (
+                          <span className="credential-badge">
+                            <GraduationCap size={14} />
+                            {entry.diploma}
+                          </span>
+                        )}
+                        {entry.certificate && (
+                          <span className="credential-badge">
+                            <GraduationCap size={14} />
+                            {entry.certificate}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </article>
                 ))}
               </div>

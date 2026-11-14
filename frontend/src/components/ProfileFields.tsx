@@ -15,7 +15,6 @@ import SkillSearch from "./shared/SkillSearch";
 import CountrySelect from "./shared/CountrySelect";
 
 import {
-  currentYear,
   newExperience,
   newSkill,
   type Experience,
@@ -25,7 +24,9 @@ import {
 import { SkillChip } from "./TechIcon";
 import CredentialFields from "./shared/CredentialFields";
 import type { CredentialAttachment } from "../data/profile";
+import type { SkillOption } from "./shared/SkillSearch";
 import "./profile-fields.css";
+
 export function PersonalFields({
   value,
   onChange,
@@ -96,16 +97,21 @@ export function PersonalFields({
             onChange={(e) => update("level", e.target.value)}
             required
           >
-            <option
-              value=""
-              disabled>
+            <option value="" disabled>
               {t("Sélectionner votre niveau", "Select your level")}
             </option>
-            {["Débutant", "Intermédiaire", "Avancé"].map(level => <option
-              key={level}
-              value={level}>
-              {t(level, level === "Débutant" ? "Beginner" : level === "Intermédiaire" ? "Intermediate" : "Advanced")}
-            </option>)}
+            {["Débutant", "Intermédiaire", "Avancé"].map((level) => (
+              <option key={level} value={level}>
+                {t(
+                  level,
+                  level === "Débutant"
+                    ? "Beginner"
+                    : level === "Intermédiaire"
+                    ? "Intermediate"
+                    : "Advanced",
+                )}
+              </option>
+            ))}
           </select>
         </span>
       </label>
@@ -115,7 +121,8 @@ export function PersonalFields({
           <MapPin size={18} />
           <CountrySelect
             value={value.country}
-            onChange={text => update("country", text)} />
+            onChange={(text) => update("country", text)}
+          />
         </span>
       </label>
       <label>
@@ -148,6 +155,7 @@ export function PersonalFields({
     </div>
   );
 }
+
 export function ExperienceFields({
   value,
   onChange,
@@ -168,9 +176,7 @@ export function ExperienceFields({
           <BriefcaseBusiness size={22} />
         </span>
         <div>
-          <h3>
-            {t("Votre parcours compte.", "Your journey matters.")}
-          </h3>
+          <h3>{t("Votre parcours compte.", "Your journey matters.")}</h3>
           <p>
             {t(
               "Expériences, stages ou projets : partagez ce que vous avez déjà réalisé.",
@@ -196,18 +202,14 @@ export function ExperienceFields({
         </div>
       )}
       {value.map((row, i) => (
-        <fieldset
-          className="experience-entry structured-entry"
-          key={row.id}>
+        <fieldset className="experience-entry structured-entry" key={row.id}>
           <legend>
-            {t("Expérience", "Experience")}
-            {" "}
-            {i + 1}
+            {t("Expérience", "Experience")} {i + 1}
           </legend>
           <button
             type="button"
             className="remove-entry"
-            aria-label={`${t("Retirer l’expérience", "Remove experience")} ${i + 1}`}
+            aria-label={`${t("Retirer l'expérience", "Remove experience")} ${i + 1}`}
             onClick={() => onChange(value.filter((e) => e.id !== row.id))}
           >
             <Trash2 size={16} />
@@ -240,17 +242,19 @@ export function ExperienceFields({
               />
             </label>
             <label>
-              {t("Année de l’expérience", "Experience year")}
+              {t("Années d'expérience", "Years of experience")}
               <input
                 type="number"
                 inputMode="numeric"
-                min={1900}
-                max={currentYear}
+                min={0}
+                max={50}
                 step={1}
-                value={row.year}
+                value={row.nbr_annee_exp}
                 required
-                onChange={(e) => update(row.id, "year", e.target.value)}
-                placeholder="2026"
+                onChange={(e) =>
+                  update(row.id, "nbr_annee_exp", e.target.value)
+                }
+                placeholder="3"
               />
             </label>
           </div>
@@ -267,42 +271,72 @@ export function ExperienceFields({
     </div>
   );
 }
-export function SkillFields({ value, onChange, documents = [], onDocumentsChange, onBusy }: { value: DeveloperSkill[]; onChange: (value: DeveloperSkill[]) => void; documents?: CredentialAttachment[]; onDocumentsChange?: (value: CredentialAttachment[]) => void; onBusy?: (busy: boolean) => void }) {
+
+export function SkillFields({
+  value,
+  onChange,
+  documents = [],
+  onDocumentsChange,
+  onBusy,
+}: {
+  value: DeveloperSkill[];
+  onChange: (value: DeveloperSkill[]) => void;
+  documents?: CredentialAttachment[];
+  onDocumentsChange?: (value: CredentialAttachment[]) => void;
+  onBusy?: (busy: boolean) => void;
+}) {
   const { t } = useI18n();
-  return <div className="structured-fields skill-fields">
-    <div className="structured-intro">
-      <span className="structured-icon">
-        <Code2 size={22} />
-      </span>
-      <div>
-        <h3>
-          {t("Ce que vous aimez construire.", "What you like to build.")}
-        </h3>
-        <p>
-          {t("Recherchez les technologies des cours, ou ajoutez une autre compétence.", "Search technologies from the courses, or add another skill.")}
-        </p>
+  return (
+    <div className="structured-fields skill-fields">
+      <div className="structured-intro">
+        <span className="structured-icon">
+          <Code2 size={22} />
+        </span>
+        <div>
+          <h3>{t("Ce que vous aimez construire.", "What you like to build.")}</h3>
+          <p>
+            {t(
+              "Recherchez les technologies des cours, ou ajoutez une autre compétence.",
+              "Search technologies from the courses, or add another skill.",
+            )}
+          </p>
+        </div>
       </div>
+      <SkillSearch
+        selected={value.map((s) => s.name)}
+        onSelect={(option: SkillOption) =>
+          onChange([...value, newSkill(option.name, option.competenceId)])
+        }
+      />
+      {onDocumentsChange && (
+        <CredentialFields
+          value={documents}
+          onChange={onDocumentsChange}
+          onBusy={onBusy}
+        />
+      )}
+      <div className="selected-skills profile-selected-skills">
+        {value.map((row) => (
+          <span key={row.id}>
+            <SkillChip name={row.name} />
+            <button
+              type="button"
+              aria-label={`${t("Retirer", "Remove")} ${row.name}`}
+              onClick={() => onChange(value.filter((s) => s.id !== row.id))}
+            >
+              <Trash2 size={15} />
+            </button>
+          </span>
+        ))}
+      </div>
+      {!value.length && (
+        <p className="structured-note">
+          {t(
+            "Vous pouvez aussi ajouter vos compétences plus tard.",
+            "You can also add your skills later.",
+          )}
+        </p>
+      )}
     </div>
-    <SkillSearch
-      selected={value.map(s => s.name)}
-      onSelect={name => onChange([...value, newSkill(name)])} />
-    {onDocumentsChange && <CredentialFields
-      value={documents}
-      onChange={onDocumentsChange}
-      onBusy={onBusy} />}
-    <div className="selected-skills profile-selected-skills">
-      {value.map(row => <span key={row.id}>
-        <SkillChip name={row.name} />
-        <button
-          type="button"
-          aria-label={`${t("Retirer", "Remove")} ${row.name}`}
-          onClick={() => onChange(value.filter(s => s.id !== row.id))}>
-          <Trash2 size={15} />
-        </button>
-      </span>)}
-    </div>
-    {!value.length && <p className="structured-note">
-      {t("Vous pouvez aussi ajouter vos compétences plus tard.", "You can also add your skills later.")}
-    </p>}
-  </div>;
+  );
 }

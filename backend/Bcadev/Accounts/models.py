@@ -37,7 +37,11 @@ class Developper(AbstractUser):
 class Experience(models.Model):
     nom_poste=models.CharField(max_length=100)
     description=models.TextField()
-    developper=models.ForeignKey(Developper, on_delete=models.CASCADE)
+    developper=models.ForeignKey(
+        Developper,
+        on_delete=models.CASCADE,
+        related_name='experiences'
+    )
     nbr_annee_exp=models.IntegerField()
     diplome=models.CharField(max_length=200, blank=True,null=True)
     certificat=models.CharField(max_length=100,blank=True,null=True)

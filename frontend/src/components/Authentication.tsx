@@ -320,9 +320,13 @@ const payload = {
   age: Number(personal.age),
   niveau: personal.level === "Débutant" ? "D" : personal.level === "Intermédiaire" ? "I" : "A",
   pays: personal.country,
-  sexe: "M",  // à adapter si tu as un champ sexe dans le formulaire
+  sexe: "M",
   password,
   password_confirm: confirmation,
+  // UUIDs des compétences sélectionnées (uniquement celles liées au backend)
+  competences: skills
+    .filter((s) => s.competenceId)
+    .map((s) => s.competenceId as string),
 }
 
 if (import.meta.env.VITE_AUTH_MODE === "api") {
@@ -332,7 +336,30 @@ if (import.meta.env.VITE_AUTH_MODE === "api") {
     // stocke les tokens JWT
     localStorage.setItem('access_token', response.data.tokens.access)
     localStorage.setItem('refresh_token', response.data.tokens.refresh)
-} catch (err: any) {
+
+    // Envoie les expériences une par une (multipart pour les fichiers)
+    for (const exp of experiences) {
+      if (!exp.position.trim()) continue;
+      const fd = new FormData();
+      fd.append('nom_poste', exp.position.trim());
+      fd.append('description', exp.description.trim());
+      fd.append('nbr_annee_exp', exp.nbr_annee_exp || '0');
+      if (exp.diploma.trim()) fd.append('diplome', exp.diploma.trim());
+      if (exp.certificate.trim()) fd.append('certificat', exp.certificate.trim());
+      // fichiers joints (documents)
+      const diplomaDoc = documents.find(
+        (d) => d.kind === 'diploma' && d.file,
+      );
+      const certDoc = documents.find(
+        (d) => d.kind === 'certificate' && d.file,
+      );
+      if (diplomaDoc?.file?.blob)
+        fd.append('fichier_diplome', diplomaDoc.file.blob as Blob, diplomaDoc.file.name);
+      if (certDoc?.file?.blob)
+        fd.append('fichier_certificat', certDoc.file.blob as Blob, certDoc.file.name);
+      await authApi.ajouterExperience(fd).catch(() => {/* ignore échec expérience individuelle */});
+    }
+  } catch (err: any) {
   // récupère les erreurs détaillées du backend
   const data = err?.response?.data
 

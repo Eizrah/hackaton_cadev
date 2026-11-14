@@ -9,9 +9,12 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
-from .serializers import InscriptionSerializer, ConnexionSerializer, DevelopperSerializer, NotifSerializer
+from .serializers import (
+    InscriptionSerializer, ConnexionSerializer, DevelopperSerializer,
+    NotifSerializer, ExperienceSerializer, PossessionSerializer
+)
 from Groups.models import Group
-from .models import Developper,Blocage, Sourdine,Notif
+from .models import Developper, Blocage, Sourdine, Notif, Experience, Possession
 import os
 from django.db.models import Q
 from django.views import View
@@ -589,3 +592,138 @@ class CompterNotifsNonLuesView(APIView):
             lu=False
         ).count()
         return Response({'count': count}, status=status.HTTP_200_OK)
+
+
+class ExperienceListCreateView(APIView):
+    """
+    GET  /api/accounts/experiences/       → liste toutes les expériences du dev connecté
+    POST /api/accounts/experiences/       → ajoute une nouvelle expérience
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        experiences = Experience.objects.filter(developper=request.user)
+        serializer = ExperienceSerializer(
+            experiences, many=True, context={'request': request}
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = ExperienceSerializer(
+            data=request.data, context={'request': request}
+        )
+        if serializer.is_valid():
+            serializer.save(developper=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ExperienceDetailView(APIView):
+    """
+    PUT    /api/accounts/experiences/<id>/  → modifie une expérience
+    DELETE /api/accounts/experiences/<id>/  → supprime une expérience
+    """
+    permission_classes = [IsAuthenticated]
+
+    def _get_experience(self, pk, user):
+        """Retourne l'expérience ou None si elle n'appartient pas au dev."""
+        try:
+            return Experience.objects.get(pk=pk, developper=user)
+        except Experience.DoesNotExist:
+            return None
+
+    def put(self, request, pk):
+        experience = self._get_experience(pk, request.user)
+        if not experience:
+            return Response(
+                {'erreur': 'Expérience introuvable ou non autorisée.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = ExperienceSerializer(
+            experience, data=request.data, partial=True,
+            context={'request': request}
+        )
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        experience = self._get_experience(pk, request.user)
+        if not experience:
+            return Response(
+                {'erreur': 'Expérience introuvable ou non autorisée.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        experience.delete()
+        return Response(
+            {'message': 'Expérience supprimée avec succès.'},
+            status=status.HTTP_204_NO_CONTENT
+        )
+
+
+class PossessionListCreateView(APIView):
+    """
+    GET  /api/accounts/competences/        → liste les compétences du dev connecté
+    POST /api/accounts/competences/        → ajoute une compétence au profil
+         body : { "competence": "<uuid>" }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        possessions = Possession.objects.filter(
+            developper=request.user
+        ).select_related('competence')
+        serializer = PossessionSerializer(possessions, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        from Learning.models import Competence
+        competence_id = request.data.get('competence')
+        if not competence_id:
+            return Response(
+                {'erreur': 'Le champ "competence" (UUID) est requis.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        # vérifie que la compétence existe
+        try:
+            competence = Competence.objects.get(id_competence=competence_id)
+        except Competence.DoesNotExist:
+            return Response(
+                {'erreur': 'Compétence introuvable.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        # vérifie que le dev ne la possède pas déjà
+        if Possession.objects.filter(
+            developper=request.user, competence=competence
+        ).exists():
+            return Response(
+                {'erreur': 'Tu possèdes déjà cette compétence.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        possession = Possession.objects.create(
+            developper=request.user, competence=competence
+        )
+        serializer = PossessionSerializer(possession)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class PossessionDeleteView(APIView):
+    """
+    DELETE /api/accounts/competences/<id>/  → retire une compétence du profil
+    """
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        try:
+            possession = Possession.objects.get(pk=pk, developper=request.user)
+        except Possession.DoesNotExist:
+            return Response(
+                {'erreur': 'Compétence introuvable ou non autorisée.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        possession.delete()
+        return Response(
+            {'message': 'Compétence retirée du profil.'},
+            status=status.HTTP_204_NO_CONTENT
+        )
