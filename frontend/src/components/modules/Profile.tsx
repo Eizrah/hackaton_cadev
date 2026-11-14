@@ -109,15 +109,11 @@ function CredentialsActions({ profile, onNotice }: { profile: Profile; onNotice:
         nouveau_mot_de_passe: nouveauMdp,
         confirmation: confirmMdp,
       })
-      onNotice(t('Mot de passe modifié. Veuillez vous reconnecter.'))
+      onNotice(t('Mot de passe modifié avec succès.'))
       fermer()
-      // force la déconnexion car les tokens sont invalidés
-      setTimeout(() => {
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
-        localStorage.removeItem('devafrica:profile')
-        window.location.hash = '#login'
-      }, 2000)
+      setAncienMdp('')
+      setNouveauMdp('')
+      setConfirmMdp('')
     } catch (err: any) {
       setError(err?.response?.data?.erreur || t('Erreur lors du changement de mot de passe.'))
     } finally { setBusy(false) }

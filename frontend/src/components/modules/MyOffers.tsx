@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { publicationApi } from '../../api/publication'
 import { MapPin, Briefcase, Calendar, ExternalLink, Mail, Trash2, Edit3, Users } from 'lucide-react'
 import OfferCandidates from './OfferCandidates'
+import { useI18n } from '../../i18n/context'
 
 interface Offre {
   id_publication: string
@@ -27,6 +28,7 @@ interface MyOffersProps {
 }
 
 export default function MyOffers({ onNavigate }: MyOffersProps) {
+  const { t } = useI18n()
   const [offres, setOffres] = useState<Offre[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -121,7 +123,7 @@ export default function MyOffers({ onNavigate }: MyOffersProps) {
                 <span className="flex items-center gap-1">
                   <Briefcase className="w-4 h-4" />
                   {offre.type_contrat}
-                  {offre.duree && ` - ${offre.duree}`}
+                  {offre.duree && ` - ${offre.duree} ${t("mois", "months")}`}
                 </span>
                 <span>{getTypeTravail(offre.type_travail)}</span>
               </div>

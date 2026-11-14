@@ -429,6 +429,11 @@ if (route.startsWith("oauth-callback")) {
           country: data.pays || '',
           age: String(data.age || ''),
           bio: data.presentation || '',
+          portfolio: data.lien_portfolio || '',
+          photo: data.photoprofil ? `http://localhost:8000${data.photoprofil}` : '',
+          role: data.niveau === 'D' ? 'Développeur Débutant' : data.niveau === 'I' ? 'Développeur Intermédiaire' : 'Développeur Avancé',
+          skills: (data.possessions || []).map((p: any) => p.competence_nom).filter(Boolean).join(', '),
+          experience: (data.experiences || []).map((e: any) => e.nom_poste).filter(Boolean).join('\n') || 'Parcours non renseigné.',
           skillDetails: (data.possessions || []).map((p: any) => ({
             id: String(p.id ?? `skill-${Math.random()}`),
             name: p.competence_nom || '',

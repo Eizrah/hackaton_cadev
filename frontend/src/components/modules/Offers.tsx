@@ -122,6 +122,27 @@ export default function Offers({ profile, onNotice, onNavigate }: { profile: Pro
     const form = new FormData(e.currentTarget)
     const get = (key: string) => String(form.get(key) || "").trim()
 
+    // Validation de la durée
+    if (needsDuration) {
+      const durationStr = get("duration")
+      const duration = parseInt(durationStr, 10)
+      
+      if (!durationStr || isNaN(duration)) {
+        setError(t("Veuillez entrer une durée valide en mois.", "Please enter a valid duration in months."))
+        return
+      }
+      
+      if (duration <= 0) {
+        setError(t("La durée doit être supérieure à 0 mois.", "Duration must be greater than 0 months."))
+        return
+      }
+      
+      if (duration > 60) {
+        setError(t("La durée ne peut pas dépasser 60 mois (5 ans).", "Duration cannot exceed 60 months (5 years)."))
+        return
+      }
+    }
+
     try {
       const data = {
         nom_poste: get("title"),
@@ -146,7 +167,13 @@ export default function Offers({ profile, onNotice, onNavigate }: { profile: Pro
       loadOffres() // Recharger les offres
     } catch (err: any) {
       console.error('Erreur création offre:', err)
-      setError(err.response?.data?.message || "Erreur lors de la création de l'offre")
+      
+      // Gérer les erreurs spécifiques du backend
+      if (err.response?.data?.duree) {
+        setError(err.response.data.duree[0])
+      } else {
+        setError(err.response?.data?.message || t("Erreur lors de la création de l'offre", "Error creating job offer"))
+      }
     }
   }
 
@@ -212,7 +239,7 @@ export default function Offers({ profile, onNotice, onNavigate }: { profile: Pro
             <span>
               {getTypeTravail(offre.type_travail)}
             </span>
-            {offre.duree && <span>{offre.duree}</span>}
+            {offre.duree && <span>{offre.duree} {t("mois", "months")}</span>}
           </div>
           <p>
             {offre.description}
@@ -270,7 +297,7 @@ export default function Offers({ profile, onNotice, onNavigate }: { profile: Pro
           <span>
             {getTypeTravail(detail.type_travail)}
           </span>
-          {detail.duree && <span>{detail.duree}</span>}
+          {detail.duree && <span>{detail.duree} {t("mois", "months")}</span>}
         </div>
         <small>
           <CalendarDays size={14} />
@@ -373,12 +400,14 @@ export default function Offers({ profile, onNotice, onNavigate }: { profile: Pro
             </select>
           </label>
           {needsDuration && <label>
-            {t("Durée du contrat", "Contract duration")}
+            {t("Durée du contrat (en mois)", "Contract duration (in months)")}
             <input
               name="duration"
-              type="text"
+              type="number"
+              min="1"
+              max="60"
               required
-              placeholder="6 mois" />
+              placeholder={t("Ex: 6", "Ex: 6")} />
           </label>}
           <label>
             {t("Mode de travail", "Work arrangement")}
@@ -423,7 +452,7 @@ export default function Offers({ profile, onNotice, onNavigate }: { profile: Pro
           </h3>
           <SkillSearch
             selected={skills}
-            onSelect={name => { setSkills(current => [...current, name]); setError(""); }} />
+            onSelect={option => { setSkills(current => [...current, option.name]); setError(""); }} />
           <div className="selected-skills">
             {skills.map(name => <span key={name}>
               <SkillChip name={name} />

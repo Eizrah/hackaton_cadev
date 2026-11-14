@@ -13,7 +13,17 @@ export const learningSkills = courses.map(course => ({
 }));
 export const skillCatalog = Array.from(new Set(learningSkills.map(skill => skill.name)))
   .sort((a,b) => a.localeCompare(b,"fr"));
-export const skillKey = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+export const skillKey = (value: any): string => {
+  if (typeof value !== "string") {
+    // Si c'est un objet avec une propriété name, utiliser celle-ci
+    if (value && typeof value === "object" && "name" in value) {
+      return skillKey(value.name);
+    }
+    // Sinon, convertir en string ou retourner vide
+    return value ? String(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() : "";
+  }
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+};
 export function skillDomain(name: string) {
   const course = courses.find(c => skillKey(cardNames[c.id] || c.tech) === skillKey(name));
   return course?.domain === "mobile" ? "Mobile" : course?.domain === "langages" ? "Langages de programmation" : course ? "Web" : "";

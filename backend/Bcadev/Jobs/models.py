@@ -19,7 +19,7 @@ class Offre_Emploi(Publication):
     deadline=models.DateField()
     type_contrat=models.CharField(choices=TYPE_CONTRACT, max_length=15)
     nom_poste=models.CharField(max_length=255)
-    duree=models.DurationField(blank=True, null=True)
+    duree=models.IntegerField(blank=True, null=True, help_text="Durée en mois (pour CDD et Stage)")
     competence_requise=models.TextField()
     type_travail=models.CharField(choices=TYPE_TRAVAIL, max_length=1)
     email=models.EmailField(blank=True,null=True)
