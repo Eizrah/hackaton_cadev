@@ -27,9 +27,22 @@ class DockerCodeExecutor:
     }
     
     # Limites de sécurité
-    MAX_EXECUTION_TIME = 10  # secondes
-    MAX_MEMORY = '128m'  # 128 MB
+    MAX_EXECUTION_TIME = 30  # secondes (augmenté pour permettre la compilation)
+    MAX_MEMORY = '256m'  # 256 MB (augmenté pour Java et C++)
     MAX_OUTPUT_SIZE = 10000  # caractères
+    
+    # Timeout spécifique par langage (langages compilés = plus de temps)
+    LANGUAGE_TIMEOUTS = {
+        'python': 15,
+        'javascript': 15,
+        'typescript': 30,  # Compilation TS
+        'c': 25,           # Compilation C
+        'cpp': 25,         # Compilation C++
+        'java': 35,        # Compilation + JVM lente à démarrer
+        'php': 15,
+        'swift': 30,       # Compilation Swift
+        'sql': 10,
+    }
     
     def __init__(self):
         """Initialise le client Docker"""
@@ -103,10 +116,10 @@ class DockerCodeExecutor:
             }, 'php main.php'
         
         elif language == 'typescript':
+            # Utiliser ts-node pour éviter l'installation de TypeScript
             return {
-                'main.ts': code,
-                'tsconfig.json': '{"compilerOptions": {"target": "ES2020", "module": "commonjs", "strict": false}}'
-            }, 'sh -c "npm install -g typescript > /dev/null 2>&1 && tsc main.ts && node main.js"'
+                'main.ts': code
+            }, 'npx -y ts-node main.ts'  # npx télécharge et exécute ts-node automatiquement
         
         elif language == 'swift':
             return {
@@ -114,10 +127,10 @@ class DockerCodeExecutor:
             }, 'swift main.swift'
         
         elif language == 'sql':
-            # SQLite pour exécution SQL simple
+            # Utiliser une image avec SQLite pré-installé
             return {
                 'query.sql': code
-            }, 'sh -c "apk add --no-cache sqlite > /dev/null 2>&1 && sqlite3 :memory: < query.sql"'
+            }, 'sh -c "command -v sqlite3 > /dev/null 2>&1 || apk add --no-cache sqlite > /dev/null 2>&1; sqlite3 :memory: < query.sql"'
         
         return {}, ''
     
@@ -131,6 +144,7 @@ class DockerCodeExecutor:
         """Exécute le code dans un conteneur Docker"""
         
         image = self.DOCKER_IMAGES[language]
+        timeout = self.LANGUAGE_TIMEOUTS.get(language, self.MAX_EXECUTION_TIME)
         
         try:
             # Créer le conteneur avec les fichiers montés
@@ -184,9 +198,9 @@ class DockerCodeExecutor:
                 except:
                     pass  # Ignorer les erreurs stdin
             
-            # Attendre l'exécution avec timeout
+            # Attendre l'exécution avec timeout spécifique au langage
             try:
-                result = container.wait(timeout=self.MAX_EXECUTION_TIME)
+                result = container.wait(timeout=timeout)
                 exit_code = result['StatusCode']
                 
                 # Récupérer stdout et stderr
@@ -200,7 +214,7 @@ class DockerCodeExecutor:
                 
             except docker.errors.ReadTimeout:
                 stdout = ''
-                stderr = f'Timeout: l\'exécution a dépassé {self.MAX_EXECUTION_TIME} secondes'
+                stderr = f'Timeout: l\'exécution a dépassé {timeout} secondes. Les langages compilés (Java, C++, TypeScript) nécessitent plus de temps.'
                 status = 'timeout'
             
             finally:

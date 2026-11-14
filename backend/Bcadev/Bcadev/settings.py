@@ -97,7 +97,7 @@ ROOT_URLCONF = 'Bcadev.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],  # Ajout du dossier templates
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -268,8 +268,11 @@ CSRF_TRUSTED_ORIGINS = [
 SOCIAL_AUTH_REDIRECT_IS_HTTPS = False
 SOCIAL_AUTH_SANITIZE_REDIRECTS = False
 SOCIAL_AUTH_ALLOW_LOGIN_WITH_GET = True
-# Force social_django à accepter les requêtes GET pour les URLs de login
 SOCIAL_AUTH_GITHUB_AUTH_EXTRA_ARGUMENTS = {}
+SOCIAL_AUTH_GOOGLE_OAUTH2_AUTH_EXTRA_ARGUMENTS = {}
+
+# Force l'utilisation de stratégies basées sur la session
+SOCIAL_AUTH_STRATEGY = 'social_django.strategy.DjangoStrategy'
 
 # Exemptions CSRF pour OAuth (car vient d'un domaine externe)
 CSRF_TRUSTED_ORIGINS += [
@@ -284,3 +287,17 @@ SESSION_COOKIE_SECURE = False  # True en production avec HTTPS
 CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False  # JS doit pouvoir lire le CSRF token
+
+# Configuration additionnelle pour les sessions OAuth
+SESSION_COOKIE_DOMAIN = None  # Pas de domaine spécifique pour localhost
+SESSION_COOKIE_NAME = 'cadev_session'
+SESSION_COOKIE_AGE = 3600  # 1 heure
+SESSION_SAVE_EVERY_REQUEST = True  # Sauvegarde la session à chaque requête
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Utilise la base de données
+
+# Configuration social-auth pour conserver la session
+SOCIAL_AUTH_STORAGE = 'social_django.models.DjangoStorage'
+SOCIAL_AUTH_SESSION_EXPIRATION = True
+
+# Configuration pour les tokens de réinitialisation de mot de passe
+PASSWORD_RESET_TIMEOUT = 3600  # 1 heure (au lieu de 3 jours par défaut)
