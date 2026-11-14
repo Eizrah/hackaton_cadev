@@ -229,8 +229,9 @@ SOCIAL_AUTH_PIPELINE = (
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'USER_ID_FIELD': 'email',
-    'USER_ID_CLAIM': 'email',
+    # L'adresse e-mail peut changer sans invalider les jetons du même compte.
+    'USER_ID_FIELD': 'identifiant',
+    'USER_ID_CLAIM': 'user_id',
 }
 
 CACHES = {

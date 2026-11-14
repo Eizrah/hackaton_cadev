@@ -1,5 +1,5 @@
 import { AttachmentPicker, AttachmentCard } from "../shared/Attachments";
-import type { StoredAttachment } from "../../lib/attachments";
+import { readAttachment, type StoredAttachment } from "../../lib/attachments";
 import { safePortfolio } from "../../lib/urls";
 import { compactStars } from "../../lib/format";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -8,6 +8,7 @@ import {
   Bookmark,
   Flag,
   Edit3,
+  FileText,
   Trash2,
   MessageCircle,
   MoreHorizontal,
@@ -24,18 +25,80 @@ import {
   Search,
 } from "lucide-react";
 import {
-  isSavedBy,
   orderedComments,
   type Post,
+  type PostComment,
   type Profile,
 } from "../../data/models";
 import { makeReview, useReviews } from "../../data/workflow";
 import { useI18n } from "../../i18n/context";
 import { CountryFlag } from "../CountryFlag";
 import Modal from "../Modal";
+import ConfirmDialog from "../shared/ConfirmDialog";
+import { publicationApi, type ForumPostResponse } from "../../api/publication";
+import { authApi } from "../../api/auth";
+import { apiError, mediaUrl } from "../../api/client";
+import { useSavedPublications } from "../../hooks/useSavedPublications";
+
+type DjangoComment = {
+  id_commentaire: string;
+  commentaire: string;
+  date_commentaire: string;
+  commentaire_parent?: string | null;
+  developper_email: string;
+  developper_pseudo: string;
+  developper_pays?: string;
+  developper_photo?: string | null;
+};
+
+type ForumPost = Pick<Post, "author" | "country" | "title" | "text" | "links" | "publishedAt" |
+  "collaboration" | "starred" | "starCount"> & {
+  id: string;
+  authorId: string;
+  commentCount: number;
+  fileUrl?: string;
+  moderation: "approved" | "rejected";
+};
+
+function mapForumPost(post: ForumPostResponse): ForumPost {
+  return {
+    id: post.id_publication,
+    authorId: post.developper_email,
+    author: post.developper_pseudo || post.developper_email,
+    country: post.developper_pays || "",
+    title: "",
+    text: post.description,
+    links: post.lien ? [post.lien] : [],
+    fileUrl: mediaUrl(post.fichier),
+    publishedAt: post.date_publication,
+    collaboration: post.collaboration ?? false,
+    moderation: post.feu_vert ? "approved" : "rejected",
+    starred: !!post.liked_by_me,
+    starCount: post.nombre_notes || 0,
+    commentCount: post.nombre_commentaires || 0,
+  };
+}
+
+function mapComment(comment: DjangoComment): PostComment {
+  return {
+    id: comment.id_commentaire,
+    authorId: comment.developper_email,
+    author: comment.developper_pseudo || comment.developper_email,
+    country: comment.developper_pays || "",
+    photo: mediaUrl(comment.developper_photo),
+    text: comment.commentaire,
+    createdAt: comment.date_commentaire,
+    parentId: comment.commentaire_parent || undefined,
+  };
+}
+
+
 
 function PostMenu({
   saved,
+  saveBusy,
+  saveFailed,
+  canSave,
   isOwned,
   onProfile,
   onSave,
@@ -44,6 +107,9 @@ function PostMenu({
   onReport,
 }: {
   saved: boolean;
+  saveBusy: boolean;
+  saveFailed: boolean;
+  canSave: boolean;
   isOwned: boolean;
   onProfile: () => void;
   onSave: () => void;
@@ -95,10 +161,11 @@ function PostMenu({
             <UserRound size={17} />
             {t("Voir le profil", "View profile")}
           </button>
-          <button role="menuitem" onClick={() => { onSave(); setOpen(false); }}>
+          {canSave && <button role="menuitem" disabled={saveBusy} onClick={() => { onSave(); setOpen(false); }}>
             <Bookmark size={17} fill={saved ? "currentColor" : "none"} />
-            {saved ? t("Annonce enregistrée", "Saved post") : t("Enregistrer l'annonce", "Save post")}
-          </button>
+            {saveFailed ? t("Recharger les enregistrements", "Reload saved items")
+              : saved ? t("Retirer des enregistrements", "Remove from saved items") : t("Enregistrer l'annonce", "Save post")}
+          </button>}
           {isOwned && onEdit && (
             <button role="menuitem" onClick={() => { onEdit(); setOpen(false); }}>
               <Edit3 size={17} />
@@ -128,400 +195,323 @@ export default function Community({
   onNavigate,
   onNotice,
   focusPostId,
+  focusCommentId,
 }: {
   profile: Profile;
-  focusPostId?: number;
+  focusPostId?: string;
+  focusCommentId?: string;
   onNavigate: (path: string) => void;
   onNotice: (text: string) => void;
 }) {
   const { t, locale } = useI18n();
-  // Posts en mémoire uniquement — tout vient du backend
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<ForumPost[]>([]);
   const [, setReviews] = useReviews();
-
-  // ─── États ────────────────────────────────────────────────────────────────
+  const savedPublications = useSavedPublications();
   const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [publishError, setPublishError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
   const [collaboration, setCollaboration] = useState(false);
-  const [commentPost, setCommentPost] = useState<number | null>(null);
+  const [commentPost, setCommentPost] = useState<string | null>(focusCommentId && focusPostId ? focusPostId : null);
   const [comment, setComment] = useState("");
-  const [report, setReport] = useState<Post | null>(null);
+  const [threads, setThreads] = useState<Record<string, PostComment[]>>({});
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [commentsError, setCommentsError] = useState(false);
+  const [sendingComment, setSendingComment] = useState(false);
   const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<
+    { kind: "delete-post"; postId: string } |
+    { kind: "delete-comment" | "edit-comment"; postId: string; comment: PostComment }
+  >();
+  const [editComment, setEditComment] = useState("");
+  const [commentError, setCommentError] = useState("");
+  const [editingComment, setEditingComment] = useState(false);
+  const [report, setReport] = useState<ForumPost | null>(null);
   const [reportCategory, setReportCategory] = useState("");
   const [attachments, setAttachments] = useState<StoredAttachment[]>([]);
   const [link, setLink] = useState("");
   const [uploading, setUploading] = useState(false);
-
-  // États pour la modification de post
-  const [editingPostId, setEditingPostId] = useState<string | number | null>(null);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [editLink, setEditLink] = useState("");
-
-  // États pour la recherche
+  const [focusMissing, setFocusMissing] = useState(false);
+  const [pendingStars, setPendingStars] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Post[]>([]);
+  const [searchIds, setSearchIds] = useState<string[]>([]);
   const [searchPeople, setSearchPeople] = useState<Array<{ pseudo: string; email: string }>>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
+  const searchInput = useRef<HTMLInputElement>(null);
+  const searchVersion = useRef(0);
+  const commentVersion = useRef(0);
+  const isSearching = !!searchQuery.trim();
 
-  // ─── Chargement des posts depuis le backend ───────────────────────────────
+  function mergePosts(incoming: ForumPost[]) {
+    setPosts(current => {
+      const existing = new Map(current.map(post => [post.id, post]));
+      for (const post of incoming) {
+        existing.set(post.id, post);
+      }
+      return [...existing.values()];
+    });
+  }
+
   useEffect(() => {
-    console.log('[FORUM] Début du chargement des posts...');
-    setLoading(true);
-    import("../../api/publication")
-      .then(({ publicationApi }) => {
-        console.log('[FORUM] Module publication importé');
-        publicationApi
-          .getPostsForum()
-          .then((res) => {
-            console.log('[FORUM] Réponse backend reçue:', res);
-            console.log('[FORUM] Données brutes:', res.data);
-            
-            const backendPosts: Post[] = res.data.map((p: any) => ({
-              id: p.id_publication,
-              authorId: p.developper_email,
-              author: p.developper_pseudo,
-              country: "",
-              tag: "Publication",
-              title: "",
-              text: p.description,
-              links: p.lien ? [p.lien] : [],
-              attachments: [],
-              savedBy: [],
-              comments: [],
-              publishedAt: p.date_publication,
-              collaboration: false,
-              starCount: p.nombre_notes || 0,
-              starred: p.liked_by_me || false,
-              saved: false,
-              moderation: p.feu_vert ? "approved" : "pending",
-            }));
-
-            console.log('[FORUM] Posts transformés:', backendPosts);
-            console.log('[FORUM] Premier post ID:', backendPosts[0]?.id);
-            console.log('[FORUM] Affectation des posts...');
-            setPosts(backendPosts);
-          })
-          .catch((err) => {
-            console.error('[FORUM] Erreur lors du chargement:', err);
-            console.error('[FORUM] Détails:', err.response?.data);
-          })
-          .finally(() => {
-            console.log('[FORUM] Chargement terminé');
-            setLoading(false);
-          });
-      })
-      .catch((err) => {
-        console.error('[FORUM] Erreur import module:', err);
-        setLoading(false);
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let active = true;
+    void publicationApi.getPostsForum().then(({ data }) => {
+      if (active) mergePosts(data.map(mapForumPost));
+    }).catch(error => {
+      if (active) onNotice(apiError(error, t("Impossible de charger les publications.", "Could not load posts.")));
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
   }, []);
 
-  // ─── Recherche de posts et personnes ──────────────────────────────────────
-  function handleSearch(query: string) {
-    setSearchQuery(query);
-    
-    if (!query.trim()) {
-      setSearchResults([]);
-      setSearchPeople([]);
-      setIsSearching(false);
-      return;
-    }
-
-    setIsSearching(true);
-
-    // 1. Recherche de personnes par pseudo (prioritaire)
-    import("../../api/auth").then(({ authApi }) => {
-      authApi
-        .rechercherDevs(query)
-        .then((res) => {
-          const people = res.data.map((dev: any) => ({
-            pseudo: dev.pseudo,
-            email: dev.email,
-          }));
-          setSearchPeople(people);
-
-          // 2. Si aucune personne trouvée, rechercher des publications
-          if (people.length === 0) {
-            searchPostsInternal(query);
-          } else {
-            // Réinitialiser les résultats de posts si on a trouvé des gens
-            setSearchResults([]);
-          }
-        })
-        .catch(() => {
-          // Si erreur API personnes, rechercher directement les posts
-          searchPostsInternal(query);
-        });
-    });
-  }
-
-  // Recherche de publications (fonction interne)
-  function searchPostsInternal(query: string) {
-    // Recherche locale dans les posts chargés (par contenu ou auteur)
-    const localResults = posts.filter((post) => {
-      const searchLower = query.toLowerCase();
-      return (
-        post.text.toLowerCase().includes(searchLower) ||
-        post.author.toLowerCase().includes(searchLower) ||
-        post.title?.toLowerCase().includes(searchLower)
-      );
-    });
-
-    // Recherche backend pour les posts non chargés
-    import("../../api/publication").then(({ publicationApi }) => {
-      publicationApi
-        .rechercherPostsForum(query)
-        .then((res) => {
-          const backendResults: Post[] = res.data.map((p: any) => ({
-            id: p.id_publication,
-            authorId: p.developper_email,
-            author: p.developper_pseudo,
-            country: "",
-            tag: "Publication",
-            title: "",
-            text: p.description,
-            links: p.lien ? [p.lien] : [],
-            attachments: [],
-            savedBy: [],
-            comments: [],
-            publishedAt: p.date_publication,
-            collaboration: false,
-            starCount: p.nombre_notes || 0,
-            starred: p.liked_by_me || false,
-            saved: false,
-            moderation: p.feu_vert ? "approved" : "pending",
-          }));
-
-          // Fusionner les résultats locaux et backend (dédupliquer par ID)
-          const allResults = [...localResults];
-          backendResults.forEach((br) => {
-            if (!allResults.some((lr) => lr.id === br.id)) {
-              allResults.push(br);
-            }
-          });
-
-          setSearchResults(allResults);
-        })
-        .catch(() => {
-          // En cas d'erreur backend, utiliser uniquement les résultats locaux
-          setSearchResults(localResults);
-        });
-    });
-  }
-
-  // scroll vers le post ciblé
   useEffect(() => {
-    if (focusPostId)
-      requestAnimationFrame(() =>
-        document.getElementById(`post-${focusPostId}`)?.scrollIntoView({ block: "center" })
-      );
+    if (!focusPostId) return;
+    let active = true;
+    void publicationApi.getPostForum(focusPostId).then(({ data }) => {
+      if (active) mergePosts([mapForumPost(data)]);
+    }).catch(() => {
+      if (active) setFocusMissing(true);
+    });
+    return () => { active = false; };
   }, [focusPostId]);
 
-  // ─── Modification d'un post ───────────────────────────────────────────────
-  function handleEditPost(post: Post) {
-    console.log('[EDIT] handleEditPost appelé avec post.id:', post.id);
+  useEffect(() => {
+    if (!commentPost) return;
+    const version = ++commentVersion.current;
+    setLoadingComments(true);
+    setCommentsError(false);
+    void publicationApi.getCommentaires(commentPost).then(({ data }) => {
+      if (version !== commentVersion.current) return;
+      const thread = (data as DjangoComment[]).map(mapComment);
+      setThreads(current => ({ ...current, [commentPost]: thread }));
+      setPosts(current => current.map(post => post.id === commentPost ? { ...post, commentCount: thread.length } : post));
+    }).catch(() => {
+      if (version === commentVersion.current) setCommentsError(true);
+    }).finally(() => {
+      if (version === commentVersion.current) setLoadingComments(false);
+    });
+    return () => { commentVersion.current += 1; };
+  }, [commentPost]);
+
+  const focusAvailable = !!focusPostId && posts.some(post => post.id === focusPostId);
+  useEffect(() => {
+    if (!focusAvailable) return;
+    const frame = requestAnimationFrame(() => {
+      const target = focusCommentId && document.getElementById(`comment-${focusCommentId}`);
+      (target || document.getElementById(`post-${focusPostId}`))?.scrollIntoView({ block: "center" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusAvailable, focusPostId, focusCommentId, loadingComments]);
+
+  async function handleSearch(query: string) {
+    const version = ++searchVersion.current;
+    const term = query.trim();
+    setSearchQuery(query);
+    setSearchIds([]);
+    setSearchPeople([]);
+    setSearchLoading(!!term);
+    setSearchFailed(false);
+    if (!term) return;
+    const [people, publications] = await Promise.allSettled([
+      authApi.rechercherDevs(term),
+      publicationApi.rechercherPostsForum(term),
+    ]);
+    if (version !== searchVersion.current) return;
+    setSearchLoading(false);
+    setSearchFailed(people.status === "rejected" && publications.status === "rejected");
+    if (people.status === "fulfilled") setSearchPeople(people.value.data);
+    const found = publications.status === "fulfilled" ? publications.value.data.map(mapForumPost) : [];
+    mergePosts(found);
+    const lower = term.toLowerCase();
+    const local = posts.filter(post => `${post.text} ${post.author}`.toLowerCase().includes(lower));
+    setSearchIds([...new Set([...local, ...found].map(post => post.id))]);
+  }
+
+  function clearSearch() {
+    void handleSearch("");
+    searchInput.current?.focus();
+  }
+
+  function handleEditPost(post: ForumPost) {
     setEditingPostId(post.id);
     setEditText(post.text);
     setEditLink(post.links?.[0] || "");
   }
 
-  function handleSaveEdit(postId: string | number) {
-    console.log('[EDIT] handleSaveEdit appelé avec postId:', postId);
-    if (!editText.trim()) {
-      onNotice(t("Le texte ne peut pas être vide.", "Text cannot be empty."));
+  async function handleSaveEdit(postId: string) {
+    const description = editText.trim();
+    const inputLink = editLink.trim();
+    const lien = inputLink ? safePortfolio(inputLink) : null;
+    if (!description || (inputLink && (!lien || lien.length > 200))) {
+      onNotice(t("Vérifie le texte et le lien de la publication.", "Check the post text and link."));
       return;
     }
-
+    if (busy) return;
     setBusy(true);
-    import("../../api/publication").then(({ publicationApi }) => {
-      publicationApi
-        .modifierPostForum(String(postId), {
-          description: editText.trim(),
-          lien: editLink.trim() || undefined,
-        })
-        .then((res) => {
-          setPosts((current) =>
-            current.map((p) =>
-              p.id === postId
-                ? {
-                    ...p,
-                    text: editText.trim(),
-                    links: editLink.trim() ? [editLink.trim()] : [],
-                    moderation: res.data.post.feu_vert ? "approved" : "pending",
-                  }
-                : p
-            )
-          );
-          setEditingPostId(null);
-          onNotice(t("Publication modifiée.", "Post updated."));
-        })
-        .catch(() => {
-          onNotice(t("Erreur lors de la modification.", "Update failed."));
-        })
-        .finally(() => setBusy(false));
-    });
+    try {
+      const { data } = await publicationApi.modifierPostForum(postId, { description, lien });
+      mergePosts([mapForumPost(data.post)]);
+      setEditingPostId(null);
+      onNotice(data.post.feu_vert
+        ? t("Publication modifiée.", "Post updated.")
+        : t("La publication modifiée a été refusée par la modération.", "The updated post was rejected by moderation."));
+    } catch (err) {
+      onNotice(apiError(err, t("Impossible de modifier la publication.", "Could not update the post.")));
+    } finally {
+      setBusy(false);
+    }
   }
 
-  function handleDeletePost(postId: string | number) {
-    console.log('[DELETE] handleDeletePost appelé avec postId:', postId);
-    if (!confirm(t("Supprimer cette publication ?", "Delete this post?"))) return;
-
-    import("../../api/publication").then(({ publicationApi }) => {
-      publicationApi
-        .supprimerPostForum(String(postId))
-        .then(() => {
-          setPosts((current) => current.filter((p) => p.id !== postId));
-          onNotice(t("Publication supprimée.", "Post deleted."));
-        })
-        .catch(() => {
-          onNotice(t("Erreur lors de la suppression.", "Delete failed."));
-        });
-    });
-  }
-
-  // ─── Chargement des commentaires d'un post ────────────────────────────────
-  function loadComments(postId: string | number) {
-    console.log('[COMMENTS] Chargement des commentaires pour post:', postId);
-    import("../../api/publication")
-      .then(({ publicationApi }) => {
-        publicationApi
-          .getCommentaires(String(postId))
-          .then((res) => {
-            console.log('[COMMENTS] Commentaires reçus:', res.data);
-            const backendComments = res.data.map((c: any) => ({
-              id: c.id_commentaire,
-              authorId: c.developper_pseudo, // on stocke le pseudo comme ID temporaire
-              author: c.developper_pseudo,
-              country: "",
-              photo: undefined,
-              text: c.commentaire,
-              createdAt: c.date_commentaire,
-              // commentaire_parent est soit un UUID string, soit null
-              parentId: c.commentaire_parent || undefined,
-            }));
-            console.log('[COMMENTS] Commentaires transformés:', backendComments);
-            setPosts((current) =>
-              current.map((p) =>
-                p.id === postId ? { ...p, comments: backendComments } : p
-              )
-            );
-          })
-          .catch((err) => {
-            console.error('[COMMENTS] Erreur chargement:', err);
-          });
-      })
-      .catch((err) => {
-        console.error('[COMMENTS] Erreur import:', err);
-      });
-  }
-
-  // ─── Publication d'un post ────────────────────────────────────────────────
-  function publish(e: FormEvent) {
-    e.preventDefault();
-    if (uploading || busy || (!text.trim() && !attachments.length && !link.trim())) return;
+  async function publish(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (uploading || busy) return;
+    setPublishError("");
+    if (!text.trim()) {
+      setPublishError(t("Ajoute une description à ta publication.", "Add a description to your post."));
+      return;
+    }
     const url = link.trim() ? safePortfolio(link.trim()) : null;
-    if (link.trim() && !url) {
-      onNotice(t("Indique un lien HTTP(S) valide.", "Enter a valid HTTP(S) link."));
+    if (link.trim() && (!url || url.length > 200)) {
+      setPublishError(t("Indique un lien HTTP(S) valide.", "Enter a valid HTTP(S) link."));
       return;
     }
-    console.log('[PUBLISH] Début de la publication...');
-    console.log('[PUBLISH] Texte:', text);
-    console.log('[PUBLISH] Lien:', url);
-    console.log('[PUBLISH] Fichiers:', attachments);
-    
     setBusy(true);
-    import("../../api/publication")
-      .then(({ publicationApi }) => {
-        console.log('[PUBLISH] Appel API...');
-        publicationApi
-          .creerPostForum({
-            description: text.trim(),
-            lien: url || undefined,
-          })
-          .then((res) => {
-            console.log('[PUBLISH] Réponse API:', res);
-            const data = res.data;
-            const post: Post = {
-              id: data.post?.id_publication || Date.now(),
-              authorId: profile.id,
-              author: profile.pseudo || profile.name,
-              country: profile.country,
-              tag: "Publication",
-              title: "",
-              attachments: attachments,
-              links: url ? [url] : [],
-              savedBy: [],
-              text: text.trim(),
-              comments: [],
-              publishedAt: new Date().toISOString(),
-              collaboration,
-              starCount: 0,
-              starred: false,
-              saved: false,
-              owned: true,
-              moderation: data.post?.feu_vert ? "approved" : "pending",
-            };
-            console.log('[PUBLISH] Post créé:', post);
-            setPosts((current) => [post, ...current]);
-            setReviews((current) => [
-              makeReview(
-                "post",
-                post.id,
-                post.text.slice(0, 70) || t("Publication avec pièce jointe", "Post with attachment"),
-                [post.text, ...(post.links || [])].join("\n")
-              ),
-              ...current,
-            ]);
-            setText("");
-            setAttachments([]);
-            setLink("");
-            onNotice(data.message || t("Publication envoyée à la modération.", "Post sent to moderation."));
-          })
-          .catch((err) => {
-            console.error('[PUBLISH] Erreur API:', err);
-            console.error('[PUBLISH] Détails:', err.response?.data);
-            const msg =
-              err?.response?.data?.raison ||
-              t("Erreur lors de la publication.", "Error while publishing.");
-            onNotice(msg);
-          })
-          .finally(() => setBusy(false));
-      })
-      .catch((err) => {
-        console.error('[PUBLISH] Erreur import:', err);
-        onNotice(t("Service indisponible.", "Service unavailable."));
-        setBusy(false);
+    try {
+      const attachment = attachments[0];
+      const blob = attachment ? await readAttachment(attachment.id) : undefined;
+      if (attachment && !blob) {
+        setPublishError(t("La pièce jointe est introuvable.", "The attachment is unavailable."));
+        return;
+      }
+      const { post: result, raison } = await publicationApi.creerPostForum({
+        description: text.trim(), lien: url || undefined, collaboration,
+        fichier: blob && attachment ? new File([blob], attachment.name, { type: attachment.type }) : undefined,
       });
+      const post = mapForumPost({ ...result, collaboration: result.collaboration ?? collaboration });
+      setPosts(current => [post, ...current.filter(item => item.id !== post.id)]);
+      if (searchQuery) void handleSearch("");
+      setText("");
+      setAttachments([]);
+      setLink("");
+      setCollaboration(false);
+      if (post.moderation === "rejected") {
+        setPublishError(raison || t("La publication a été refusée par la modération. Tu peux la modifier.", "Moderation rejected this post. You can edit it."));
+      } else {
+        onNotice(t("Publication publiée.", "Post published."));
+      }
+    } catch (err) {
+      setPublishError(apiError(err, t("Impossible de publier.", "Could not publish the post.")));
+    } finally {
+      setBusy(false);
+    }
   }
 
-  const visible = posts.filter(
-    (post) =>
-      !post.moderation ||
-      post.moderation === "approved" ||
-      post.authorId === profile.id ||
-      (!post.authorId && post.author === profile.name)
-  );
+  async function toggleSaved(post: ForumPost) {
+    if (savedPublications.error) {
+      savedPublications.retry();
+      return;
+    }
+    const saved = savedPublications.saved("forum_post", post.id);
+    try {
+      if (await savedPublications.toggle({
+        type: "forum_post",
+        publication: { id: post.id, description: post.text, auteur: post.author, date: post.publishedAt || "" },
+      })) onNotice(saved ? t("Annonce retirée des enregistrements.", "Post removed from saved items.")
+        : t("Annonce enregistrée.", "Post saved."));
+    } catch (err) {
+      onNotice(apiError(err, t("Impossible de modifier l’enregistrement.", "Could not update the saved item.")));
+    }
+  }
 
-  // Afficher les résultats de recherche s'il y a une recherche active, sinon les posts normaux
-  const displayedPosts = isSearching && searchQuery.trim() 
-    ? searchPeople.length > 0 
-      ? [] // Ne pas afficher les posts si on a trouvé des personnes
-      : searchResults 
+  async function toggleStar(post: ForumPost) {
+    if (pendingStars.includes(post.id)) return;
+    setPendingStars(current => [...current, post.id]);
+    try {
+      const response = await publicationApi.toggleNote(post.id);
+      setPosts(current => current.map(item => item.id === post.id
+        ? { ...item, starred: response.status === 201, starCount: response.data.nombre_notes } : item));
+    } catch (err) {
+      onNotice(apiError(err, t("Impossible d’enregistrer l’étoile.", "Could not update the star.")));
+    } finally {
+      setPendingStars(current => current.filter(id => id !== post.id));
+    }
+  }
+
+  async function sendComment(event: FormEvent, postId: string) {
+    event.preventDefault();
+    if (sendingComment || loadingComments || !comment.trim()) return;
+    const version = commentVersion.current;
+    setSendingComment(true);
+    try {
+      const { data } = await publicationApi.ajouterCommentaire(postId, {
+        commentaire: comment.trim(), commentaire_parent: replyTo || undefined,
+      });
+      setThreads(current => ({ ...current, [postId]: [...(current[postId] || []), mapComment(data.commentaire)] }));
+      setPosts(current => current.map(post => post.id === postId ? { ...post, commentCount: post.commentCount + 1 } : post));
+      if (version === commentVersion.current) { setComment(""); setReplyTo(null); }
+      onNotice(t("Commentaire envoyé.", "Comment sent."));
+    } catch (err) {
+      onNotice(apiError(err, t("Impossible d’envoyer le commentaire.", "Could not send the comment.")));
+    } finally {
+      setSendingComment(false);
+    }
+  }
+
+  async function saveComment(event: FormEvent) {
+    event.preventDefault();
+    if (dialog?.kind !== "edit-comment" || editingComment || !editComment.trim()) return;
+    const { postId, comment } = dialog;
+    setEditingComment(true);
+    setCommentError("");
+    try {
+      const { data } = await publicationApi.modifierCommentaire(postId, comment.id, { commentaire: editComment.trim() });
+      setThreads(current => ({
+        ...current, [postId]: (current[postId] || []).map(item => item.id === comment.id ? mapComment(data.commentaire) : item),
+      }));
+      setDialog(undefined);
+      onNotice(t("Commentaire modifié.", "Comment updated."));
+    } catch (err) {
+      setCommentError(apiError(err, t("Impossible de modifier le commentaire.", "Could not edit the comment.")));
+    } finally {
+      setEditingComment(false);
+    }
+  }
+
+  async function deleteContent() {
+    if (!dialog) return;
+    const { postId } = dialog;
+    if (dialog.kind === "delete-comment") {
+      const id = dialog.comment.id;
+      await publicationApi.supprimerCommentaire(postId, id);
+      setThreads(current => ({
+        ...current, [postId]: (current[postId] || []).filter(item => item.id !== id)
+          .map(item => item.parentId === id ? { ...item, parentId: undefined } : item),
+      }));
+      setPosts(current => current.map(post => post.id === postId
+        ? { ...post, commentCount: Math.max(0, post.commentCount - 1) } : post));
+      if (replyTo === id) setReplyTo(null);
+      onNotice(t("Commentaire supprimé.", "Comment deleted."));
+    } else {
+      await publicationApi.supprimerPostForum(postId);
+      setPosts(current => current.filter(post => post.id !== postId));
+      onNotice(t("Publication supprimée.", "Post deleted."));
+    }
+  }
+
+  const visible = posts.filter(post => post.moderation === "approved" || post.authorId === profile.email);
+  const displayedPosts = isSearching
+    ? visible.filter(post => post.moderation === "approved" && searchIds.includes(post.id))
     : visible;
-
-  console.log('[FORUM] Posts totaux:', posts.length);
-  console.log('[FORUM] Posts visibles après filtrage:', visible.length);
-  console.log('[FORUM] Premier post:', posts[0]);
-  console.log('[FORUM] Profile ID:', profile.id);
-  console.log('[FORUM] Profile name:', profile.name);
 
   return (
     <div className="feed-layout">
       <section className="feed-column">
         {/* ─── Formulaire de publication ─── */}
-        <form className="panel composer" onSubmit={publish}>
+        <form className="panel composer" onSubmit={publish} noValidate>
           <div className="row">
             <div className="person">
               <span className="avatar">{profile.name.slice(0, 2).toUpperCase()}</span>
@@ -536,15 +526,15 @@ export default function Community({
             aria-label={t("Votre publication", "Your post")}
             placeholder={t("Partage ton idée, une question ou une découverte…", "Share an idea, a question or a discovery…")}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => { setText(e.target.value); setPublishError(""); }}
             maxLength={3000}
           />
           <div className="composer-attachments">
             <AttachmentPicker
-              label={t("Joindre des fichiers", "Attach files")}
-              multiple
+              label={t("Joindre un fichier", "Attach a file")}
+              accept=".pdf,.zip,.doc,.docx"
               onBusy={setUploading}
-              onAdd={(files) => setAttachments((current) => [...current, ...files].slice(0, 5))}
+              onAdd={files => setAttachments(files.slice(0, 1))}
             />
             <label className="composer-link">
               <Link2 size={18} />
@@ -553,8 +543,8 @@ export default function Community({
                 aria-label={t("Lien à partager", "Link to share")}
                 placeholder={t("Lien vers un projet, une ressource…", "Link to a project or resource…")}
                 value={link}
-                onChange={(e) => setLink(e.target.value)}
-                maxLength={2000}
+                onChange={(e) => { setLink(e.target.value); setPublishError(""); }}
+                maxLength={200}
               />
             </label>
           </div>
@@ -569,6 +559,7 @@ export default function Community({
               ))}
             </div>
           )}
+          {publishError && <p className="form-error" role="alert">{publishError}</p>}
           <div className="composer-options">
             <label className="checkbox-label">
               <input
@@ -579,6 +570,7 @@ export default function Community({
               {t("Demander de l'aide / collaborer", "Ask for help / collaborate")}
             </label>
             <button
+              type="submit"
               className="btn-primary"
               disabled={busy || uploading || (!text.trim() && !attachments.length && !link.trim())}
             >
@@ -589,32 +581,44 @@ export default function Community({
         </form>
 
         {/* ─── Barre de recherche ─── */}
-        <div className="panel search-bar">
-          <div className="search-input-wrapper">
-            <Search size={20} className="search-icon" />
+        <div className="panel community-search" role="search" aria-label={t("Recherche dans la communauté", "Search the community")}>
+          <div className="rounded-search">
+            <Search size={19} aria-hidden="true" />
             <input
+              ref={searchInput}
               type="search"
-              placeholder={t("Rechercher une personne (pseudo) ou une publication...", "Search for a person (username) or post...")}
+              aria-label={t("Rechercher une personne ou une publication", "Search for a person or post")}
+              placeholder={t("Rechercher une personne (pseudo) ou une publication…", "Search for a person (username) or post…")}
               value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="search-input"
+              onChange={e => void handleSearch(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Escape" && searchQuery) {
+                  e.preventDefault();
+                  clearSearch();
+                }
+              }}
             />
             {searchQuery && (
               <button
-                className="search-clear"
-                onClick={() => handleSearch("")}
+                type="button"
+                className="quiet"
+                onClick={clearSearch}
                 aria-label={t("Effacer", "Clear")}
               >
                 <X size={18} />
               </button>
             )}
           </div>
-          {isSearching && searchQuery && (
-            <small className="search-info">
-              {searchPeople.length > 0
+          {isSearching && (
+            <small className="search-info" role="status">
+              {searchLoading
+                ? t("Recherche en cours…", "Searching…")
+                : searchPeople.length > 0
                 ? `${searchPeople.length} personne(s) trouvée(s)`
-                : searchResults.length > 0
-                ? `${searchResults.length} publication(s) trouvée(s)`
+                : displayedPosts.length > 0
+                ? `${displayedPosts.length} publication(s) trouvée(s)`
+                : searchFailed
+                ? t("La recherche est indisponible.", "Search is unavailable.")
                 : t("Aucun résultat", "No results")}
             </small>
           )}
@@ -633,10 +637,8 @@ export default function Community({
                   key={person.email}
                   className="panel person-card"
                   onClick={() => {
+                    void handleSearch("");
                     onNavigate(`profil/membre/${encodeURIComponent(person.email)}`);
-                    setSearchQuery("");
-                    setSearchPeople([]);
-                    setIsSearching(false);
                   }}
                 >
                   <div className="person">
@@ -671,15 +673,8 @@ export default function Community({
 
         {/* ─── Liste des posts ─── */}
         {displayedPosts.map((post) => {
-          const owner = post.authorId
-            ? post.authorId === profile.id
-            : post.author === profile.name;
-          
-          // Log pour déboguer
-          if (editingPostId !== null) {
-            console.log('[EDIT_CHECK] Post:', post.id, 'editingPostId:', editingPostId, 'Match:', editingPostId === post.id);
-          }
-          
+          const owner = post.authorId === profile.email;
+          const thread = threads[post.id] || [];
           return (
             <article
               id={`post-${post.id}`}
@@ -689,7 +684,7 @@ export default function Community({
             >
               <header className="row">
                 <div className="person">
-                  <span className={`avatar avatar-${post.id % 3}`}>
+                  <span className={`avatar avatar-${post.id.charCodeAt(0) % 3}`}>
                     {post.author.split(" ").map((n) => n[0]).slice(0, 2).join("")}
                   </span>
                   <div>
@@ -700,7 +695,10 @@ export default function Community({
                   </div>
                 </div>
                 <PostMenu
-                  saved={isSavedBy(post, profile.id)}
+                  saved={!!savedPublications.saved("forum_post", post.id)}
+                  saveBusy={savedPublications.loading || savedPublications.busy}
+                  saveFailed={savedPublications.error}
+                  canSave={post.moderation === "approved"}
                   isOwned={owner}
                   onProfile={() =>
                     onNavigate(
@@ -709,37 +707,9 @@ export default function Community({
                         : `profil/membre/${encodeURIComponent(post.authorId || post.author)}`
                     )
                   }
-                  onSave={() => {
-                    // sauvegarde locale
-                    setPosts((current) =>
-                      current.map((p) =>
-                        p.id === post.id
-                          ? {
-                              ...p,
-                              saved: !isSavedBy(p, profile.id),
-                              savedBy: isSavedBy(p, profile.id)
-                                ? (p.savedBy || []).filter((id) => id !== profile.id)
-                                : [...(p.savedBy || []), profile.id],
-                            }
-                          : p
-                      )
-                    );
-                    // sauvegarde backend
-                    if (!isSavedBy(post, profile.id)) {
-                      import("../../api/publication").then(({ publicationApi }) => {
-                        publicationApi
-                          .enregistrer("forum_post", String(post.id))
-                          .catch(() => {/* silencieux */});
-                      });
-                    }
-                    onNotice(
-                      isSavedBy(post, profile.id)
-                        ? t("Annonce retirée des enregistrements.", "Post removed from saved items.")
-                        : t("Annonce enregistrée.", "Post saved.")
-                    );
-                  }}
+                  onSave={() => void toggleSaved(post)}
                   onEdit={owner ? () => handleEditPost(post) : undefined}
-                  onDelete={owner ? () => handleDeletePost(post.id) : undefined}
+                  onDelete={owner ? () => setDialog({ kind: "delete-post", postId: post.id }) : undefined}
                   onReport={() => { setReportCategory(""); setReport(post); }}
                 />
               </header>
@@ -750,12 +720,6 @@ export default function Community({
                     <UsersRound size={13} />
                     {t("Collaboration ouverte", "Open collaboration")}
                   </span>
-                )}
-                {post.moderation === "pending" && (
-                  <button className="pending-review" onClick={() => onNavigate("ia/moderation")}>
-                    <ShieldCheck size={13} />
-                    {t("En attente de modération · démo", "Awaiting moderation · demo")}
-                  </button>
                 )}
                 <span className="post-date">
                   {post.publishedAt ? (
@@ -800,7 +764,7 @@ export default function Community({
                         placeholder={t("Lien (optionnel)", "Link (optional)")}
                         value={editLink}
                         onChange={(e) => setEditLink(e.target.value)}
-                        maxLength={2000}
+                        maxLength={200}
                       />
                     </label>
                   </div>
@@ -834,13 +798,9 @@ export default function Community({
                     </a>
                   ))}
 
-                  {!!post.attachments?.length && (
-                    <div className="post-attachments">
-                      {post.attachments.map((file) => (
-                        <AttachmentCard key={file.id} file={file} />
-                      ))}
-                    </div>
-                  )}
+                  {post.fileUrl && <a className="post-link" href={post.fileUrl} target="_blank" rel="noopener noreferrer">
+                    <FileText size={16} /> {t("Ouvrir la pièce jointe", "Open attachment")}
+                  </a>}
 
                   {post.moderation === "rejected" && (
                     <p className="blocked-post-status">
@@ -851,35 +811,14 @@ export default function Community({
                 </>
               )}
 
-              <div className="post-actions">
+              {post.moderation === "approved" && <div className="post-actions">
                 {/* ─── Like/étoile ─── */}
                 <button
                   className={`star-like ${post.starred ? "is-starred" : ""}`}
                   aria-label={`${t("Étoile", "Star")} : ${post.starCount}`}
                   aria-pressed={post.starred}
-                  onClick={() => {
-                    // mise à jour locale immédiate
-                    setPosts((current) =>
-                      current.map((p) =>
-                        p.id === post.id
-                          ? { ...p, starred: !p.starred, starCount: Math.max(0, p.starCount + (p.starred ? -1 : 1)) }
-                          : p
-                      )
-                    );
-                    // appel backend
-                    import("../../api/publication").then(({ publicationApi }) => {
-                      publicationApi.toggleNote(String(post.id)).catch(() => {
-                        // annule le changement local en cas d'erreur
-                        setPosts((current) =>
-                          current.map((p) =>
-                            p.id === post.id
-                              ? { ...p, starred: !p.starred, starCount: Math.max(0, p.starCount + (p.starred ? 1 : -1)) }
-                              : p
-                          )
-                        );
-                      });
-                    });
-                  }}
+                  disabled={pendingStars.includes(post.id)}
+                  onClick={() => void toggleStar(post)}
                 >
                   <Star size={21} fill={post.starred ? "currentColor" : "none"} />
                   <strong>{compactStars(post.starCount)}</strong>
@@ -888,42 +827,41 @@ export default function Community({
 
                 {/* ─── Commentaires ─── */}
                 <button
+                  aria-expanded={commentPost === post.id}
                   onClick={() => {
-                    const nextState = commentPost === post.id ? null : post.id;
-                    setCommentPost(nextState);
+                    setCommentPost(commentPost === post.id ? null : post.id);
                     setComment("");
                     setReplyTo(null);
-                    // charge les commentaires si on ouvre la section
-                    if (nextState === post.id && post.comments.length === 0) {
-                      loadComments(post.id);
-                    }
                   }}
                 >
                   <MessageCircle size={18} />
-                  {post.comments.length} {t("commentaires", "comments")}
+                  {post.commentCount} {t("commentaires", "comments")}
                 </button>
 
                 {post.collaboration && (
                   <button
                     className="collab-action"
-                    onClick={() => onNavigate(`messages/prive/${encodeURIComponent(post.author)}`)}
+                    onClick={() => onNavigate(`messages/prive/${encodeURIComponent(post.authorId || post.author)}`)}
                   >
                     <UsersRound size={17} />
                     {t("Proposer mon aide", "Offer help")}
                     <ArrowRight size={16} />
                   </button>
                 )}
-              </div>
+              </div>}
 
               {/* ─── Section commentaires ─── */}
-              {commentPost === post.id && (
+              {post.moderation === "approved" && commentPost === post.id && (
                 <div className="comments">
-                  {orderedComments(post.comments).map(({ comment: c, depth }) => {
-                    const parent = post.comments.find((item) => item.id === c.parentId);
+                  {loadingComments && <p role="status">{t("Chargement des commentaires…", "Loading comments…")}</p>}
+                  {commentsError && <p className="form-error" role="alert">{t("Impossible de charger les commentaires.", "Could not load comments.")}</p>}
+                  {orderedComments(thread).map(({ comment: c, depth }) => {
+                    const parent = thread.find((item) => item.id === c.parentId);
                     return (
                       <article
                         className={`comment-card ${parent ? "comment-reply" : ""}`}
                         key={c.id}
+                        id={`comment-${c.id}`}
                         style={{ marginLeft: Math.min(depth, 3) * 14 }}
                       >
                         {parent && (
@@ -938,7 +876,7 @@ export default function Community({
                             className="comment-profile"
                             onClick={() =>
                               onNavigate(
-                                c.authorId === profile.id
+                                c.authorId === profile.email
                                   ? "profil"
                                   : `profil/membre/${encodeURIComponent(c.authorId || c.author)}`
                               )
@@ -946,7 +884,7 @@ export default function Community({
                             aria-label={`${t("Voir le profil de", "View profile of")} ${c.author}`}
                           >
                             <span className="avatar">
-                              {c.photo?.startsWith("data:image/") ? (
+                              {c.photo ? (
                                 <img src={c.photo} alt="" />
                               ) : (
                                 c.author.split(" ").map((n) => n[0]).slice(0, 2).join("")
@@ -978,75 +916,26 @@ export default function Community({
                             <Reply size={14} />
                             {t("Répondre", "Reply")}
                           </button>
-                          {/* Boutons modifier/supprimer si c'est mon commentaire ET qu'il existe en base */}
-                          {c.author === (profile.pseudo || profile.name) && c.id.match(/^[a-f0-9-]{36}$/i) && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const newText = prompt(t("Modifier le commentaire", "Edit comment"), c.text);
-                                  if (newText && newText.trim() && newText.trim() !== c.text) {
-                                    import("../../api/publication").then(({ publicationApi }) => {
-                                      publicationApi
-                                        .modifierCommentaire(String(post.id), c.id, { commentaire: newText.trim() })
-                                        .then(() => {
-                                          setPosts((current) =>
-                                            current.map((p) =>
-                                              p.id === post.id
-                                                ? {
-                                                    ...p,
-                                                    comments: p.comments.map((com) =>
-                                                      com.id === c.id ? { ...com, text: newText.trim() } : com
-                                                    ),
-                                                  }
-                                                : p
-                                            )
-                                          );
-                                          onNotice(t("Commentaire modifié.", "Comment updated."));
-                                        })
-                                        .catch(() => onNotice(t("Erreur modification.", "Update failed.")));
-                                    });
-                                  }
-                                }}
-                              >
-                                {t("Modifier", "Edit")}
-                              </button>
-                              <button
-                                type="button"
-                                className="danger"
-                                onClick={() => {
-                                  if (confirm(t("Supprimer ce commentaire ?", "Delete this comment?"))) {
-                                    import("../../api/publication").then(({ publicationApi }) => {
-                                      publicationApi
-                                        .supprimerCommentaire(String(post.id), c.id)
-                                        .then(() => {
-                                          setPosts((current) =>
-                                            current.map((p) =>
-                                              p.id === post.id
-                                                ? { ...p, comments: p.comments.filter((com) => com.id !== c.id) }
-                                                : p
-                                            )
-                                          );
-                                          onNotice(t("Commentaire supprimé.", "Comment deleted."));
-                                        })
-                                        .catch(() => onNotice(t("Erreur suppression.", "Delete failed.")));
-                                    });
-                                  }
-                                }}
-                              >
-                                {t("Supprimer", "Delete")}
-                              </button>
-                            </>
-                          )}
+                          {c.authorId === profile.email && <>
+                            <button type="button" onClick={() => {
+                              setEditComment(c.text);
+                              setCommentError("");
+                              setDialog({ kind: "edit-comment", postId: post.id, comment: c });
+                            }}>{t("Modifier", "Edit")}</button>
+                            <button type="button" className="danger"
+                              onClick={() => setDialog({ kind: "delete-comment", postId: post.id, comment: c })}>
+                              {t("Supprimer", "Delete")}
+                            </button>
+                          </>}
                         </div>
                       </article>
                     );
                   })}
 
-                  {replyTo && post.comments.some((c) => c.id === replyTo) && (
+                  {replyTo && thread.some((c) => c.id === replyTo) && (
                     <div className="reply-indicator">
                       {t("Répondre à", "Reply to")}{" "}
-                      {post.comments.find((c) => c.id === replyTo)?.author}
+                      {thread.find((c) => c.id === replyTo)?.author}
                       <button
                         type="button"
                         className="quiet"
@@ -1060,92 +949,7 @@ export default function Community({
 
                   <form
                     className="row"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (!comment.trim()) return;
-                      
-                      console.log('[COMMENT] Soumission commentaire...');
-                      console.log('[COMMENT] Post ID:', post.id);
-                      console.log('[COMMENT] Texte:', comment.trim());
-                      console.log('[COMMENT] Reply to:', replyTo);
-                      
-                      const newComment = {
-                        id: `comment-${Date.now()}`,
-                        authorId: profile.id,
-                        author: profile.pseudo || profile.name,
-                        country: profile.country,
-                        photo: profile.photo,
-                        text: comment.trim(),
-                        createdAt: new Date().toISOString(),
-                        parentId: replyTo || undefined,
-                      };
-                      // mise à jour locale immédiate
-                      setPosts((current) =>
-                        current.map((p) =>
-                          p.id === post.id
-                            ? { ...p, comments: [...p.comments, newComment] }
-                            : p
-                        )
-                      );
-                      setComment("");
-                      setReplyTo(null);
-                      // appel backend
-                      const payload: { commentaire: string; commentaire_parent?: string } = {
-                        commentaire: newComment.text,
-                      };
-                      // Envoyer commentaire_parent UNIQUEMENT si c'est un UUID valide (commentaire déjà en base)
-                      if (replyTo && replyTo.match(/^[a-f0-9-]{36}$/i)) {
-                        payload.commentaire_parent = replyTo;
-                      }
-                      console.log('[COMMENT] Payload envoyé:', payload);
-                      
-                      import("../../api/publication").then(({ publicationApi }) => {
-                        publicationApi
-                          .ajouterCommentaire(String(post.id), payload)
-                          .then((res) => {
-                            console.log('[COMMENT] Réponse backend:', res);
-                            // Remplacer le commentaire local par celui du backend
-                            const backendComment = res.data.commentaire;
-                            setPosts((current) =>
-                              current.map((p) =>
-                                p.id === post.id
-                                  ? {
-                                      ...p,
-                                      comments: p.comments.map((com) =>
-                                        com.id === newComment.id
-                                          ? {
-                                              id: backendComment.id_commentaire,
-                                              authorId: backendComment.developper_pseudo,
-                                              author: backendComment.developper_pseudo,
-                                              country: "",
-                                              photo: undefined,
-                                              text: backendComment.commentaire,
-                                              createdAt: backendComment.date_commentaire,
-                                              parentId: backendComment.commentaire_parent || undefined,
-                                            }
-                                          : com
-                                      ),
-                                    }
-                                  : p
-                              )
-                            );
-                            onNotice(t("Commentaire envoyé.", "Comment sent."));
-                          })
-                          .catch((err) => {
-                            console.error('[COMMENT] Erreur backend:', err);
-                            console.error('[COMMENT] Détails:', err.response?.data);
-                            onNotice(t("Erreur lors de l'envoi.", "Error while sending."));
-                            // Retirer le commentaire local en cas d'erreur
-                            setPosts((current) =>
-                              current.map((p) =>
-                                p.id === post.id
-                                  ? { ...p, comments: p.comments.filter((com) => com.id !== newComment.id) }
-                                  : p
-                              )
-                            );
-                          });
-                      });
-                    }}
+                    onSubmit={event => void sendComment(event, post.id)}
                   >
                     <input
                       id={`comment-input-${post.id}`}
@@ -1153,10 +957,12 @@ export default function Community({
                       maxLength={1500}
                       aria-label={t("Ajouter un commentaire", "Add a comment")}
                       value={comment}
+                      disabled={sendingComment}
                       onChange={(e) => setComment(e.target.value)}
                       placeholder={t("Une réponse, un encouragement…", "An answer, an encouraging word…")}
                     />
-                    <button className="btn-primary" aria-label={t("Envoyer le commentaire", "Send comment")}>
+                    <button className="btn-primary" disabled={sendingComment || loadingComments}
+                      aria-label={t("Envoyer le commentaire", "Send comment")}>
                       <Send size={18} />
                     </button>
                   </form>
@@ -1166,7 +972,8 @@ export default function Community({
           );
         })}
 
-        {!visible.length && !loading && (
+        {focusMissing && <p className="form-error" role="alert">{t("Cette publication est indisponible.", "This post is unavailable.")}</p>}
+        {!visible.length && !loading && !isSearching && (
           <div className="panel empty-state">
             <Bookmark />
             <h2>{t("Aucune publication ici pour le moment.", "No posts here yet.")}</h2>
@@ -1194,60 +1001,6 @@ export default function Community({
 
       {/* ─── Styles pour la recherche ─── */}
       <style>{`
-        .search-bar {
-          padding: 1rem;
-          margin-bottom: 1rem;
-        }
-
-        .search-input-wrapper {
-          position: relative;
-          display: flex;
-          align-items: center;
-        }
-
-        .search-icon {
-          position: absolute;
-          left: 0.75rem;
-          color: var(--muted-color);
-          pointer-events: none;
-        }
-
-        .search-input {
-          width: 100%;
-          padding: 0.75rem 2.5rem 0.75rem 2.75rem;
-          border: 1px solid var(--glass-border);
-          border-radius: 8px;
-          background: var(--input-bg, rgba(255, 255, 255, 0.05));
-          font-size: 0.9375rem;
-          color: var(--text-color);
-          transition: border-color 0.2s;
-        }
-
-        .search-input:focus {
-          outline: none;
-          border-color: var(--primary-color);
-        }
-
-        .search-input::placeholder {
-          color: var(--muted-color);
-        }
-
-        .search-clear {
-          position: absolute;
-          right: 0.5rem;
-          padding: 0.25rem;
-          background: none;
-          border: none;
-          color: var(--muted-color);
-          cursor: pointer;
-          border-radius: 4px;
-          transition: background 0.2s;
-        }
-
-        .search-clear:hover {
-          background: var(--glass-border);
-        }
-
         .search-info {
           display: block;
           margin-top: 0.5rem;
@@ -1313,6 +1066,26 @@ export default function Community({
         }
       `}</style>
 
+      {dialog?.kind === "edit-comment" && <Modal
+        title={t("Modifier le commentaire", "Edit comment")} onClose={() => setDialog(undefined)} busy={editingComment}>
+        <form className="job-form" onSubmit={event => void saveComment(event)}>
+          <label>{t("Commentaire", "Comment")}
+            <textarea value={editComment} onChange={event => setEditComment(event.target.value)}
+              maxLength={1500} rows={4} required disabled={editingComment} />
+          </label>
+          {commentError && <p className="form-error" role="alert">{commentError}</p>}
+          <div className="modal-actions">
+            <button type="button" className="btn-secondary" onClick={() => setDialog(undefined)} disabled={editingComment}>{t("Annuler", "Cancel")}</button>
+            <button type="submit" className="btn-primary" disabled={editingComment || !editComment.trim()}>{t("Enregistrer", "Save")}</button>
+          </div>
+        </form>
+      </Modal>}
+      {dialog && dialog.kind !== "edit-comment" && <ConfirmDialog
+        title={dialog.kind === "delete-post"
+          ? t("Supprimer cette publication ?", "Delete this post?")
+          : t("Supprimer ce commentaire ?", "Delete this comment?")}
+        onClose={() => setDialog(undefined)} onConfirm={deleteContent} />}
+
       {/* ─── Modal signalement ─── */}
       {report && (
         <Modal
@@ -1327,9 +1100,7 @@ export default function Community({
               const reason = `${reportCategory}${detail ? ` : ${detail}` : ""}`;
               // signalement backend
               try {
-                await import("../../api/publication").then(({ publicationApi }) => 
-                  publicationApi.signalerPost(String(report.id), reason)
-                );
+                await publicationApi.signalerPost(report.id, reason);
                 
                 // log local
                 try {

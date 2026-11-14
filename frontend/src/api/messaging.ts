@@ -9,7 +9,7 @@ export const messagingApi = {
 
   // Récupérer les messages d'une conversation
   getConversation: (email: string) =>
-    client.get(`/api/messaging/conversation/${email}/`),
+    client.get(`/api/messaging/conversation/${encodeURIComponent(email)}/`),
 
   // Envoyer un message texte
   envoyerMessage: (data: { destinataire: string; contenu: string; message_parent?: string }) =>
@@ -29,7 +29,7 @@ export const messagingApi = {
 
   // Supprimer une conversation (soft delete)
   supprimerConversation: (email: string) =>
-    client.delete(`/api/messaging/conversation/${email}/supprimer/`),
+    client.delete(`/api/messaging/conversation/${encodeURIComponent(email)}/supprimer/`),
 }
 
 // ─── Groupes ──────────────────────────────────────────────────────────────

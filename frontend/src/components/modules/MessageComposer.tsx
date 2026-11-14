@@ -4,14 +4,15 @@ import { useI18n } from "../../i18n/context";
 import { discardAttachment, saveAttachment, type StoredAttachment } from "../../lib/attachments";
 import { AttachmentCard, AttachmentPicker } from "../shared/Attachments";
 
-type Capture = { stream?: MediaStream; recorder?: MediaRecorder };
+type Capture = { stream?: MediaStream; recorder?: MediaRecorder; limit?: number };
 type Vocal = { status: "opening" | "recording" | "finishing" } | {
   status: "review" | "saving";
   file: File;
   url: string;
 };
 
-function releaseCapture({ recorder, stream }: Capture) {
+function releaseCapture({ recorder, stream, limit }: Capture) {
+  if (limit !== undefined) window.clearTimeout(limit);
   if (recorder) {
     recorder.ondataavailable = null;
     recorder.onstop = null;
@@ -21,11 +22,12 @@ function releaseCapture({ recorder, stream }: Capture) {
   stream?.getTracks().forEach(track => track.stop());
 }
 
-export default function MessageComposer({ onSend }: { onSend: (text: string, attachments: StoredAttachment[]) => void }) {
+export default function MessageComposer({ onSend }: { onSend: (text: string, attachments: StoredAttachment[]) => Promise<boolean> }) {
   const { t } = useI18n();
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<StoredAttachment[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [sending, setSending] = useState(false);
   const [emoji, setEmoji] = useState(false);
   const [vocal, setVocal] = useState<Vocal | null>(null);
   const [error, setError] = useState("");
@@ -76,7 +78,9 @@ export default function MessageComposer({ onSend }: { onSend: (text: string, att
         releaseCapture(current);
         return;
       }
-      const recorder = new MediaRecorder(stream);
+      const format = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/mp4"]
+        .find(type => MediaRecorder.isTypeSupported(type));
+      const recorder = format ? new MediaRecorder(stream, { mimeType: format }) : new MediaRecorder(stream);
       current.recorder = recorder;
       const chunks: Blob[] = [];
       let size = 0;
@@ -105,12 +109,13 @@ export default function MessageComposer({ onSend }: { onSend: (text: string, att
           setError(t("Aucun son n’a été enregistré. Réessaie.", "No audio was recorded. Try again."));
           return;
         }
-        const type = recorder.mimeType || chunks[0].type || "audio/webm";
+        const type = (recorder.mimeType || chunks[0].type || "audio/webm").split(";")[0];
         const extension = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
         const file = new File(chunks, `${t("Message vocal", "Voice message")}.${extension}`, { type });
         setVocal({ status: "review", file, url: URL.createObjectURL(file) });
       };
       recorder.start(1000);
+      current.limit = window.setTimeout(stopVocal, 149_000);
       setVocal({ status: "recording" });
     } catch (err) {
       if (capture.current !== current) return;
@@ -141,8 +146,9 @@ export default function MessageComposer({ onSend }: { onSend: (text: string, att
         await discardAttachment(saved.id);
         return;
       }
-      onSend("", [saved]);
-      setVocal(null);
+      const sent = await onSend("", [saved]);
+      void discardAttachment(saved.id).catch(() => {});
+      if (mounted.current) setVocal(sent ? null : review);
     } catch {
       if (!mounted.current) return;
       if (saved) void discardAttachment(saved.id).catch(() => {});
@@ -151,21 +157,29 @@ export default function MessageComposer({ onSend }: { onSend: (text: string, att
     }
   }
 
-  return <form className="room-composer" onSubmit={event => {
+  async function sendDraft(event: React.FormEvent) {
     event.preventDefault();
-    if (!hasDraft || uploading || vocal) return;
-    onSend(text.trim(), attachments);
-    setText("");
-    setAttachments([]);
-    setEmoji(false);
-    setError("");
-  }}>
+    if (!hasDraft || uploading || vocal || sending) return;
+    setSending(true);
+    try {
+      if (await onSend(text.trim(), attachments) && mounted.current) {
+        setText("");
+        setAttachments([]);
+        setEmoji(false);
+        setError("");
+      }
+    } finally {
+      if (mounted.current) setSending(false);
+    }
+  }
+
+  return <form className="room-composer" onSubmit={event => void sendDraft(event)}>
     {attachments.length > 0 && <div className="chat-draft-files">
       {attachments.map(file => <AttachmentCard
         key={file.id}
         file={file}
         preview={false}
-        onRemove={() => setAttachments(current => current.filter(other => other.id !== file.id))} />)}
+        onRemove={sending ? undefined : () => setAttachments(current => current.filter(other => other.id !== file.id))} />)}
     </div>}
     {emoji && <div className="emoji-choices">
       {["👋", "✨", "🚀", "👍", "😊", "💻"].map(symbol => <button type="button" key={symbol} onClick={() => {
@@ -195,10 +209,10 @@ export default function MessageComposer({ onSend }: { onSend: (text: string, att
         onAdd={selected => { setAttachments(current => [...current, ...selected].slice(0, 5)); setError(""); }} />
       <button type="button" className="room-emoji" aria-expanded={emoji}
         aria-label={t("Ajouter un emoji", "Add an emoji")} onClick={() => setEmoji(!emoji)}><Smile size={20} /></button>
-      <input ref={input} value={text} maxLength={10000} onChange={event => { setText(event.target.value); setError(""); }}
+      <input ref={input} value={text} maxLength={10000} disabled={sending} onChange={event => { setText(event.target.value); setError(""); }}
         placeholder={t("Écrire un message…", "Write a message…")}
         aria-label={t("Écrire un message", "Write a message")} />
-      {hasDraft ? <button key="send" type="submit" className="send-message" disabled={uploading} aria-label={sendLabel} title={sendLabel}>
+      {hasDraft ? <button key="send" type="submit" className="send-message" disabled={uploading || sending} aria-label={sendLabel} title={sendLabel}>
         <Send size={21} />
       </button> : <button key="voice" type="button" className="send-message record-message" disabled={uploading}
         onClick={() => void startVocal()} aria-label={recordLabel} title={recordLabel}><Mic size={21} /></button>}

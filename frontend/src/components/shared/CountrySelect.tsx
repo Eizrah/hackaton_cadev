@@ -51,7 +51,7 @@ export default function CountrySelect({ value, onChange, name = "country", requi
   return <div
     className="country-combobox"
     onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setShowResults(false); }}>
-    <div className="country-search-bar">
+    <div className="rounded-search">
       <Search
         size={18}
         aria-hidden="true" />

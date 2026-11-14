@@ -28,8 +28,10 @@ import "./profile-fields.css";
 export function PersonalFields({
   value,
   onChange,
+  showPseudo = true,
 }: {
   value: PersonalInformation;
+  showPseudo?: boolean;
   onChange: (value: PersonalInformation) => void;
 }) {
   const { t } = useI18n();
@@ -114,7 +116,7 @@ export function PersonalFields({
           value={value.country}
           onChange={text => update("country", text)} />
       </label>
-      <label>
+      {showPseudo && <label>
         {t("Pseudo", "Username")}
         <span className="onboard-input">
           <AtSign size={18} />
@@ -140,7 +142,7 @@ export function PersonalFields({
             "Letters and numbers only · e.g. Juliana23",
           )}
         </small>
-      </label>
+      </label>}
     </div>
   );
 }

@@ -1,5 +1,7 @@
 import Modal from "./Modal";
 import { bannedLoginError, loginWithDjango } from "../lib/auth";
+import { authApi } from "../api/auth";
+import { apiError } from "../api/client";
 import { usePeople } from "../data/people";
 import type { CredentialAttachment } from "../data/profile";
 import { useRef, useState, type FormEvent } from "react";
@@ -312,82 +314,55 @@ export default function Authentication({
       );
       return;
     }
-const payload = {
-  email: email.trim(),
-  nom: personal.lastName.trim(),
-  prenom: personal.firstName.trim(),
-  pseudo: personal.pseudo.trim(),
-  age: Number(personal.age),
-  niveau: personal.level === "Débutant" ? "D" : personal.level === "Intermédiaire" ? "I" : "A",
-  pays: personal.country,
-  sexe: "M",  // à adapter si tu as un champ sexe dans le formulaire
-  password,
-  password_confirm: confirmation,
-}
-
-if (import.meta.env.VITE_AUTH_MODE === "api") {
-  try {
-    const { authApi } = await import('../api/auth')
-    const response = await authApi.inscription(payload)
-    // stocke les tokens JWT
-    localStorage.setItem('access_token', response.data.tokens.access)
-    localStorage.setItem('refresh_token', response.data.tokens.refresh)
-} catch (err: any) {
-  // récupère les erreurs détaillées du backend
-  const data = err?.response?.data
-
-  if (data) {
-    // extrait le premier message d'erreur trouvé
-    const messages: string[] = []
-
-    if (data.email) messages.push(...data.email)
-    if (data.pseudo) messages.push(...data.pseudo)
-    if (data.nom) messages.push(...data.nom)
-    if (data.password) messages.push(...data.password)
-    if (data.non_field_errors) messages.push(...data.non_field_errors)
-    if (data.detail) messages.push(data.detail)
-
-    if (messages.length > 0) {
-      // traduit les messages backend en messages lisibles
-      const message = messages[0]
-      if (/email.*existe|compte.*existe/i.test(message)) {
-        setError(t("Cette adresse email est déjà utilisée.", "This email address is already in use."))
-      } else if (/pseudo.*unique|pseudo.*pris/i.test(message)) {
-        setError(t("Ce pseudo est déjà pris.", "This username is already taken."))
-      } else if (/mot de passe.*correspondent/i.test(message)) {
-        setError(t("Les mots de passe ne correspondent pas.", "Passwords do not match."))
-      } else {
-        setError(message)
+    let publicId: string | undefined;
+    if (import.meta.env.VITE_AUTH_MODE === "api") {
+      setLogging(true);
+      try {
+        const { data } = await authApi.inscription({
+          email: email.trim(),
+          nom: personal.lastName.trim(),
+          prenom: personal.firstName.trim(),
+          pseudo: personal.pseudo.trim(),
+          age: Number(personal.age),
+          niveau: personal.level === "Débutant" ? "D" : personal.level === "Intermédiaire" ? "I" : "A",
+          pays: personal.country,
+          noms_competences: skills.map(skill => skill.name.trim()),
+          sexe: "M",
+          password,
+          password_confirm: confirmation,
+        });
+        publicId = data.identifiant;
+        localStorage.setItem("access_token", data.tokens.access);
+        localStorage.setItem("refresh_token", data.tokens.refresh);
+      } catch (error) {
+        setError(apiError(error, t(
+          "L’inscription a échoué. Vérifie tes informations et réessaie.",
+          "Registration failed. Check your information and try again.",
+        )));
+        return;
+      } finally {
+        setLogging(false);
       }
-      return
     }
-  }
 
-  setError(t("L'inscription a échoué. Vérifie tes informations et réessaie.", "Registration failed. Check your information and try again."))
-  return
-}
-
-}
-
-setProfile(
-  completeProfile(
-    personal,
-    experiences.map((e) => ({
-      ...e,
-      position: e.position.trim(),
-      description: e.description.trim(),
-      diploma: e.diploma.trim(),
-      certificate: e.certificate.trim(),
-    })),
-    skills.map((s) => ({ ...s, name: s.name.trim() })),
-    email,
-    documents,
-  ),
-);
-setPassword("");
-setConfirmation("");
-setDone(true);
-notify(t("Profil enregistré. Bienvenue dans la communauté DevAfrica !", "Profile saved. Welcome to the DevAfrica community!"));
+    const registered = completeProfile(
+      personal,
+      experiences.map(entry => ({
+        ...entry,
+        position: entry.position.trim(),
+        description: entry.description.trim(),
+        diploma: entry.diploma.trim(),
+        certificate: entry.certificate.trim(),
+      })),
+      skills.map(skill => ({ ...skill, name: skill.name.trim() })),
+      email,
+      documents,
+    );
+    setProfile(publicId ? { ...registered, publicId, id: `dev-${publicId}` } : registered);
+    setPassword("");
+    setConfirmation("");
+    setDone(true);
+    notify(t("Profil enregistré. Bienvenue dans la communauté DevAfrica !", "Profile saved. Welcome to the DevAfrica community!"));
 
     requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: "instant" });

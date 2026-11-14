@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { FileText, Trash2, Edit3, Eye, EyeOff } from "lucide-react";
 import { useI18n } from "../../i18n/context";
 import type { Profile } from "../../data/models";
+import { publicationApi } from "../../api/publication";
+import { apiError, mediaUrl } from "../../api/client";
+import ConfirmDialog from "../shared/ConfirmDialog";
 
 interface MyPost {
   id: string;
@@ -25,35 +28,20 @@ export default function MyPosts({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [editLink, setEditLink] = useState("");
+  const [removing, setRemoving] = useState<string>();
 
-  // Charger mes publications
   useEffect(() => {
-    setLoading(true);
-    import("../../api/publication")
-      .then(({ publicationApi }) => {
-        publicationApi
-          .getMesPostsForum()
-          .then((res) => {
-            console.log('[MY_POSTS] Données reçues:', res.data);
-            // Transformer les données backend en format MyPost
-            const transformedPosts = res.data.map((p: any) => ({
-              id: p.id_publication,
-              description: p.description,
-              date_publication: p.date_publication,
-              feu_vert: p.feu_vert,
-              lien: p.lien,
-              fichier: p.fichier,
-              nombre_notes: p.nombre_notes || 0,
-            }));
-            console.log('[MY_POSTS] Posts transformés:', transformedPosts);
-            setPosts(transformedPosts);
-          })
-          .catch(() => {
-            onNotice(t("Erreur lors du chargement.", "Error loading posts."));
-          })
-          .finally(() => setLoading(false));
-      })
-      .catch(() => setLoading(false));
+    let active = true;
+    void publicationApi.getMesPostsForum().then(({ data }) => {
+      if (!active) return;
+      const rows: (Omit<MyPost, "id"> & { id_publication: string })[] = data;
+      setPosts(rows.map(({ id_publication, ...post }) => ({ ...post, id: id_publication })));
+    }).catch(error => {
+      if (active) onNotice(apiError(error, t("Erreur lors du chargement.", "Error loading posts.")));
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
   }, []);
 
   function handleEdit(post: MyPost) {
@@ -62,49 +50,22 @@ export default function MyPosts({
     setEditLink(post.lien || "");
   }
 
-  function handleSaveEdit(postId: string) {
-    if (!editText.trim()) {
+  async function handleSaveEdit(postId: string) {
+    const description = editText.trim();
+    const lien = editLink.trim();
+    if (!description) {
       onNotice(t("Le texte ne peut pas être vide.", "Text cannot be empty."));
       return;
     }
-
-    import("../../api/publication").then(({ publicationApi }) => {
-      publicationApi
-        .modifierPostForum(postId, {
-          description: editText.trim(),
-          lien: editLink.trim() || undefined,
-        })
-        .then((res) => {
-          setPosts((current) =>
-            current.map((p) =>
-              p.id === postId
-                ? { ...p, description: editText.trim(), lien: editLink.trim() || undefined, feu_vert: res.data.post.feu_vert }
-                : p
-            )
-          );
-          setEditingId(null);
-          onNotice(t("Publication modifiée.", "Post updated."));
-        })
-        .catch(() => {
-          onNotice(t("Erreur lors de la modification.", "Update failed."));
-        });
-    });
-  }
-
-  function handleDelete(postId: string) {
-    if (!confirm(t("Supprimer cette publication ?", "Delete this post?"))) return;
-
-    import("../../api/publication").then(({ publicationApi }) => {
-      publicationApi
-        .supprimerPostForum(postId)
-        .then(() => {
-          setPosts((current) => current.filter((p) => p.id !== postId));
-          onNotice(t("Publication supprimée.", "Post deleted."));
-        })
-        .catch(() => {
-          onNotice(t("Erreur lors de la suppression.", "Delete failed."));
-        });
-    });
+    try {
+      const { data } = await publicationApi.modifierPostForum(postId, { description, lien: lien || null });
+      setPosts(current => current.map(post => post.id === postId
+        ? { ...post, description, lien: lien || undefined, feu_vert: data.post.feu_vert } : post));
+      setEditingId(null);
+      onNotice(t("Publication modifiée.", "Post updated."));
+    } catch (error) {
+      onNotice(apiError(error, t("Erreur lors de la modification.", "Update failed.")));
+    }
   }
 
   if (loading) {
@@ -198,7 +159,9 @@ export default function MyPosts({
                 {post.fichier && (
                   <div className="my-post-attachment">
                     <FileText size={16} />
-                    <span>{t("Fichier joint", "Attached file")}</span>
+                    <a href={mediaUrl(post.fichier)} target="_blank" rel="noopener noreferrer">
+                      {t("Ouvrir la pièce jointe", "Open attachment")}
+                    </a>
                   </div>
                 )}
                 <div className="my-post-footer">
@@ -209,7 +172,7 @@ export default function MyPosts({
                     <button onClick={() => handleEdit(post)} title={t("Modifier", "Edit")}>
                       <Edit3 size={16} />
                     </button>
-                    <button onClick={() => handleDelete(post.id)} title={t("Supprimer", "Delete")} className="danger">
+                    <button onClick={() => setRemoving(post.id)} title={t("Supprimer", "Delete")} className="danger">
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -388,6 +351,15 @@ export default function MyPosts({
           opacity: 0.8;
         }
       `}</style>
+      {removing && <ConfirmDialog
+        title={t("Supprimer cette publication ?", "Delete this post?")}
+        onClose={() => setRemoving(undefined)}
+        onConfirm={async () => {
+          await publicationApi.supprimerPostForum(removing);
+          setPosts(current => current.filter(post => post.id !== removing));
+          onNotice(t("Publication supprimée.", "Post deleted."));
+        }}
+      />}
     </div>
   );
 }

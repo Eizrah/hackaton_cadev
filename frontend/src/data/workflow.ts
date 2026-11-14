@@ -50,7 +50,7 @@ export function useApplications() {
 export type Review = {
   id: string;
   kind: "post" | "offer" | "report";
-  resourceId: number;
+  resourceId: number | string;
   title: string;
   content: string;
   status: "pending" | "approved" | "rejected";
@@ -62,7 +62,7 @@ export function useReviews() {
 }
 export function makeReview(
   kind: Review["kind"],
-  resourceId: number,
+  resourceId: number | string,
   title: string,
   content: string,
 ): Review {

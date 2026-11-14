@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from fonction_utils.gestion_fichier import getProfilDev, getFichierDiplome, getFichierCertificat
 from django.contrib.auth.models import AbstractUser
@@ -14,6 +15,9 @@ class Developper(AbstractUser):
         ('F','Feminin')
    ]
     email = models.EmailField(primary_key=True, unique=True)
+    # Cet identifiant reste stable si l'adresse de connexion change.
+    identifiant = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    competences_personnalisees = models.JSONField(default=list, blank=True, null=True)
     nom=models.CharField(max_length=20)
     prenom = models.CharField(max_length=40,blank=True,null=True)
     pseudo=models.CharField(max_length=50, unique=True)

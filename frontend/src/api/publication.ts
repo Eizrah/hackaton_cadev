@@ -1,4 +1,49 @@
+import { isAxiosError } from 'axios'
 import client from './client'
+
+export type EtatCandidature = 'accepte' | 'refuse' | 'en_attente'
+
+export interface Candidature {
+  id: number
+  etat: EtatCandidature
+  date_postule: string
+  nom_offre: string
+  offre_localisation: string
+  developper_email: string
+  developper_pseudo: string
+  developper_photo?: string | null
+  lettre_motivation?: string | null
+  pj?: string | null
+  lien_cv?: string | null
+}
+
+type PublicationEnregistrable = { id: string; date: string; auteur: string }
+export type Signet = {
+  type: 'forum_post'
+  publication: PublicationEnregistrable & { description: string }
+} | {
+  type: 'offre_emploi'
+  publication: PublicationEnregistrable & { nom_poste: string; localisation: string }
+}
+export type Enregistrement = Signet & { id: number; date_enregistrement: string }
+
+export interface ForumPostResponse {
+  id_publication: string
+  developper_email: string
+  developper_pseudo: string
+  developper_pays?: string
+  description: string
+  lien?: string | null
+  fichier?: string | null
+  date_publication: string
+  feu_vert: boolean
+  collaboration?: boolean
+  nombre_notes?: number
+  nombre_commentaires?: number
+  liked_by_me?: boolean
+}
+
+type ForumPublicationResult = { message: string; post: ForumPostResponse; raison?: string }
 
 export const publicationApi = {
 
@@ -6,7 +51,7 @@ export const publicationApi = {
 
   // liste des posts validés (feu_vert=True)
   getPostsForum: () =>
-    client.get('/api/forum/posts/'),
+    client.get<ForumPostResponse[]>('/api/forum/posts/'),
 
   // mes posts (tous, validés ou non)
   getMesPostsForum: () =>
@@ -14,28 +59,37 @@ export const publicationApi = {
 
   // détail d'un post
   getPostForum: (id: string) =>
-    client.get(`/api/forum/posts/${id}/`),
+    client.get<ForumPostResponse>(`/api/forum/posts/${id}/`),
 
-  // créer un post — Multipart si fichier, JSON sinon
-  creerPostForum: (data: { description: string; lien?: string; fichier?: File }) => {
-    if (data.fichier) {
+  creerPostForum: async ({ fichier, ...post }: {
+    description: string; lien?: string; fichier?: File; collaboration: boolean
+  }) => {
+    let payload: typeof post | FormData = post
+    if (fichier) {
       const form = new FormData()
-      form.append('description', data.description)
-      if (data.lien && data.lien.trim()) form.append('lien', data.lien.trim())
-      form.append('fichier', data.fichier)
-      return client.post('/api/forum/posts/creer/', form, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      })
+      form.append('description', post.description)
+      form.append('collaboration', String(post.collaboration))
+      if (post.lien) form.append('lien', post.lien)
+      form.append('fichier', fichier)
+      payload = form
     }
-    // JSON — n'envoie lien que s'il est renseigné
-    const payload: Record<string, string> = { description: data.description }
-    if (data.lien && data.lien.trim()) payload.lien = data.lien.trim()
-    return client.post('/api/forum/posts/creer/', payload)
+
+    try {
+      const { data } = await client.post<ForumPublicationResult>('/api/forum/posts/creer/', payload)
+      return data
+    } catch (error) {
+      // Django conserve le post refusé et le renvoie avec son motif.
+      if (isAxiosError<ForumPublicationResult>(error) && error.response?.status === 400) {
+        const result = error.response.data
+        if (result?.post?.id_publication && result.post.feu_vert === false) return result
+      }
+      throw error
+    }
   },
 
   // modifier un post
-  modifierPostForum: (id: string, data: { description?: string; lien?: string }) =>
-    client.put(`/api/forum/posts/${id}/`, data),
+  modifierPostForum: (id: string, data: { description?: string; lien?: string | null }) =>
+    client.put<ForumPublicationResult>(`/api/forum/posts/${id}/`, data),
 
   // supprimer un post
   supprimerPostForum: (id: string) =>
@@ -43,7 +97,7 @@ export const publicationApi = {
 
   // rechercher des posts
   rechercherPostsForum: (query: string) =>
-    client.get(`/api/forum/posts/recherche/?q=${encodeURIComponent(query)}`),
+    client.get<ForumPostResponse[]>(`/api/forum/posts/recherche/`, { params: { q: query } }),
 
   // ─── Commentaires ─────────────────────────────────────────────────────────
 
@@ -74,10 +128,10 @@ export const publicationApi = {
   // ─── Enregistrements ──────────────────────────────────────────────────────
 
   getEnregistrements: () =>
-    client.get('/api/forum/enregistrements/'),
+    client.get<Enregistrement[]>('/api/forum/enregistrements/'),
 
   enregistrer: (typePublication: 'forum_post' | 'offre_emploi', idPublication: string) =>
-    client.post('/api/forum/enregistrements/', {
+    client.post<{ id: number }>('/api/forum/enregistrements/', {
       type_publication: typePublication,
       id_publication: idPublication,
     }),
@@ -134,10 +188,11 @@ export const publicationApi = {
 
   // ─── Candidatures ─────────────────────────────────────────────────────────
 
-  postuler: (idOffre: string, data: { lettre_motivation?: string; pj?: File }) => {
+  postuler: (idOffre: string, data: { lettre_motivation?: string; lien_cv?: string; pj?: File }) => {
     if (data.pj) {
       const form = new FormData()
       if (data.lettre_motivation) form.append('lettre_motivation', data.lettre_motivation)
+      if (data.lien_cv) form.append('lien_cv', data.lien_cv)
       form.append('pj', data.pj)
       return client.post(`/api/jobs/offres/${idOffre}/postuler/`, form, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -145,14 +200,18 @@ export const publicationApi = {
     }
     return client.post(`/api/jobs/offres/${idOffre}/postuler/`, {
       lettre_motivation: data.lettre_motivation,
+      lien_cv: data.lien_cv,
     })
   },
 
   mesCandidatures: (etat?: 'accepte' | 'refuse' | 'en_attente') =>
-    client.get(`/api/jobs/mes-candidatures/${etat ? `?etat=${etat}` : ''}`),
+    client.get<Candidature[]>(`/api/jobs/mes-candidatures/${etat ? `?etat=${etat}` : ''}`),
+
+  retirerMaCandidature: (id: number) =>
+    client.delete(`/api/jobs/mes-candidatures/${id}/`),
 
   candidaturesOffre: (idOffre: string, etat?: 'accepte' | 'refuse' | 'en_attente') =>
-    client.get(`/api/jobs/offres/${idOffre}/candidatures/${etat ? `?etat=${etat}` : ''}`),
+    client.get<Candidature[]>(`/api/jobs/offres/${idOffre}/candidatures/${etat ? `?etat=${etat}` : ''}`),
 
   traiterCandidature: (idOffre: string, idCandidature: number, etat: 'accepte' | 'refuse') =>
     client.put(`/api/jobs/offres/${idOffre}/candidatures/${idCandidature}/`, { etat }),

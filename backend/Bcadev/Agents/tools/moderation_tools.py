@@ -13,6 +13,8 @@ Le décorateur @tool :
 - Les paramètres et types sont analysés automatiquement
 """
 
+import re
+
 from langchain_core.tools import tool
 
 # ─── Liste noire de mots interdits ────────────────────────────────────────────
@@ -53,10 +55,11 @@ def check_mots_interdits(texte: str) -> dict:
     Retourne la liste des mots trouvés et un booléen indiquant si le contenu
     doit être bloqué immédiatement.
     """
-    texte_lower = texte.lower()
+    texte_lower = texte.casefold()
+    # Reconnaît les mots et les expressions complets, y compris près de la ponctuation.
     mots_trouves = [
-        mot for mot in MOTS_INTERDITS
-        if mot in texte_lower
+        mot for mot in dict.fromkeys(MOTS_INTERDITS)
+        if re.search(rf"(?<!\w){re.escape(mot)}(?!\w)", texte_lower)
     ]
 
     return {

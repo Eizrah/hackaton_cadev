@@ -78,3 +78,147 @@
   *::-webkit-scrollbar-track { background:Canvas;box-shadow:none; }
   *::-webkit-scrollbar-thumb { background:ButtonText;border-color:Canvas;box-shadow:none; }
 }
+
+/* Les modales partagées sont au-dessus des panneaux et du menu latéral. */
+.modal-backdrop.modal-layer { z-index: 300; }
+.modal-layer .modal { color: #23435a; animation: none; }
+.modal-layer button:disabled { opacity: 0.5; cursor: not-allowed; }
+.modal-layer .modal .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 17px;
+  border: 0;
+  border-radius: 11px;
+  background: linear-gradient(120deg, #188ccb, #1669ac);
+  box-shadow: 0 5px 14px #126ca71c;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+.modal-layer .modal .btn-primary:hover:not(:disabled) {
+  background: linear-gradient(120deg, #129ace, #1569ac);
+}
+.modal-layer .modal .btn-primary.btn-danger,
+.workspace .btn-primary.btn-danger {
+  background: #bd414c;
+  border-color: #bd414c;
+  color: #fff;
+}
+.modal-layer .modal .btn-primary.btn-danger:hover:not(:disabled),
+.workspace .btn-primary.btn-danger:hover:not(:disabled) {
+  background: #a72f3d;
+  border-color: #a72f3d;
+}
+.rounded-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 47px;
+  padding-inline: 15px;
+  border: 1px solid #cbdfee;
+  border-radius: 28px;
+  background: linear-gradient(110deg, #e9f6fe, #d9ecfb);
+  color: #3678a4;
+}
+.rounded-search:focus-within {
+  border-color: #5f97bb;
+  box-shadow: 0 0 0 3px #397eaa2b;
+}
+.rounded-search > svg { flex: none; }
+.rounded-search > input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  color: #345f7e;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 12px 0 !important;
+  background: none !important;
+  font-size: 12px !important;
+}
+.rounded-search > input:focus-visible { box-shadow: none; }
+.rounded-search > input::placeholder { color: #4c6a80; }
+.rounded-search > input::-webkit-search-cancel-button { appearance: none; }
+.rounded-search > .quiet {
+  inline-size: 32px;
+  block-size: 32px;
+  border-radius: 50%;
+  color: inherit;
+}
+.rounded-search > .quiet:hover { background: #bddcf1; }
+.personal-fields .rounded-search { min-height: 45px; }
+.panel.community-search { padding: 16px; margin-bottom: 16px; }
+
+.group-name-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 9px;
+}
+.group-photo-button {
+  display: grid;
+  place-items: center;
+  inline-size: 44px;
+  padding: 0;
+  color: #286b92;
+  background: #e8f3fb;
+  border: 1px solid #cbdfee;
+  border-radius: 10px;
+}
+.group-photo-button:hover:not(:disabled) { background: #d9ecfb; }
+.group-photo-selection {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+.group-photo-selection .quiet { min-width: 28px; min-height: 28px; }
+
+.application-form .modal-actions { margin-top: 0; }
+.application-cv-field { position: relative; margin-top: 8px; }
+.application-cv-field input { width: 100%; padding-inline-end: 50px !important; }
+.application-cv-field .quiet {
+  position: absolute;
+  inset-inline-end: 8px;
+  inset-block-start: 50%;
+  display: grid;
+  place-items: center;
+  inline-size: 36px;
+  block-size: 36px;
+  transform: translateY(-50%);
+  color: #286b92;
+}
+.application-cv-file,
+.application-card-actions,
+.candidate-cv-links { display: flex; align-items: center; gap: 8px; }
+.application-cv-file { margin-top: 6px; overflow-wrap: anywhere; }
+.application-card-actions { justify-content: space-between; min-height: 28px; margin-bottom: 5px; }
+.application-card-actions .application-status { margin: 0; color: #775717; }
+.status-accepted .application-card-actions .application-status { color: #337453; }
+.status-rejected .application-card-actions .application-status { color: #9b4048; }
+.application-card-actions .quiet {
+  color: #a73342;
+  display: grid;
+  place-items: center;
+  inline-size: 32px;
+  block-size: 32px;
+}
+.application-card > div:first-child { min-width: 0; overflow-wrap: anywhere; }
+.candidate-profile .avatar { flex: none; }
+.candidate-profile strong { font-size: 15px; overflow-wrap: anywhere; }
+.candidate-cv-links { flex-wrap: wrap; column-gap: 16px; }
+.profile-editor-sidebar { display: grid; align-content: start; gap: 16px; min-width: 0; }
+.profile-security { display: grid; gap: 10px; }
+.profile-security .btn-outline { width: 100%; justify-content: flex-start; text-align: left; }
+.profile-security .section-title { margin-bottom: 4px; }
+.invitation-list { display: grid; gap: 12px; }
+.invitation-card { display: grid; gap: 14px; padding: 16px; background: #f5f9fc; border: 1px solid #d8e7f2; border-radius: 14px; }
+.invitation-card p { margin: 5px 0 0; }
+.invitation-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.invitation-actions button { justify-content: center; }
+.message-voice { display: block; max-width: 100%; width: 260px; }
+.my-offers { margin-top: 24px; scroll-margin-top: 20px; }

@@ -4,6 +4,9 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from .models import Offre_Emploi, Candidature
 from .serializers import OffreEmploiSerializer, OffreEmploiListSerializer, CandidatureSerializer
+from django.conf import settings
+from django.core.mail import send_mail
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 # import de Blocage pour filtrer les offres des devs bloqués
 from Accounts.models import Blocage
@@ -212,16 +215,18 @@ class PostulerOffreView(APIView):
 
         serializer = CandidatureSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(
-                developpeur=request.user,
-                offre_emploi=offre
-            )
-            # notifie le recruteur qu'il a reçu une candidature
-            creer_notif(
-                offre.developper,
-                'candidature',
-                f'{request.user.pseudo} a postulé à votre offre "{offre.nom_poste}".'
-            )
+            try:
+                with transaction.atomic():
+                    serializer.save(developpeur=request.user, offre_emploi=offre)
+                    # La notification ouvre les candidatures reçues pour cette offre.
+                    creer_notif(
+                        offre.developper, 'candidature',
+                        f'{request.user.pseudo} a postulé à votre offre "{offre.nom_poste}".',
+                        offre_id=offre.pk,
+                    )
+            except IntegrityError:
+                # Protège aussi contre une double soumission simultanée.
+                return Response({'erreur': 'Vous avez déjà postulé à cette offre.'}, status=status.HTTP_400_BAD_REQUEST)
             return Response({
                 'message': 'Candidature envoyée avec succès.'
             }, status=status.HTTP_201_CREATED)
@@ -262,8 +267,8 @@ class MesCandidaturesView(APIView):
         etat = request.query_params.get('etat', None)
 
         candidatures = Candidature.objects.filter(
-            developpeur=request.user
-        ).order_by('-date_postule')
+            developpeur=request.user, masquee_par_candidat=False,
+        ).select_related('offre_emploi', 'developpeur').order_by('-date_postule', '-pk')
 
         if etat:
             # vérifie que l'état demandé est valide
@@ -274,8 +279,24 @@ class MesCandidaturesView(APIView):
                 )
             candidatures = candidatures.filter(etat=etat)
 
-        serializer = CandidatureSerializer(candidatures, many=True)
+        serializer = CandidatureSerializer(candidatures, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class RetirerMaCandidatureView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, id_candidature):
+        candidature = Candidature.objects.filter(pk=id_candidature, developpeur=request.user)
+        # La décision reste consultable côté recruteur et interdit de postuler deux fois.
+        if candidature.filter(etat__in=['accepte', 'refuse']).update(masquee_par_candidat=True):
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        if candidature.exists():
+            return Response(
+                {'erreur': 'Attendez la décision du recruteur avant de retirer cette candidature.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response({'erreur': 'Candidature introuvable.'}, status=status.HTTP_404_NOT_FOUND)
 
 
 class GererCandidaturesView(APIView):
@@ -297,7 +318,7 @@ class GererCandidaturesView(APIView):
 
         candidatures = Candidature.objects.filter(
             offre_emploi=offre
-        ).order_by('-date_postule')
+        ).select_related('offre_emploi', 'developpeur').order_by('-date_postule', '-pk')
 
         if etat:
             if etat not in ['accepte', 'refuse', 'en_attente']:
@@ -307,7 +328,7 @@ class GererCandidaturesView(APIView):
                 )
             candidatures = candidatures.filter(etat=etat)
 
-        serializer = CandidatureSerializer(candidatures, many=True)
+        serializer = CandidatureSerializer(candidatures, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -342,25 +363,24 @@ class GererCandidaturesView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        candidature.etat = nouvel_etat
-        candidature.save()
-
-        # notifier le candidat par email
-        from django.core.mail import send_mail
-        message = 'Félicitations, votre candidature a été acceptée !' if nouvel_etat == 'accepte' else 'Votre candidature a été refusée.'
-        send_mail(
-            subject=f'Réponse à votre candidature — {offre.nom_poste}',
-            message=message,
-            from_email='noreply@cadev.com',
-            recipient_list=[candidature.developpeur.email],
-        )
-
-        # notifie le candidat via le système de notifications
-        creer_notif(
-            candidature.developpeur,
-            'candidature_reponse',
-            f'Votre candidature pour "{offre.nom_poste}" a été {"acceptée" if nouvel_etat == "accepte" else "refusée"}.'
-        )
+        accepte = nouvel_etat == 'accepte'
+        message = 'Félicitations, votre candidature a été acceptée !' if accepte else 'Votre candidature a été refusée.'
+        with transaction.atomic():
+            # Une nouvelle tentative avec le même verdict ne crée pas de doublon.
+            modifiee = Candidature.objects.filter(pk=candidature.pk).exclude(etat=nouvel_etat)
+            if modifiee.update(etat=nouvel_etat):
+                creer_notif(
+                    candidature.developpeur, 'candidature_reponse',
+                    f'Votre candidature pour "{offre.nom_poste}" a été {"acceptée" if accepte else "refusée"}.',
+                    offre_id=offre.pk,
+                )
+                # Un échec SMTP laisse le verdict et la notification disponibles.
+                transaction.on_commit(lambda: send_mail(
+                    subject=f'Réponse à votre candidature — {offre.nom_poste}',
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[candidature.developpeur.email],
+                ), robust=True)
 
         return Response({
             'message': f'Candidature {nouvel_etat} avec succès.'

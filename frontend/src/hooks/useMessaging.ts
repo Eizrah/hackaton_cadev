@@ -24,6 +24,7 @@ export interface Message {
   destinataire_email?: string
   etat: string
   supprime: boolean
+  fichier_audio?: string | null
   fichiers?: Array<{
     id_fichier: string
     fichier: string

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Bell, MessageCircle, Heart, Trash2, CheckCheck, ChevronRight, UserRound, X, AlertCircle } from "lucide-react";
-import { type Profile } from "../../data/models";
 import { useI18n } from "../../i18n/context";
 import { notifApi } from "../../api/auth";
 
@@ -10,12 +9,13 @@ interface Notification {
   message: string
   lu: boolean
   date: string
-  post_id?: number
-  commentaire_id?: number
-  offre_id?: number
+  post_id?: string
+  commentaire_id?: string
+  offre_id?: string
+  groupe_id?: string
 }
 
-export default function NotificationCenter({ profile, onNavigate }: { profile: Profile; onNavigate: (path: string) => void }) {
+export default function NotificationCenter({ onNavigate }: { onNavigate: (path: string) => void }) {
   const { t, locale } = useI18n()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -120,13 +120,19 @@ export default function NotificationCenter({ profile, onNavigate }: { profile: P
 
   const handleNotificationClick = (notif: Notification) => {
     // Marquer comme lue
-    handleMarkAsRead(notif.id)
+    if (!notif.lu) handleMarkAsRead(notif.id)
     setOpen(false)
 
     // Navigation selon le type de notification
     if (notif.post_id) {
       // Pour les notifications liées à un post du forum
-      onNavigate(`communaute/publication/${notif.post_id}`)
+      onNavigate(`communaute/publication/${notif.post_id}${notif.commentaire_id ? `/${notif.commentaire_id}` : ''}`)
+    } else if (notif.type === 'candidature' && notif.offre_id) {
+      onNavigate(`profil/recrutement/${notif.offre_id}`)
+    } else if (notif.type === 'candidature_reponse') {
+      onNavigate('profil/candidatures')
+    } else if (notif.type === 'groupe_invitation') {
+      onNavigate('messages/invitations')
     } else if (notif.offre_id) {
       // Pour les notifications liées à une offre d'emploi
       onNavigate(`offres/offre/${notif.offre_id}`)

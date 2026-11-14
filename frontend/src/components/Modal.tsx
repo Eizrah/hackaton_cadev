@@ -1,16 +1,19 @@
 import { useI18n } from "../i18n/context";
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 export default function Modal({
   title,
   children,
   onClose,
+  busy = false,
   size = "normal",
 }: {
   size?: "normal"|"wide";
   title: string;
   children: ReactNode;
   onClose: () => void;
+  busy?: boolean;
 }) {
   const { t } = useI18n();
   const titleId=useId();
@@ -18,8 +21,8 @@ export default function Modal({
   const ref = useRef<HTMLElement>(null);
   const close = useRef(onClose);
   useEffect(() => {
-    close.current = onClose;
-  }, [onClose]);
+    close.current = busy ? () => {} : onClose;
+  }, [busy, onClose]);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
@@ -27,7 +30,7 @@ export default function Modal({
     const focusable = () =>
       Array.from(
         ref.current?.querySelectorAll<HTMLElement>(
-          'button:not([disabled]),input,select,textarea,a[href],[tabindex="0"]',
+          'button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex="0"]',
         ) || [],
       ).filter(element=>element.tabIndex>=0 && !!element.getClientRects().length);
     focusable()[0]?.focus();
@@ -52,8 +55,8 @@ export default function Modal({
       previous?.focus();
     };
   }, []);
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
+  return createPortal(
+    <div className="modal-backdrop modal-layer" onClick={busy ? undefined : onClose}>
       <section
         ref={ref}
         className={`panel modal ${size === "wide" ? "modal-wide" : ""}`}
@@ -68,6 +71,7 @@ export default function Modal({
             type="button"
             className="quiet"
             onClick={onClose}
+            disabled={busy}
             aria-label={t("Fermer la fenêtre")}
           >
             <X size={21} />
@@ -75,6 +79,7 @@ export default function Modal({
         </div>
         {children}
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

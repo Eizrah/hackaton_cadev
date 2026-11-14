@@ -55,6 +55,8 @@ class OffreEmploiListSerializer(serializers.ModelSerializer):
 class CandidatureSerializer(serializers.ModelSerializer):
     developper_email = serializers.EmailField(source='developpeur.email', read_only=True)
     developper_pseudo = serializers.CharField(source='developpeur.pseudo', read_only=True)
+    developper_photo = serializers.ImageField(source='developpeur.photoprofil', read_only=True)
+    offre_localisation = serializers.CharField(source='offre_emploi.localisation', read_only=True)
     nom_offre = serializers.CharField(source='offre_emploi.nom_poste', read_only=True)
     offre_id = serializers.UUIDField(source='offre_emploi.id_publication', read_only=True)
 
@@ -62,15 +64,26 @@ class CandidatureSerializer(serializers.ModelSerializer):
         model = Candidature
         fields = [
             'id', 'date_postule', 'etat', 'lettre_motivation',
-            'pj', 'developper_email', 'developper_pseudo', 
-            'nom_offre', 'offre_id'
+            'pj', 'lien_cv', 'developper_email', 'developper_pseudo', 'developper_photo',
+            'nom_offre', 'offre_id', 'offre_localisation',
         ]
         read_only_fields = [
             'id', 'date_postule', 'etat',
-            'developper_email', 'developper_pseudo', 'nom_offre', 'offre_id'
+            'developper_email', 'developper_pseudo', 'developper_photo',
+            'nom_offre', 'offre_id', 'offre_localisation',
         ]
 
     def validate_pj(self, value):
         if value:
+            # Vérifie la signature, en plus du type fourni lors de l'envoi.
+            signature = value.read(5)
+            value.seek(0)
+            if signature != b'%PDF-':
+                raise serializers.ValidationError('Le CV joint doit être au format PDF.')
             valider_fichier(value)
+        return value
+
+    def validate_lien_cv(self, value):
+        if value and not value.lower().startswith(('https://', 'http://')):
+            raise serializers.ValidationError('Le lien du CV doit utiliser HTTP ou HTTPS.')
         return value

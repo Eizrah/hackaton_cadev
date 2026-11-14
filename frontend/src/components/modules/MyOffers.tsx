@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { publicationApi } from '../../api/publication'
-import { MapPin, Briefcase, Calendar, ExternalLink, Mail, Trash2, Edit3, Users } from 'lucide-react'
+import { MapPin, Briefcase, Calendar, ExternalLink, Mail, Trash2, Users } from 'lucide-react'
 import OfferCandidates from './OfferCandidates'
+import ConfirmDialog from '../shared/ConfirmDialog'
+import { useI18n } from '../../i18n/context'
+import { mediaUrl } from '../../api/client'
 
 interface Offre {
   id_publication: string
@@ -23,48 +26,37 @@ interface Offre {
 }
 
 interface MyOffersProps {
-  onNavigate?: (path: string) => void
+  onNavigate: (path: string) => void
+  onNotice: (message: string) => void
+  focusJob?: string
 }
 
-export default function MyOffers({ onNavigate }: MyOffersProps) {
+export default function MyOffers({ onNavigate, onNotice, focusJob }: MyOffersProps) {
+  const { t } = useI18n()
   const [offres, setOffres] = useState<Offre[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedOffre, setSelectedOffre] = useState<Offre | null>(null)
+  const [removing, setRemoving] = useState<Offre | null>(null)
 
   useEffect(() => {
     loadOffres()
-  }, [])
+  }, [focusJob])
 
   const loadOffres = async () => {
     try {
       setLoading(true)
       setError(null)
       const response = await publicationApi.getMesOffres()
-      console.log('Mes offres:', response.data)
-      setOffres(response.data)
+      const owned: Offre[] = response.data
+      setOffres(owned)
+      if (focusJob) setSelectedOffre(owned.find(offre => offre.id_publication === focusJob) || null)
     } catch (err: any) {
       console.error('Erreur chargement offres:', err)
       setError(err.response?.data?.message || 'Erreur lors du chargement')
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette offre ?')) return
-
-    try {
-      await publicationApi.supprimerOffre(id)
-      setOffres(prev => prev.filter(o => o.id_publication !== id))
-    } catch (err: any) {
-      console.error('Erreur suppression:', err)
-      alert(err.response?.data?.message || 'Erreur lors de la suppression')
-    }
-  }
-
-  const handleViewCandidates = (offre: Offre) => {
-    setSelectedOffre(offre)
   }
 
   const getTypeTravail = (type: string) => {
@@ -85,11 +77,11 @@ export default function MyOffers({ onNavigate }: MyOffersProps) {
   }
 
   if (loading) {
-    return <div className="text-center py-8 text-gray-400">Chargement...</div>
+    return <div id="recrutement" className="text-center py-8 text-gray-400">Chargement...</div>
   }
 
   if (error) {
-    return <div className="text-center py-8 text-red-400">{error}</div>
+    return <div id="recrutement" className="text-center py-8 text-red-400">{error}</div>
   }
 
   if (offres.length === 0) {
@@ -101,7 +93,7 @@ export default function MyOffers({ onNavigate }: MyOffersProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <section id="recrutement" className="panel my-offers space-y-4">
       <h2 className="text-xl font-semibold text-white mb-4">Mes offres d'emploi</h2>
       
       {offres.map((offre) => (
@@ -135,9 +127,10 @@ export default function MyOffers({ onNavigate }: MyOffersProps) {
                 </span>
               )}
               <button
-                onClick={() => handleViewCandidates(offre)}
+                onClick={() => setSelectedOffre(offre)}
                 className="p-2 hover:bg-gray-800 rounded-lg transition"
-                title="Voir les candidatures"
+                title={t("Voir les candidatures", "View applications")}
+                aria-label={t("Voir les candidatures", "View applications")}
               >
                 <Users className="w-5 h-5 text-blue-400" />
                 {offre.candidatures_count !== undefined && offre.candidatures_count > 0 && (
@@ -147,9 +140,10 @@ export default function MyOffers({ onNavigate }: MyOffersProps) {
                 )}
               </button>
               <button
-                onClick={() => handleDelete(offre.id_publication)}
+                onClick={() => setRemoving(offre)}
                 className="p-2 hover:bg-gray-800 rounded-lg transition"
-                title="Supprimer"
+                title={t("Supprimer l’offre", "Delete offer")}
+                aria-label={t("Supprimer l’offre", "Delete offer")}
               >
                 <Trash2 className="w-5 h-5 text-red-400" />
               </button>
@@ -203,7 +197,7 @@ export default function MyOffers({ onNavigate }: MyOffersProps) {
               )}
               {offre.fichier && (
                 <a
-                  href={offre.fichier}
+                  href={mediaUrl(offre.fichier)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-400 hover:underline"
@@ -217,18 +211,23 @@ export default function MyOffers({ onNavigate }: MyOffersProps) {
       ))}
 
       {/* Modal de gestion des candidatures */}
-      {selectedOffre && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-[#1a1a2e] rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-            <OfferCandidates
-              offreId={selectedOffre.id_publication}
-              offreTitre={selectedOffre.nom_poste}
-              onClose={() => setSelectedOffre(null)}
-              onNavigate={onNavigate}
-            />
-          </div>
-        </div>
-      )}
-    </div>
+      {selectedOffre && <OfferCandidates
+        key={selectedOffre.id_publication}
+        offreId={selectedOffre.id_publication}
+        offreTitre={selectedOffre.nom_poste}
+        onClose={() => setSelectedOffre(null)}
+        onNavigate={onNavigate}
+      />}
+      {removing && <ConfirmDialog
+        title={t("Supprimer cette offre ?", "Delete this offer?")}
+        description={removing.nom_poste}
+        onClose={() => setRemoving(null)}
+        onConfirm={async () => {
+          await publicationApi.supprimerOffre(removing.id_publication)
+          setOffres(current => current.filter(offre => offre.id_publication !== removing.id_publication))
+          onNotice(t("Offre supprimée.", "Offer deleted."))
+        }}
+      />}
+    </section>
   )
 }

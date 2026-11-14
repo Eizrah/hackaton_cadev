@@ -78,6 +78,8 @@ def valider_diplome_certificat(fichier):
 def valider_audio(fichier):
     if fichier.size > settings.MAX_UPLOAD_SIZE_FICHIER:
         raise ValidationError('Fichier audio trop volumineux.')
-    types_autorises = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm']
-    if fichier.content_type not in types_autorises:
+    # MediaRecorder varie entre WebM, Ogg et MP4 selon le navigateur.
+    types_autorises = ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/webm', 'audio/mp4', 'audio/x-m4a']
+    type_audio = (fichier.content_type or '').split(';', 1)[0].strip().lower()
+    if type_audio not in types_autorises:
         raise ValidationError('Format audio non autorisé.')

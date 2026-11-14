@@ -5,12 +5,14 @@ from .views import OAuthTokenView
 urlpatterns = [
     path('inscription/', InscriptionView.as_view(), name='inscription'),
     path('connexion/', ConnexionView.as_view(), name='connexion'),
+    path('connexion/refresh/', RafraichirConnexionView.as_view(), name='rafraichir-connexion'),
     path('deconnexion/', DeconnexionView.as_view(), name='deconnexion'),
 
     # URLs profil — les plus spécifiques AVANT profil/ général
     path('profil/infos/', ModifierInfosView.as_view(), name='modifier-infos'),
     path('profil/email-pseudo/', ModifierEmailPseudoView.as_view(), name='modifier-email-pseudo'),
     path('profil/mot-de-passe/', ChangerMotDePasseView.as_view(), name='changer-mot-de-passe'),
+    path('profil/membre/', ProfilMembreView.as_view(), name='profil-membre'),
     path('profil/', ProfilView.as_view(), name='profil'),
 
     path('supprimer-compte/', SupprimerCompteView.as_view(), name='supprimer-compte'),

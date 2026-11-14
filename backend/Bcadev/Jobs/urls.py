@@ -8,6 +8,7 @@ from .views import (
     RechercheOffreEmploiView,
     PostulerOffreView,
     MesCandidaturesView,
+    RetirerMaCandidatureView,
     GererCandidaturesView
 )
 
@@ -17,6 +18,7 @@ urlpatterns = [
     path('offres/creer/', CreerOffreEmploiView.as_view(), name='creer-offre'),
     path('offres/recherche/', RechercheOffreEmploiView.as_view(), name='recherche-offres'),
     path('mes-candidatures/', MesCandidaturesView.as_view(), name='mes-candidatures'),
+    path('mes-candidatures/<int:id_candidature>/', RetirerMaCandidatureView.as_view(), name='retirer-ma-candidature'),
     path('offres/<uuid:id_publication>/candidatures/', GererCandidaturesView.as_view(), name='candidatures'),
     path('offres/<uuid:id_publication>/candidatures/<int:id_candidature>/', GererCandidaturesView.as_view(), name='gerer-candidature'),
 

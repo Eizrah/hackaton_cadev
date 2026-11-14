@@ -1,7 +1,7 @@
 import { useI18n } from "../i18n/context";
 import LanguageSwitcher from "./LanguageSwitcher";
-import { initialPosts, migratePosts } from "../data/models";
 import { useEffect, useRef, useState } from "react";
+import { isAxiosError } from "axios";
 import {
   ArrowLeftToLine,
   ArrowRightToLine,
@@ -17,11 +17,12 @@ import {
   X,
 } from "lucide-react";
 import { useLocalData } from "../lib/storage";
-import { initialProfile, migrateProfile } from "../data/models";
+import { initialProfile, migrateProfile, type Profile } from "../data/models";
 import NotificationCenter from "./shared/NotificationCenter";
 import { useToast } from "../lib/toastContext";
-import { findPerson, usePeople } from "../data/people";
-import { useApplications } from "../data/workflow";
+import { usePeople } from "../data/people";
+import { authApi } from "../api/auth";
+import { mapDjangoProfile } from "../lib/auth";
 import Community from "./modules/Community";
 import ProfileView, { ProfileEditor } from "./modules/Profile";
 import Learning from "./modules/Learning";
@@ -89,10 +90,8 @@ export default function Workspace({
     initialProfile,
     migrateProfile,
   );
-  const [people, setPeople] = usePeople();
-  const [applications] = useApplications();
+  const [, setPeople] = usePeople();
   useEffect(() => { setPeople(current => { const previous = current.find(p => p.id === profile.id); return JSON.stringify(previous) === JSON.stringify(profile) ? current : [...current.filter(p=>p.id!==profile.id),profile]; }); }, [profile, setPeople]);
-  const [posts] = useLocalData("posts", initialPosts, migratePosts);
   const [collapsed, setCollapsed] = useLocalData("sidebar-collapsed", false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(
@@ -167,36 +166,35 @@ export default function Workspace({
     setMobileOpen(false);
     onNavigate(path);
   }
-  let memberName = "";
+  const memberRoute = active.id === "profil" && parts[1] === "membre";
+  let member = "";
   try {
-    memberName =
-      parts[1] === "membre" ? decodeURIComponent(parts.slice(2).join("/")) : "";
+    if (memberRoute) member = decodeURIComponent(parts.slice(2).join("/"));
   } catch {
     /* Adresse invalide. */
   }
-  const memberPost = posts.find((p) => p.author === memberName);
-  const knownMember = memberName ? findPerson(people, memberName, profile) || applications.find(a=>a.applicantId===memberName)?.applicant : undefined;
-  const viewedProfile = memberName
-    ? knownMember || {
-        ...initialProfile,
-        id: `member-${memberName}`,
-        name: memberName,
-        firstName: memberName.split(" ")[0],
-        lastName: memberName.split(" ").slice(1).join(" "),
-        age: "",
-        email: "",
-        pseudo: "",
-        skillDetails: [],
-        experiences: [],
-        country: memberPost?.country || "",
-        role: "Membre DevAfrica",
-        bio: "Profil communautaire de démonstration.",
-        skills: "",
-        experience: "Parcours non renseigné.",
-        portfolio: "",
-        photo: "",
-      }
-    : profile;
+  const ownMember = !!member && [profile.publicId, profile.id, profile.email, profile.pseudo].includes(member);
+  const [memberResult, setMemberResult] = useState<{
+    member: string;
+    profile?: Profile;
+    error?: "missing" | "network";
+  }>();
+  useEffect(() => {
+    if (!member || ownMember) return;
+    const request = new AbortController();
+    setMemberResult(undefined);
+    void authApi.getProfilMembre(member, request.signal).then(({ data }) => {
+      if (!request.signal.aborted) setMemberResult({ member, profile: mapDjangoProfile(data) });
+    }).catch((error: unknown) => {
+      if (!request.signal.aborted) setMemberResult({
+        member,
+        error: isAxiosError(error) && error.response?.status === 404 ? "missing" : "network",
+      });
+    });
+    return () => request.abort();
+  }, [member, ownMember]);
+  const result = memberResult?.member === member ? memberResult : undefined;
+  const viewedProfile = !memberRoute || ownMember ? profile : result?.profile;
   const focusSection = active.id === "profil" && ["candidatures","recrutement"].includes(parts[1]) ? parts[1] : "";
   useEffect(()=>{if(focusSection)requestAnimationFrame(()=>document.getElementById(focusSection)?.scrollIntoView({block:"start"}));},[focusSection,route]);
   const editing = active.id === "profil" && parts[1] === "modifier";
@@ -315,14 +313,14 @@ export default function Workspace({
           </div>
           <div className="workspace-top-actions">
             <LanguageSwitcher />
-            <NotificationCenter profile={profile} onNavigate={navigate}/>
+            <NotificationCenter onNavigate={navigate}/>
             <button
               className="header-profile"
               onClick={() => navigate("profil")}
               aria-label={t("Ouvrir mon profil")}
             >
               <span className="avatar">
-                {profile.photo.startsWith("data:image/") ? (
+                {profile.photo ? (
                   <img src={profile.photo} alt="" />
                 ) : (
                   profile.name.slice(0, 2).toUpperCase()
@@ -338,7 +336,9 @@ export default function Workspace({
           {active.id === "communaute" && (
             <Community
               profile={profile}
-              focusPostId={parts[1] === "publication" ? Number(parts[2]) : undefined}
+              key={parts[1] === "publication" ? route : "feed"}
+              focusPostId={parts[1] === "publication" ? parts[2] : undefined}
+              focusCommentId={parts[1] === "publication" ? parts[3] : undefined}
               onNavigate={navigate}
               onNotice={setNotice}
             />
@@ -348,44 +348,61 @@ export default function Workspace({
               <ProfileEditor
                 key={route}
                 profile={profile}
+                onCredentialsSaved={({ email, pseudo }) => setProfile(current => ({ ...current, email, pseudo }))}
                 onSave={async (next) => {
-                  // sauvegarde locale immédiate pour l'UX
-                  setProfile(next)
-                  // envoi au backend
-                  try {
-                    const { authApi } = await import('../api/auth')
-                    const payload: Record<string, unknown> = {
-                      nom: next.lastName,
-                      prenom: next.firstName,
-                      age: Number(next.age) || 0,
-                      niveau: next.level === 'Débutant' ? 'D' : next.level === 'Intermédiaire' ? 'I' : 'A',
-                      pays: next.country,
-                      sexe: 'M',
-                      presentation: next.bio || '',
-                      lien_portfolio: next.portfolio || '',
+                  const payload = {
+                    nom: next.lastName,
+                    prenom: next.firstName,
+                    age: Number(next.age) || 0,
+                    niveau: next.level === "Débutant" ? "D" : next.level === "Intermédiaire" ? "I" : "A",
+                    pays: next.country,
+                    presentation: next.bio,
+                    lien_portfolio: next.portfolio,
+                    noms_competences: next.skillDetails.map(skill => skill.name.trim()),
+                  };
+                  let data: object | FormData = payload;
+                  if (next.photo !== profile.photo && next.photo.startsWith("data:image/")) {
+                    const form = new FormData();
+                    for (const [key, value] of Object.entries(payload)) {
+                      form.append(key, Array.isArray(value) ? JSON.stringify(value) : String(value));
                     }
-                    await authApi.updateProfil(payload)
-                    setNotice(t("Profil mis à jour.", "Profile updated."))
-                  } catch {
-                    setNotice(t("Profil enregistré localement. Vérifiez votre connexion.", "Profile saved locally."))
+                    form.append("photoprofil", await (await fetch(next.photo)).blob(), "profil.jpg");
+                    data = form;
+                  } else if (next.photo !== profile.photo && !next.photo) {
+                    data = { ...payload, photoprofil: null };
                   }
-                  navigate("profil")
+                  const response = await authApi.updateProfil(data);
+                  const saved = mapDjangoProfile(response.data.profil);
+                  setProfile(current => ({
+                    ...next, ...saved, id: current.id, role: next.role,
+                    experience: next.experience, experiences: next.experiences, documents: next.documents,
+                  }));
+                  setNotice(t("Profil mis à jour.", "Profile updated."));
+                  navigate("profil");
                 }}
                 onCancel={() => navigate("profil")}
                 onNotice={setNotice}
               />
-            ) : (
+            ) : viewedProfile ? (
               <ProfileView
                 profile={viewedProfile}
-                isOwn={!memberName || viewedProfile.id === profile.id}
+                isOwn={!memberRoute || ownMember || viewedProfile.email === profile.email}
                 onNavigate={navigate}
-                focusJob={parts[1] === "recrutement" ? Number(parts[2]) || undefined : undefined}
+                focusJob={parts[1] === "recrutement" ? parts[2] : undefined}
                 onMessage={() =>
-                  navigate(`messages/prive/${encodeURIComponent(viewedProfile.name)}`)
+                  navigate(`messages/prive/${encodeURIComponent(viewedProfile.email)}`)
                 }
                 onEdit={() => navigate("profil/modifier")}
                 onNotice={setNotice}
               />
+            ) : (
+              <section className="panel" role="status">
+                {!member || result?.error === "missing"
+                  ? t("Membre introuvable.", "Member not found.")
+                  : result?.error === "network"
+                    ? t("Impossible de charger le profil.", "Could not load the profile.")
+                    : t("Chargement du profil…", "Loading profile…")}
+              </section>
             ))}
           {active.id === "apprentissage" && (
             <Learning

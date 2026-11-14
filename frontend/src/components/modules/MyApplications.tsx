@@ -1,19 +1,6 @@
-import React, { useEffect, useState } from 'react'
-import { publicationApi } from '../../api/publication'
-import { MapPin, Briefcase, Calendar, FileText, Clock, CheckCircle, XCircle } from 'lucide-react'
-
-interface Candidature {
-  id: number
-  offre_id: string
-  offre_titre: string
-  offre_entreprise?: string
-  offre_localisation?: string
-  offre_type_contrat?: string
-  lettre_motivation: string
-  pj?: string
-  etat: 'en_attente' | 'accepte' | 'refuse'
-  date_candidature: string
-}
+import { useEffect, useState } from 'react'
+import { publicationApi, type Candidature } from '../../api/publication'
+import { MapPin, Calendar, FileText, Clock, CheckCircle, XCircle } from 'lucide-react'
 
 type FilterState = 'tous' | 'en_attente' | 'accepte' | 'refuse'
 
@@ -178,7 +165,7 @@ export default function MyApplications() {
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-white mb-1">
-                    {candidature.offre_titre || 'Offre supprimée'}
+                    {candidature.nom_offre || 'Offre supprimée'}
                   </h3>
                   <div className="flex flex-wrap items-center gap-3 text-sm text-gray-400">
                     {candidature.offre_localisation && (
@@ -187,15 +174,9 @@ export default function MyApplications() {
                         {candidature.offre_localisation}
                       </span>
                     )}
-                    {candidature.offre_type_contrat && (
-                      <span className="flex items-center gap-1">
-                        <Briefcase className="w-4 h-4" />
-                        {candidature.offre_type_contrat}
-                      </span>
-                    )}
                     <span className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      Postulé le {formatDate(candidature.date_candidature)}
+                      Postulé le {formatDate(candidature.date_postule)}
                     </span>
                   </div>
                 </div>

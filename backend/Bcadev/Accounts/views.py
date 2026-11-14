@@ -3,13 +3,20 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView
+from django.db import IntegrityError, transaction
+from uuid import UUID
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
-from .serializers import InscriptionSerializer, ConnexionSerializer, DevelopperSerializer, NotifSerializer
+from .serializers import (
+    InscriptionSerializer, ConnexionSerializer, DevelopperSerializer, NotifSerializer,
+    ProfilInfosSerializer, ProfilMembreSerializer, ModifierIdentifiantsSerializer,
+    RafraichirConnexionSerializer,
+)
 from Groups.models import Group
 from .models import Developper,Blocage, Sourdine,Notif
 import os
@@ -37,6 +44,7 @@ class InscriptionView(APIView):
             refresh = RefreshToken.for_user(dev)
             return Response({
                 'message': 'Compte créé avec succès.',
+                'identifiant': str(dev.identifiant),
                 'email': dev.email,
                 'nom': dev.nom,
                 'prenom': dev.prenom,
@@ -77,6 +85,10 @@ class ConnexionView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
+class RafraichirConnexionView(TokenRefreshView):
+    serializer_class = RafraichirConnexionSerializer
+
+
 class DeconnexionView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -93,15 +105,42 @@ class ProfilView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        serializer = DevelopperSerializer(request.user)
+        serializer = DevelopperSerializer(request.user, context={"request": request})
         return Response(serializer.data)
 
     def put(self, request):
-        serializer = DevelopperSerializer(request.user, data=request.data, partial=True)
+        # L'ancienne route respecte aussi la vérification du mot de passe pour le pseudo.
+        serializer = ProfilInfosSerializer(
+            request.user, data=request.data, partial=True, context={'request': request},
+        )
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ProfilMembreView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        membre = request.query_params.get('membre', '').strip()
+        if not membre:
+            return Response({'erreur': 'Indiquez un membre.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Accepte les liens déjà utilisés par la communauté et les liens partagés à UUID stable.
+        comptes = Developper.objects.filter(banne=False, is_active=True).prefetch_related('possessions__competence')
+        try:
+            identifiant = UUID(membre)
+        except ValueError:
+            identifiant = None
+        profil = comptes.filter(identifiant=identifiant).first() if identifiant else None
+        if profil is None:
+            profil = comptes.filter(Q(email=membre) | Q(pseudo=membre)).first()
+        if profil is None and membre.startswith('dev-') and '@' in membre:
+            profil = comptes.filter(email=membre[4:]).first()
+        if profil is None:
+            return Response({'erreur': 'Membre introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(ProfilMembreSerializer(profil, context={'request': request}).data)
+
 
 class MotDePasseOublieView(APIView):
     permission_classes = [AllowAny]
@@ -380,73 +419,51 @@ class ModifierInfosView(APIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request):
-        # modifier nom, prénom, age, photo — sans mot de passe
-        serializer = DevelopperSerializer(
-            request.user,
-            data=request.data,
-            partial=True
+        serializer = ProfilInfosSerializer(
+            request.user, data=request.data, partial=True, context={'request': request},
         )
-        if serializer.is_valid():
-            # empêche la modification d'email et pseudo via cet endpoint
-            for champ_sensible in ['email', 'pseudo']:
-                serializer.validated_data.pop(champ_sensible, None)
-            serializer.save()
-            return Response({
-                'message': 'Profil mis à jour.',
-                'profil': serializer.data
-            }, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'message': 'Profil mis à jour.', 'profil': serializer.data})
+
 
 class ModifierEmailPseudoView(APIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request):
-        # modifier email ou pseudo — mot de passe requis
-        mot_de_passe = request.data.get('mot_de_passe')
-        if not mot_de_passe:
-            return Response(
-                {'erreur': 'Le mot de passe est requis pour modifier l\'email ou le pseudo.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        serializer = ModifierIdentifiantsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        valeurs = serializer.validated_data
+        try:
+            with transaction.atomic():
+                dev = Developper.objects.select_for_update().get(identifiant=request.user.identifiant)
+                if not dev.check_password(valeurs['mot_de_passe']):
+                    return Response({'erreur': 'Mot de passe incorrect.'}, status=status.HTTP_403_FORBIDDEN)
 
-        # vérifie le mot de passe
-        if not request.user.check_password(mot_de_passe):
-            return Response(
-                {'erreur': 'Mot de passe incorrect.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+                email = valeurs.get('email', dev.email)
+                pseudo = valeurs.get('pseudo', dev.pseudo)
+                autres = Developper.objects.exclude(pk=dev.pk)
+                if autres.filter(email=email).exists():
+                    return Response({'erreur': 'Cet email est déjà utilisé.'}, status=status.HTTP_400_BAD_REQUEST)
+                if autres.filter(pseudo=pseudo).exists():
+                    return Response({'erreur': 'Ce pseudo est déjà pris.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        nouvel_email = request.data.get('email')
-        nouveau_pseudo = request.data.get('pseudo')
+                # L'email est la clé primaire historique. save() tenterait une insertion.
+                # Django crée des FK différées sur PostgreSQL : réaffecter les références
+                # dans la même transaction conserve les messages, offres et autres relations.
+                Developper.objects.filter(pk=dev.pk).update(email=email, pseudo=pseudo)
+                if email != dev.email:
+                    for relation in Developper._meta.get_fields(include_hidden=True):
+                        if (relation.auto_created and not relation.concrete and
+                            (relation.one_to_many or relation.one_to_one) and
+                            relation.field.target_field.primary_key):
+                            champ = relation.field.attname
+                            relation.related_model._base_manager.filter(**{champ: dev.email}).update(**{champ: email})
+        except IntegrityError:
+            return Response({'erreur': 'Cet email ou ce pseudo est déjà utilisé.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if nouvel_email:
-            # vérifie que le nouvel email n'est pas déjà utilisé
-            if Developper.objects.filter(email=nouvel_email).exclude(
-                email=request.user.email
-            ).exists():
-                return Response(
-                    {'erreur': 'Cet email est déjà utilisé.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            request.user.email = nouvel_email
+        return Response({'message': 'Email/pseudo mis à jour.', 'email': email, 'pseudo': pseudo})
 
-        if nouveau_pseudo:
-            # vérifie que le pseudo n'est pas déjà pris
-            if Developper.objects.filter(pseudo=nouveau_pseudo).exclude(
-                email=request.user.email
-            ).exists():
-                return Response(
-                    {'erreur': 'Ce pseudo est déjà pris.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            request.user.pseudo = nouveau_pseudo
-
-        request.user.save()
-        return Response({
-            'message': 'Email/pseudo mis à jour.',
-            'email': request.user.email,
-            'pseudo': request.user.pseudo,
-        }, status=status.HTTP_200_OK)
 
 class ChangerMotDePasseView(APIView):
     permission_classes = [IsAuthenticated]

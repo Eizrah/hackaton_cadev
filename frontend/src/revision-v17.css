@@ -20,9 +20,6 @@
 .skill-search .skill-search-bar > input { padding-left:49px!important;min-height:49px; }
 .skill-search-results { left:0!important; }.skill-search-results li button { min-height:43px; }
 .country-combobox { position:relative;width:100%;min-width:0;z-index:8; }
-.country-search-bar { position:relative;display:flex;gap:9px;align-items:center;width:100%;border:1px solid #cbdfee;background:linear-gradient(110deg,#e9f6fe,#d9ecfb);border-radius:28px;padding:0 13px;min-height:47px; }
-.country-search-bar > svg { color:#4384af;flex-shrink:0; }.country-search-bar > input { min-width:0;width:100%;border:0!important;background:none!important;padding:12px 0!important;border-radius:0!important;color:#345f7e;font-size:12px!important; }
-.personal-fields .country-search-bar { min-height:45px; }
 .country-results { position:absolute;left:0;right:0;top:100%;max-height:250px;overflow:auto;background:white;border:1px solid #d4e4f0;box-shadow:0 12px 35px #173d6226;border-radius:16px;padding:7px;margin:6px 0 0;list-style:none;z-index:60; }
 .country-results li { padding:11px 12px;border-radius:10px;font-size:12px;color:#3d6a88;cursor:pointer; }
 .country-results li:hover,.country-results li[aria-selected=true] { background:#eaf5ff;color:#1677b5; }

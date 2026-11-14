@@ -18,7 +18,9 @@ class Publication(models.Model):
         
 
 class Forum_post(Publication):
-       
+    # Le badge de collaboration doit être visible sur le fil de chaque membre.
+    collaboration = models.BooleanField(default=False)
+
     class Meta:
         db_table='forum_post'
 

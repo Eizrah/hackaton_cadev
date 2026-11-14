@@ -26,6 +26,7 @@ export type PersonalInformation = {
 };
 export type Profile = PersonalInformation & {
   id: string;
+  publicId?: string;
   name: string;
   email: string;
   skills: string;
@@ -142,6 +143,7 @@ export function migrateProfile(saved: unknown): Profile {
         }));
   return {
     id: (typeof value.id === "number" ? String(value.id) : text("id")) || (text("email") || text("pseudo") ? `dev-${text("email") || text("pseudo")}` : "dev-juliana"),
+    publicId: text("publicId") || undefined,
     name: text("name") || `${firstName} ${lastName}`.trim(),
     firstName,
     lastName,

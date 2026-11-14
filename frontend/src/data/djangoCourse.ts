@@ -173,7 +173,7 @@ const beginner: WebLevel["chapters"] = [
           ),
         ],
         files: djangoFiles("Introduction Django", {
-          info: `# Django Framework
+          sources: { "info.md": `# Django Framework
 
 ## Architecture MTV
 - **M**odel : Données (ORM)
@@ -197,7 +197,7 @@ python manage.py runserver
 python manage.py migrate
 python manage.py makemigrations
 python manage.py createsuperuser
-`,
+` },
         }),
         task: "Lis le fichier info qui résume l'architecture MTV et les concepts clés de Django.",
         takeaway:
@@ -296,7 +296,7 @@ python manage.py createsuperuser
           ),
         ],
         files: djangoFiles("Structure Django complète", {
-          structure: `# Structure d'un projet Django
+          sources: { "structure.md": `# Structure d'un projet Django
 
 ## Racine du projet
 📄 manage.py                 # CLI Django
@@ -330,7 +330,7 @@ python manage.py createsuperuser
 2. models.py : Structure de la BDD (ORM)
 3. views.py : Logique métier
 4. urls.py : Routage des URLs
-`,
+` },
         }),
         task: "Crée un projet Django avec django-admin startproject config ., puis une app avec python manage.py startapp blog. Explore les fichiers générés.",
         takeaway:

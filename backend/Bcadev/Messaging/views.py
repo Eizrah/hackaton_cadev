@@ -91,7 +91,7 @@ class EnvoyerAudioView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        serializer = AudioSerializer(data=request.data)
+        serializer = AudioSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             audio = serializer.save(
                 envoyeur=request.user,
@@ -100,7 +100,7 @@ class EnvoyerAudioView(APIView):
             )
             return Response({
                 'message': 'Audio envoyé.',
-                'data': AudioSerializer(audio).data
+                'data': AudioSerializer(audio, context={'request': request}).data
             }, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -141,6 +141,8 @@ class EnvoyerFichierView(APIView):
         message = Message.objects.create(
             envoyeur=request.user,
             destinataire=destinataire,
+            # Le texte et la pièce jointe appartiennent au même message.
+            contenu=request.data.get('contenu') or None,
             etat='envoye',
             message_parent_id=request.data.get('message_parent', None)
         )
@@ -191,7 +193,9 @@ class ConversationView(APIView):
                 date_envoie__gt=conversation_supprimee.date_suppression
             )
 
-        messages = messages_query.order_by('date_envoie')
+        # Audio hérite de Message : charge sa relation pour la lecture des vocaux.
+        messages = messages_query.select_related('audio', 'envoyeur', 'destinataire', 'message_parent__envoyeur')
+        messages = messages.prefetch_related('fichiers').order_by('date_envoie')
 
         # marque les messages reçus comme lus
         messages.filter(
@@ -199,7 +203,7 @@ class ConversationView(APIView):
             etat='envoye'
         ).update(etat='lu')
 
-        serializer = MessageSerializer(messages, many=True)
+        serializer = MessageSerializer(messages, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class ListeConversationsView(APIView):

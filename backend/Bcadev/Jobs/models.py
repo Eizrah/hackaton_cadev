@@ -37,6 +37,9 @@ class Candidature(models.Model):
     etat=models.CharField(choices=ETAT_CANDIDATURE, max_length=10, default='en_attente')
     lettre_motivation=models.TextField(blank=True,null=True)
     pj=models.FileField(upload_to='pj/',blank=True,null=True)
+    lien_cv = models.URLField(max_length=500, blank=True, null=True)
+    # Le retrait de l'historique du candidat conserve le verdict côté recruteur.
+    masquee_par_candidat = models.BooleanField(default=False)
     developpeur=models.ForeignKey('Accounts.Developper', on_delete=models.CASCADE)
     offre_emploi=models.ForeignKey('Jobs.Offre_Emploi', on_delete=models.CASCADE)
     class Meta:

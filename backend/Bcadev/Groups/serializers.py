@@ -82,6 +82,8 @@ class MembreSerializer(serializers.ModelSerializer):
 class InvitationSerializer(serializers.ModelSerializer):
     # Informations du groupe
     groupe_nom = serializers.CharField(source='groupe.nom', read_only=True)
+    # La photo appartient au groupe et peut être absente.
+    groupe_photo = serializers.ImageField(source='groupe.photo', read_only=True, allow_null=True)
     
     # Informations de l'inviteur
     inviteur_pseudo = serializers.CharField(source='inviteur.pseudo', read_only=True)
@@ -106,15 +108,3 @@ class InvitationSerializer(serializers.ModelSerializer):
             'date_invitation', 'date_reponse'
         ]
     
-    def to_representation(self, instance):
-        """Convertir la photo du groupe en URL absolue"""
-        data = super().to_representation(instance)
-        request = self.context.get('request')
-        if instance.groupe.photo:
-            if request:
-                data['groupe_photo'] = request.build_absolute_uri(instance.groupe.photo.url)
-            else:
-                data['groupe_photo'] = instance.groupe.photo.url
-        else:
-            data['groupe_photo'] = None
-        return data

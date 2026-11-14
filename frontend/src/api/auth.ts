@@ -1,8 +1,29 @@
 import client from './client'
 
+export interface DjangoProfile {
+  identifiant: string
+  email: string
+  nom: string
+  prenom: string | null
+  pseudo: string
+  age?: number
+  niveau: 'D' | 'I' | 'A'
+  pays: string
+  presentation: string | null
+  lien_portfolio: string | null
+  photoprofil: string | null
+  possessions: Array<{
+    competence: string
+    competence_nom: string
+    competence_domaine: string
+    competence_difficulte: string
+  }>
+  competences_personnalisees: string[] | null
+}
+
 export const authApi = {
   inscription: (data: object | FormData) =>
-    client.post('/api/auth/inscription/', data),
+    client.post<{ identifiant: string; tokens: { access: string; refresh: string } }>('/api/auth/inscription/', data),
 
   connexion: (email: string, password: string) =>
     client.post('/api/auth/connexion/', { email, password }),
@@ -11,15 +32,18 @@ export const authApi = {
     client.post('/api/auth/deconnexion/', { refresh }),
 
   getProfil: () =>
-    client.get('/api/auth/profil/'),
+    client.get<DjangoProfile>('/api/auth/profil/'),
+
+  getProfilMembre: (membre: string, signal?: AbortSignal) =>
+    client.get<DjangoProfile>('/api/auth/profil/membre/', { params: { membre }, signal }),
 
   // modification des infos de base (nom, prénom, age, photo, bio...)
   updateProfil: (data: object | FormData) =>
-    client.put('/api/auth/profil/infos/', data),
+    client.put<{ profil: DjangoProfile }>('/api/auth/profil/infos/', data),
 
   // modification email ou pseudo — mot de passe requis
   modifierEmailPseudo: (data: { email?: string; pseudo?: string; mot_de_passe: string }) =>
-    client.put('/api/auth/profil/email-pseudo/', data),
+    client.put<{ email: string; pseudo: string }>('/api/auth/profil/email-pseudo/', data),
 
   // changement de mot de passe — ancien mot de passe requis
   changerMotDePasse: (data: {

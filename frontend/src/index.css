@@ -1097,12 +1097,12 @@ select {
   outline: none;
   box-shadow: inset 0 0 0 1.5px var(--field-focus);
 }
-:is(.onboard-input, .country-search-bar, .recruiter-search-bar, .composer-link,
+:is(.onboard-input, .recruiter-search-bar, .composer-link,
     .language-switcher, .offer-search, .catalog-search, .media-search,
     .history-search, .directory-search, .room-composer-row, .tutor-composer):has(> :is(input, textarea, select):focus-visible) {
   box-shadow: inset 0 0 0 1.5px var(--field-focus);
 }
-:is(.onboard-input, .country-search-bar, .recruiter-search-bar, .composer-link,
+:is(.onboard-input, .recruiter-search-bar, .composer-link,
     .language-switcher, .offer-search, .catalog-search, .media-search,
     .history-search, .directory-search, .room-search, .room-composer-row, .tutor-composer) > :is(input, textarea, select):focus-visible {
   box-shadow: none;

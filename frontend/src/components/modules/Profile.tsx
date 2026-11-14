@@ -1,11 +1,9 @@
 import SavedPosts from "./SavedPosts";
 import MyPosts from "./MyPosts";
 import MyOffers from "./MyOffers";
-import MyApplications from "./MyApplications";
 import { AttachmentCard } from "../shared/Attachments";
 import { useI18n } from "../../i18n/context";
 import ApplicationDashboard from "./ApplicationDashboard";
-import RecruiterDashboard from "./RecruiterDashboard";
 import { useState, type FormEvent } from "react";
 import {
   ArrowLeft,
@@ -35,10 +33,13 @@ import {
   migrateProfile,
   experienceError,
   skillError,
-  validPseudo,
 } from "../../data/profile";
 import { safePortfolio } from "../../lib/urls";
 import TechIcon, { SkillChip } from "../TechIcon";
+import { authApi } from "../../api/auth";
+import { apiError } from "../../api/client";
+import { navigateHash } from "../../lib/navigation";
+import Modal from "../Modal";
 function Avatar({
   profile,
   large = false,
@@ -48,7 +49,7 @@ function Avatar({
 }) {
   return (
     <div className={large ? "profile-avatar" : "avatar"}>
-      {profile.photo.startsWith("data:image/") ? (
+      {profile.photo ? (
         <img
           src={profile.photo}
           alt={`Photo de ${profile.name}`} />
@@ -65,175 +66,114 @@ function Avatar({
     </div>
   );
 }
-// ─── Popups changement mot de passe / email / pseudo ──────────────────────────
-function CredentialsActions({ profile, onNotice }: { profile: Profile; onNotice: (msg: string) => void }) {
-  const { t } = useI18n()
-  const [popup, setPopup] = useState<'mdp' | 'identifiants' | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
+function CredentialsActions({ profile, onNotice, onSaved }: {
+  profile: Profile;
+  onNotice: (message: string) => void;
+  onSaved: (credentials: Pick<Profile, "email" | "pseudo">) => void;
+}) {
+  const { t } = useI18n();
+  const [popup, setPopup] = useState<"password" | "credentials" | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
-  // état formulaire mot de passe
-  const [ancienMdp, setAncienMdp] = useState('')
-  const [nouveauMdp, setNouveauMdp] = useState('')
-  const [confirmMdp, setConfirmMdp] = useState('')
-
-  // état formulaire email/pseudo
-  const [nouvelEmail, setNouvelEmail] = useState(profile.email)
-  const [nouveauPseudo, setNouveauPseudo] = useState(profile.pseudo)
-  const [mdpIdentifiants, setMdpIdentifiants] = useState('')
-
-  function fermer() {
-    setPopup(null)
-    setError('')
-    setAncienMdp(''); setNouveauMdp(''); setConfirmMdp('')
-    setMdpIdentifiants('')
+  function close() {
+    setPopup(null);
+    setError("");
   }
 
-  async function soumettreMotDePasse(e: FormEvent) {
-    e.preventDefault()
-    if (nouveauMdp !== confirmMdp) { setError(t('Les mots de passe ne correspondent pas.')); return }
-    if (nouveauMdp.length < 8) { setError(t('Au moins 8 caractères.')); return }
-    setBusy(true); setError('')
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    const form = new FormData(event.currentTarget);
+    const current = String(form.get("currentPassword") || "");
+    setBusy(true);
+    setError("");
     try {
-      const { authApi } = await import('../../api/auth')
-      await authApi.changerMotDePasse({
-        ancien_mot_de_passe: ancienMdp,
-        nouveau_mot_de_passe: nouveauMdp,
-        confirmation: confirmMdp,
-      })
-      onNotice(t('Mot de passe modifié. Veuillez vous reconnecter.'))
-      fermer()
-      // force la déconnexion car les tokens sont invalidés
-      setTimeout(() => {
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
-        localStorage.removeItem('devafrica:profile')
-        window.location.hash = '#login'
-      }, 2000)
-    } catch (err: any) {
-      setError(err?.response?.data?.erreur || t('Erreur lors du changement de mot de passe.'))
-    } finally { setBusy(false) }
-  }
-
-  async function soumettreIdentifiants(e: FormEvent) {
-    e.preventDefault()
-    setBusy(true); setError('')
-    try {
-      const { authApi } = await import('../../api/auth')
-      await authApi.modifierEmailPseudo({
-        email: nouvelEmail !== profile.email ? nouvelEmail : undefined,
-        pseudo: nouveauPseudo !== profile.pseudo ? nouveauPseudo : undefined,
-        mot_de_passe: mdpIdentifiants,
-      })
-      onNotice(t('Email/pseudo mis à jour.'))
-      fermer()
-      // recharge le profil
-      const r = await authApi.getProfil()
-      const d = r.data
-      const updated = {
-        ...profile,
-        email: d.email,
-        pseudo: d.pseudo,
+      if (popup === "credentials") {
+        const email = String(form.get("email") || "").trim();
+        const pseudo = String(form.get("pseudo") || "").trim();
+        if (email === profile.email && pseudo === profile.pseudo) {
+          setError(t("Modifie ton e-mail ou ton pseudo.", "Change your email or username."));
+          return;
+        }
+        const { data } = await authApi.modifierEmailPseudo({
+          email: email === profile.email ? undefined : email,
+          pseudo: pseudo === profile.pseudo ? undefined : pseudo,
+          mot_de_passe: current,
+        });
+        onSaved(data);
+        onNotice(t("Identifiants mis à jour.", "Account details updated."));
+      } else {
+        const password = String(form.get("password") || "");
+        const confirmation = String(form.get("confirmation") || "");
+        if (password !== confirmation) {
+          setError(t("Les mots de passe ne correspondent pas.", "Passwords do not match."));
+          return;
+        }
+        await authApi.changerMotDePasse({
+          ancien_mot_de_passe: current, nouveau_mot_de_passe: password, confirmation,
+        });
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        localStorage.removeItem("devafrica:profile");
+        onNotice(t("Mot de passe modifié. Reconnecte-toi.", "Password changed. Sign in again."));
+        navigateHash("login");
       }
-      localStorage.setItem('devafrica:profile', JSON.stringify(updated))
-    } catch (err: any) {
-      setError(err?.response?.data?.erreur || t('Erreur lors de la mise à jour.'))
-    } finally { setBusy(false) }
+      close();
+    } catch (err) {
+      setError(apiError(err, t("Impossible de modifier les identifiants.", "Could not update your credentials.")));
+    } finally {
+      setBusy(false);
+    }
   }
 
-  return (
-    <>
-      <div className="profile-credentials-actions" style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          className="text-link"
-          onClick={() => setPopup('identifiants')}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}
-        >
-          <AtSign size={15} />
-          {t('Modifier email ou pseudo', 'Edit email or username')}
-        </button>
-        <button
-          type="button"
-          className="text-link"
-          onClick={() => setPopup('mdp')}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}
-        >
-          <KeyRound size={15} />
-          {t('Changer le mot de passe', 'Change password')}
-        </button>
-      </div>
+  return <section className="panel editor-tips profile-security" aria-labelledby="profile-security-title">
+    <div className="section-title">
+      <span className="round-icon"><KeyRound size={20} /></span>
+      <h2 id="profile-security-title">{t("Sécurité", "Security")}</h2>
+    </div>
+    <button type="button" className="btn-outline" onClick={() => setPopup("credentials")}>
+      <AtSign size={16} /> {t("Modifier l’e-mail ou le pseudo", "Edit email or username")}
+    </button>
+    <button type="button" className="btn-outline" onClick={() => setPopup("password")}>
+      <KeyRound size={16} /> {t("Changer le mot de passe", "Change password")}
+    </button>
 
-      {/* Popup changement mot de passe */}
-      {popup === 'mdp' && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--surface, #fff)', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <KeyRound size={18} /> {t('Changer le mot de passe', 'Change password')}
-            </h3>
-            <form onSubmit={soumettreMotDePasse} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.9rem' }}>
-                {t('Ancien mot de passe', 'Current password')}
-                <input type="password" required minLength={8} value={ancienMdp} onChange={e => setAncienMdp(e.target.value)} className="onboard-input" style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.9rem' }}>
-                {t('Nouveau mot de passe', 'New password')}
-                <input type="password" required minLength={8} value={nouveauMdp} onChange={e => setNouveauMdp(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.9rem' }}>
-                {t('Confirmer le nouveau mot de passe', 'Confirm new password')}
-                <input type="password" required minLength={8} value={confirmMdp} onChange={e => setConfirmMdp(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }} />
-              </label>
-              {error && <p style={{ color: 'red', margin: 0, fontSize: '0.85rem' }}>{error}</p>}
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
-                <button type="button" onClick={fermer} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer', background: 'transparent' }}>
-                  {t('Annuler', 'Cancel')}
-                </button>
-                <button type="submit" disabled={busy} className="btn-primary" style={{ padding: '8px 16px' }}>
-                  {busy ? t('En cours…', 'Working…') : t('Enregistrer', 'Save')}
-                </button>
-              </div>
-            </form>
-          </div>
+    {popup && <Modal
+      title={popup === "credentials"
+        ? t("Modifier l’e-mail ou le pseudo", "Edit email or username")
+        : t("Changer le mot de passe", "Change password")}
+      onClose={close} busy={busy}>
+      <form className="job-form" onSubmit={submit}>
+        {popup === "credentials" && <label>
+          {t("Adresse e-mail", "Email address")}
+          <input name="email" type="email" autoComplete="email" defaultValue={profile.email} required />
+        </label>}
+        <label>
+          {t("Mot de passe actuel", "Current password")}
+          <input name="currentPassword" type="password" autoComplete="current-password" required />
+        </label>
+        {popup === "credentials" ? <label>
+          {t("Pseudo", "Username")}
+          <input name="pseudo" autoComplete="username" defaultValue={profile.pseudo} required maxLength={50} />
+        </label> : <>
+          <label>
+            {t("Nouveau mot de passe", "New password")}
+            <input name="password" type="password" autoComplete="new-password" minLength={8} required />
+          </label>
+          <label>
+            {t("Confirmer le nouveau mot de passe", "Confirm new password")}
+            <input name="confirmation" type="password" autoComplete="new-password" minLength={8} required />
+          </label>
+        </>}
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <div className="modal-actions">
+          <button type="button" className="btn-secondary" onClick={close} disabled={busy}>{t("Annuler", "Cancel")}</button>
+          <button type="submit" className="btn-primary" disabled={busy}>{t("Enregistrer", "Save")}</button>
         </div>
-      )}
-
-      {/* Popup modification email/pseudo */}
-      {popup === 'identifiants' && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: 'var(--surface, #fff)', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <AtSign size={18} /> {t('Modifier email ou pseudo', 'Edit email or username')}
-            </h3>
-            <form onSubmit={soumettreIdentifiants} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.9rem' }}>
-                {t('Adresse e-mail', 'Email address')}
-                <input type="email" required value={nouvelEmail} onChange={e => setNouvelEmail(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.9rem' }}>
-                {t('Pseudo', 'Username')}
-                <input type="text" required minLength={3} maxLength={30} pattern="[A-Za-z0-9]{3,30}" value={nouveauPseudo} onChange={e => setNouveauPseudo(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }} />
-                <small style={{ color: '#888' }}>{t('3–30 caractères, lettres et chiffres uniquement.', '3–30 chars, letters and numbers only.')}</small>
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.9rem' }}>
-                {t('Votre mot de passe actuel (requis)', 'Your current password (required)')}
-                <input type="password" required value={mdpIdentifiants} onChange={e => setMdpIdentifiants(e.target.value)} style={{ padding: '8px', borderRadius: '6px', border: '1px solid #ddd' }} />
-              </label>
-              {error && <p style={{ color: 'red', margin: 0, fontSize: '0.85rem' }}>{error}</p>}
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
-                <button type="button" onClick={fermer} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer', background: 'transparent' }}>
-                  {t('Annuler', 'Cancel')}
-                </button>
-                <button type="submit" disabled={busy} className="btn-primary" style={{ padding: '8px 16px' }}>
-                  {busy ? t('En cours…', 'Working…') : t('Enregistrer', 'Save')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </>
-  )
+      </form>
+    </Modal>}
+  </section>;
 }
 
 export default function ProfileView({
@@ -247,7 +187,7 @@ export default function ProfileView({
 }: {
   profile: Profile;
   onNavigate: (path: string) => void;
-  focusJob?: number;
+  focusJob?: string;
   onEdit: () => void;
   onNotice: (message: string) => void;
   isOwn?: boolean;
@@ -265,10 +205,12 @@ export default function ProfileView({
   const contributions = posts.filter((p) => p.author === profile.name).length;
   async function shareProfile() {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      const url = new URL(window.location.href);
+      url.hash = `workspace/profil/membre/${encodeURIComponent(profile.publicId || profile.pseudo || profile.email)}`;
+      await navigator.clipboard.writeText(url.href);
       onNotice(
         t(
-          "Lien du profil copié. Dans cette démo, les données du profil restent sur cet appareil.",
+          "Lien du profil copié.",
         ),
       );
     } catch {
@@ -408,8 +350,6 @@ export default function ProfileView({
                   </div>
                 ))}
               </dl>
-              {/* Boutons pour les actions sensibles */}
-              <CredentialsActions profile={profile} onNotice={onNotice} />
             </section>
           )}
           <section className="panel">
@@ -567,21 +507,10 @@ export default function ProfileView({
         </div>
       </div>
       {isOwn && <>
-        <SavedPosts
-          profile={profile}
-          onNavigate={onNavigate} />
-        <ApplicationDashboard profile={profile} />
-        <MyApplications />
-        <MyPosts
-          profile={profile}
-          onNotice={onNotice} />
-        <MyOffers onNavigate={onNavigate} />
-        <RecruiterDashboard
-          key={focusJob || "all"}
-          focusJob={focusJob}
-          profile={profile}
-          onNavigate={onNavigate}
-          onNotice={onNotice} />
+        <SavedPosts onNavigate={onNavigate} onNotice={onNotice} />
+        <ApplicationDashboard onNotice={onNotice} />
+        <MyPosts profile={profile} onNotice={onNotice} />
+        <MyOffers key={focusJob || "all"} onNavigate={onNavigate} onNotice={onNotice} focusJob={focusJob} />
       </>}
     </>
   );
@@ -589,11 +518,13 @@ export default function ProfileView({
 export function ProfileEditor({
   profile,
   onSave,
+  onCredentialsSaved,
   onCancel,
   onNotice,
 }: {
   profile: Profile;
-  onSave: (profile: Profile) => void;
+  onSave: (profile: Profile) => Promise<void>;
+  onCredentialsSaved: (credentials: Pick<Profile, "email" | "pseudo">) => void;
   onCancel: () => void;
   onNotice: (text: string) => void;
 }) {
@@ -608,24 +539,16 @@ export function ProfileEditor({
   );
   const [error, setError] = useState("");
   const [uploadCount, setUploadCount] = useState(0);
-  function submit(event: FormEvent) {
+  const [saving, setSaving] = useState(false);
+  async function submit(event: FormEvent) {
     event.preventDefault();
-    if (uploadCount) return;
+    if (uploadCount || saving) return;
     setError("");
     if (!draft.firstName.trim() || !draft.lastName.trim() || !draft.country) {
       setError(
         t(
           "Renseignez votre nom, votre prénom et votre pays.",
           "Enter your last name, first name and country.",
-        ),
-      );
-      return;
-    }
-    if (!validPseudo(draft.pseudo)) {
-      setError(
-        t(
-          "Le pseudo doit contenir 3 à 30 caractères : lettres et chiffres uniquement.",
-          "Your username must have 3–30 characters: letters and numbers only.",
         ),
       );
       return;
@@ -642,16 +565,23 @@ export function ProfileEditor({
       setError(t(invalid));
       return;
     }
-    onSave({
-      ...draft,
-      name: `${draft.firstName.trim()} ${draft.lastName.trim()}`.trim(),
-      firstName: draft.firstName.trim(),
-      lastName: draft.lastName.trim(),
-      pseudo: draft.pseudo.trim(),
-      email: draft.email.trim(),
-      skills: draft.skillDetails.map((s) => s.name.trim()).join(", "),
-      portfolio: draft.portfolio.trim(),
-    });
+    setSaving(true);
+    try {
+      await onSave({
+        ...draft,
+        name: `${draft.firstName.trim()} ${draft.lastName.trim()}`.trim(),
+        firstName: draft.firstName.trim(),
+        lastName: draft.lastName.trim(),
+        pseudo: profile.pseudo,
+        email: profile.email,
+        skills: draft.skillDetails.map(skill => skill.name.trim()).join(", "),
+        portfolio: draft.portfolio.trim(),
+      });
+    } catch (err) {
+      setError(apiError(err, t("Impossible d’enregistrer le profil.", "Could not save your profile.")));
+    } finally {
+      setSaving(false);
+    }
   }
   function uploadPhoto(file: File | undefined) {
     if (!file) return;
@@ -758,18 +688,10 @@ export function ProfileEditor({
           </div>
           <PersonalFields
             value={draft}
+            showPseudo={false}
             onChange={(next) => setDraft({ ...draft, ...next })}
           />
           <div className="form-grid">
-            <label>
-              {t("Adresse e-mail")}
-              <input
-                type="email"
-                value={draft.email}
-                onChange={(e) => setDraft({ ...draft, email: e.target.value })}
-                autoComplete="email"
-              />
-            </label>
             <label>
               {t("Intitulé du profil")}
               <input
@@ -849,35 +771,22 @@ export function ProfileEditor({
             </button>
             <button
               className="btn-primary"
-              disabled={uploadCount > 0}>
+              disabled={saving || uploadCount > 0}>
               <Check size={18} />
               {t("Enregistrer mon profil")}
             </button>
           </div>
         </form>
-        <aside className="panel editor-tips">
-          <Sparkles size={28} />
-          <h2>
-            {t("Fais découvrir ton potentiel.")}
-          </h2>
-          <p>
-            {t(
+        <aside className="profile-editor-sidebar">
+          <CredentialsActions profile={profile} onNotice={onNotice} onSaved={onCredentialsSaved} />
+          <section className="panel editor-tips">
+            <Sparkles size={28} />
+            <h2>{t("Fais découvrir ton potentiel.")}</h2>
+            <p>{t(
               "Racontez votre parcours, même s’il débute. Chaque compétence peut ouvrir une nouvelle collaboration.",
               "Share your journey, even if it is just beginning. Every skill can open up a collaboration.",
-            )}
-          </p>
-          <button
-            className="text-link"
-            onClick={() =>
-              onNotice(
-                t(
-                  "Toutes les modifications restent sur cet appareil tant que Django n’est pas connecté.",
-                ),
-              )
-            }
-          >
-            {t("Où sont enregistrées mes données ?")}
-          </button>
+            )}</p>
+          </section>
         </aside>
       </div>
     </section>

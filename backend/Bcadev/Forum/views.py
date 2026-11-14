@@ -1,3 +1,5 @@
+from uuid import UUID
+from django.db import transaction
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -11,6 +13,16 @@ from Accounts.models import Blocage
 from Accounts.utils import creer_notif
 from Jobs.models import Offre_Emploi
 
+
+def verifier_publication(description, lien, auteur):
+    try:
+        from Agents.services.verification_services import verifier_post
+        return verifier_post(description=description, lien=lien, email_auteur=auteur.email)
+    except Exception:
+        # Garde la publication disponible si le service de vérification est absent.
+        return {'approuve': True}
+
+
 class CreerForumPostView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -22,50 +34,37 @@ class CreerForumPostView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        serializer = ForumPostSerializer(data=request.data)
-        if serializer.is_valid():
-            post = serializer.save(developper=request.user)
+        serializer = ForumPostSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
 
-            # validation IA en arrière-plan — le post est d'abord publié
-            # puis l'IA vérifie et peut rétrograder si nécessaire
-            post.feu_vert = True
-            post.save()
+        resultat = verifier_publication(
+            description=serializer.validated_data['description'],
+            lien=serializer.validated_data.get('lien'),
+            auteur=request.user,
+        )
 
-            # appel à l'IA pour vérification
-            try:
-                from Agents.services.verification_services import verifier_post
-                resultat = verifier_post(
-                    description=post.description,
-                    lien=post.lien,
-                    email_auteur=request.user.email
+        with transaction.atomic():
+            # Enregistre le verdict avant que le post puisse apparaître dans le fil.
+            post = serializer.save(developper=request.user, feu_vert=resultat['approuve'])
+            if not post.feu_vert:
+                raison = resultat.get('raison') or "Contenu non conforme aux règles de la plateforme."
+                creer_notif(
+                    request.user, 'post_refuse',
+                    f'Votre post a été refusé : {raison}',
+                    post_id=post.id_publication,
                 )
-                if not resultat["approuve"]:
-                    # l'IA a refusé — on repasse feu_vert à False
-                    post.feu_vert = False
-                    post.save()
-                    raison = resultat["raison"] or "Contenu non conforme aux règles de la plateforme."
-                    creer_notif(
-                        post.developper,
-                        'post_refuse',
-                        f'Votre post a été refusé : {raison}',
-                        post_id=post.id_publication
-                    )
-                    return Response({
-                        'message': 'Votre post a été refusé par l\'IA. Vous pouvez le modifier.',
-                        'raison': raison,
-                        'feu_vert': False,
-                        'post': ForumPostSerializer(post).data
-                    }, status=status.HTTP_400_BAD_REQUEST)
-            except Exception:
-                # si l'IA est indisponible → le post reste visible
-                pass
+                # Le brouillon refusé est conservé pour que son auteur puisse le modifier.
+                return Response({
+                    'message': 'Votre post a été refusé par l\'IA. Vous pouvez le modifier.',
+                    'raison': raison,
+                    'feu_vert': False,
+                    'post': serializer.data,
+                }, status=status.HTTP_400_BAD_REQUEST)
 
-            return Response({
-                'message': 'Post créé et publié avec succès.',
-                'post': ForumPostSerializer(post).data
-            }, status=status.HTTP_201_CREATED)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'message': 'Post créé et publié avec succès.',
+            'post': serializer.data,
+        }, status=status.HTTP_201_CREATED)
 
 class ListeForumPostView(APIView):
     permission_classes = [IsAuthenticated]
@@ -114,18 +113,17 @@ class DetailForumPostView(APIView):
 
     def get(self, request, id_publication):
         try:
-            # récupère le post uniquement s'il est validé
-            post = Forum_post.objects.get(
-                id_publication=id_publication,
-                feu_vert=True
-            )
+            # Le lien depuis une notification de refus reste accessible à son auteur.
+            post = Forum_post.objects.filter(
+                Q(feu_vert=True) | Q(developper=request.user)
+            ).get(id_publication=id_publication)
         except Forum_post.DoesNotExist:
             return Response(
                 {'erreur': 'Post introuvable.'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = ForumPostSerializer(post)
+        serializer = ForumPostSerializer(post, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     def put(self, request, id_publication):
@@ -143,33 +141,27 @@ class DetailForumPostView(APIView):
         
         serializer = ForumPostSerializer(post, data=request.data, partial=True)
         if serializer.is_valid():
-            post = serializer.save()
-            # Revalider avec l'IA après modification
-            post.feu_vert = True
-            post.save()
-            
-            try:
-                from Agents.services.verification_services import verifier_post
-                resultat = verifier_post(
-                    description=post.description,
-                    lien=post.lien,
-                    email_auteur=request.user.email
-                )
-                if not resultat["approuve"]:
-                    post.feu_vert = False
-                    post.save()
+            # Vérifie la modification avant de changer sa visibilité dans le fil.
+            resultat = verifier_publication(
+                description=serializer.validated_data.get('description', post.description),
+                lien=serializer.validated_data.get('lien', post.lien),
+                auteur=request.user,
+            )
+
+            with transaction.atomic():
+                post = serializer.save(feu_vert=resultat['approuve'])
+                if not post.feu_vert:
+                    raison = resultat.get('raison') or 'Contenu non conforme.'
                     creer_notif(
-                        post.developper,
+                        request.user,
                         'post_refuse',
-                        f'Votre post modifié a été refusé : {resultat.get("raison", "Contenu non conforme.")}',
-                        post_id=post.id_publication
+                        f'Votre post modifié a été refusé : {raison}',
+                        post_id=post.id_publication,
                     )
-            except Exception:
-                pass
-            
+
             return Response({
                 'message': 'Post modifié avec succès.',
-                'post': ForumPostSerializer(post).data
+                'post': ForumPostSerializer(post, context={'request': request}).data,
             }, status=status.HTTP_200_OK)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -235,7 +227,7 @@ class RechercheForumPostView(APIView):
             feu_vert=True
         ).order_by('-date_publication')
 
-        serializer = ForumPostListSerializer(posts, many=True)
+        serializer = ForumPostListSerializer(posts, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -243,6 +235,7 @@ class RechercheForumPostView(APIView):
 class CommentaireView(APIView):
     permission_classes = [IsAuthenticated]
     
+    @transaction.atomic
     def post(self, request, id_publication):
         # vérifie que le dev n'est pas banni
         if request.user.banne:
@@ -263,40 +256,28 @@ class CommentaireView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = CommentaireSerializer(data=request.data)
+        serializer = CommentaireSerializer(
+            data=request.data, context={'request': request, 'post_id': post.pk},
+        )
         if serializer.is_valid():
-            serializer.save(
+            commentaire = serializer.save(
                 developper=request.user,
                 forum_post=post
             )
-            # notifie le créateur du post qu'il a reçu un commentaire
-            # on ne notifie pas si le dev commente son propre post
-            if post.developper != request.user:
+            # Les notifications pointent vers le nouveau commentaire dans le fil.
+            parent = commentaire.commentaire_parent
+            if post.developper_id != request.user.pk and (not parent or parent.developper_id != post.developper_id):
                 creer_notif(
-                    post.developper,
-                    'commentaire',
+                    post.developper, 'commentaire',
                     f'{request.user.pseudo} a commenté votre post.',
-                    post_id=post.id_publication,
-                    envoyeur=request.user
+                    post_id=post.pk, commentaire_id=commentaire.pk, envoyeur=request.user,
                 )
-
-            # notifie l'auteur du commentaire parent s'il y a une réponse
-            commentaire_parent_id = request.data.get('commentaire_parent')
-            if commentaire_parent_id:
-                try:
-                    parent = Commentaire.objects.get(id_commentaire=commentaire_parent_id)
-                    # on ne notifie pas si le dev répond à son propre commentaire
-                    if parent.developper != request.user:
-                        creer_notif(
-                            parent.developper,
-                            'reponse_commentaire',
-                            f'{request.user.pseudo} a répondu à votre commentaire.',
-                            post_id=post.id_publication,
-                            commentaire_id=parent.id_commentaire,
-                            envoyeur=request.user
-                        )
-                except Commentaire.DoesNotExist:
-                    pass
+            if parent and parent.developper_id != request.user.pk:
+                creer_notif(
+                    parent.developper, 'reponse_commentaire',
+                    f'{request.user.pseudo} a répondu à votre commentaire.',
+                    post_id=post.pk, commentaire_id=commentaire.pk, envoyeur=request.user,
+                )
 
             return Response({
                 'message': 'Commentaire ajouté avec succès.',
@@ -320,9 +301,9 @@ class CommentaireView(APIView):
         # récupère tous les commentaires du post triés du plus récent au plus ancien
         commentaires = Commentaire.objects.filter(
             forum_post=post
-        ).order_by('-date_commentaire')
+        ).select_related('developper', 'commentaire_parent__developper').order_by('-date_commentaire')
 
-        serializer = CommentaireSerializer(commentaires, many=True)
+        serializer = CommentaireSerializer(commentaires, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class DetailCommentaireView(APIView):
@@ -342,7 +323,10 @@ class DetailCommentaireView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = CommentaireSerializer(commentaire, data=request.data, partial=True)
+        serializer = CommentaireSerializer(
+            commentaire, data=request.data, partial=True,
+            context={'request': request, 'post_id': id_publication},
+        )
         if serializer.is_valid():
             serializer.save()
             return Response({
@@ -429,7 +413,9 @@ class EnregistrementView(APIView):
 
     def get(self, request):
         # retourne tous les enregistrements du dev connecté
-        enregistrements = Enregistrement.objects.filter(dev=request.user)
+        enregistrements = Enregistrement.objects.filter(dev=request.user).select_related(
+            'forum_post__developper', 'offre_emploi__developper',
+        ).order_by('-date_enregistrement', '-pk')
         result = []
         for e in enregistrements:
             if e.forum_post:
@@ -464,11 +450,10 @@ class EnregistrementView(APIView):
         type_pub = request.data.get('type_publication')
         id_pub = request.data.get('id_publication')
 
-        if not type_pub or not id_pub:
-            return Response(
-                {'erreur': 'type_publication et id_publication sont obligatoires.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        try:
+            id_pub = UUID(str(id_pub))
+        except ValueError:
+            return Response({'erreur': 'Identifiant de publication invalide.'}, status=status.HTTP_400_BAD_REQUEST)
 
         if type_pub == 'forum_post':
             try:
@@ -476,13 +461,8 @@ class EnregistrementView(APIView):
             except Forum_post.DoesNotExist:
                 return Response({'erreur': 'Post introuvable.'}, status=status.HTTP_404_NOT_FOUND)
 
-            if Enregistrement.objects.filter(dev=request.user, forum_post=post).exists():
-                return Response({'erreur': 'Publication déjà enregistrée.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            Enregistrement.objects.create(
-                dev=request.user,
-                forum_post=post,
-                type_publication='forum_post'
+            enregistrement, cree = Enregistrement.objects.get_or_create(
+                dev=request.user, forum_post=post, defaults={'type_publication': 'forum_post'},
             )
 
         elif type_pub == 'offre_emploi':
@@ -491,13 +471,8 @@ class EnregistrementView(APIView):
             except Offre_Emploi.DoesNotExist:
                 return Response({'erreur': 'Offre introuvable.'}, status=status.HTTP_404_NOT_FOUND)
 
-            if Enregistrement.objects.filter(dev=request.user, offre_emploi=offre).exists():
-                return Response({'erreur': 'Publication déjà enregistrée.'}, status=status.HTTP_400_BAD_REQUEST)
-
-            Enregistrement.objects.create(
-                dev=request.user,
-                offre_emploi=offre,
-                type_publication='offre_emploi'
+            enregistrement, cree = Enregistrement.objects.get_or_create(
+                dev=request.user, offre_emploi=offre, defaults={'type_publication': 'offre_emploi'},
             )
         else:
             return Response(
@@ -505,7 +480,11 @@ class EnregistrementView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        return Response({'message': 'Publication enregistrée.'}, status=status.HTTP_201_CREATED)
+        # Le front retire ensuite le signet par cet identifiant, y compris après un nouvel essai.
+        return Response(
+            {'message': 'Publication enregistrée.', 'id': enregistrement.pk},
+            status=status.HTTP_201_CREATED if cree else status.HTTP_200_OK,
+        )
 
 class SupprimerEnregistrementView(APIView):
     permission_classes = [IsAuthenticated]

@@ -1,11 +1,20 @@
+import json
+import math
+import subprocess
+from datetime import timedelta
+
 from rest_framework import serializers
 from .models import Message, Audio, Fichier,Session
 from fonction_utils.gestion_fichier import valider_fichier, valider_audio
-from mutagen import File as MutagenFile
+from mutagen import File as MutagenFile, MutagenError
 from django.conf import settings
 
 
 class MessageSerializer(serializers.ModelSerializer):
+    envoyeur_email = serializers.EmailField(source='envoyeur_id', read_only=True)
+    destinataire_email = serializers.EmailField(source='destinataire_id', read_only=True, allow_null=True)
+    fichier_audio = serializers.FileField(source='audio.fichier_audio', read_only=True, default=None)
+    duree = serializers.DurationField(source='audio.duree', read_only=True, default=None)
     envoyeur_pseudo = serializers.CharField(source='envoyeur.pseudo', read_only=True)
     destinataire_pseudo = serializers.CharField(source='destinataire.pseudo', read_only=True)
     # affiche le contenu du message parent si c'est une réponse
@@ -17,8 +26,8 @@ class MessageSerializer(serializers.ModelSerializer):
         model = Message
         fields = [
             'id_message', 'contenu', 'date_envoie', 'etat',
-            'envoyeur_pseudo', 'destinataire_pseudo',
-            'message_parent', 'message_parent_contenu', 'fichiers','supprime'
+            'envoyeur_pseudo', 'destinataire_pseudo', 'envoyeur_email', 'destinataire_email',
+            'message_parent', 'message_parent_contenu', 'fichiers', 'fichier_audio', 'duree', 'supprime'
         ]
         read_only_fields = [
             'id_message', 'date_envoie', 'etat',
@@ -39,7 +48,34 @@ class MessageSerializer(serializers.ModelSerializer):
     def get_fichiers(self, obj):
         # retourne les fichiers joints au message
         fichiers = obj.fichiers.all()
-        return FichierSerializer(fichiers, many=True).data
+        return FichierSerializer(fichiers, many=True, context=self.context).data
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.supprime:
+            data['fichier_audio'] = data['duree'] = None
+        return data
+
+
+def duree_webm(fichier):
+    # Les WebM de MediaRecorder n'ont pas toujours de durée dans l'en-tête.
+    # On mesure l'intervalle des paquets audio avec ffprobe, sur l'entrée locale uniquement.
+    fichier.seek(0)
+    resultat = subprocess.run(
+        [
+            'ffprobe', '-v', 'error', '-protocol_whitelist', 'pipe', '-f', 'matroska',
+            '-i', 'pipe:0', '-select_streams', 'a:0',
+            '-show_entries', 'packet=pts_time,duration_time', '-of', 'json',
+        ],
+        input=fichier.read(), capture_output=True, check=True, timeout=10,
+    )
+    paquets = [
+        (float(paquet['pts_time']), float(paquet.get('duration_time', '0')))
+        for paquet in json.loads(resultat.stdout).get('packets', [])
+        if paquet.get('pts_time', 'N/A') != 'N/A'
+    ]
+    return max(debut + duree for debut, duree in paquets) - min(debut for debut, _ in paquets)
+
 
 class AudioSerializer(serializers.ModelSerializer):
     envoyeur_pseudo = serializers.CharField(source='envoyeur.pseudo', read_only=True)
@@ -49,7 +85,7 @@ class AudioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Audio
         fields = [
-            'id_message', 'fichier_audio', 'duree', 'date_envoie', 'etat',
+            'id_message', 'fichier_audio', 'duree', 'contenu', 'date_envoie', 'etat',
             'envoyeur_pseudo', 'destinataire_pseudo',
             'message_parent', 'message_parent_contenu'
         ]
@@ -68,17 +104,29 @@ class AudioSerializer(serializers.ModelSerializer):
             }
         return None
 
-    def validate_fichier_audio(self, value):
-        if value:
-            valider_audio(value)
-            # vérifie la durée avec mutagen
-           
-            audio = MutagenFile(value)
-            if audio and audio.info.length > settings.MAX_AUDIO_DURATION:
-                raise serializers.ValidationError(
-                    f'La durée maximale est 2min30. Votre audio fait {round(audio.info.length, 0)} secondes.'
-                )
-        return value
+    def validate(self, attrs):
+        fichier = attrs['fichier_audio']
+        valider_audio(fichier)
+        try:
+            if fichier.read(4) == bytes.fromhex('1a45dfa3'):
+                secondes = duree_webm(fichier)
+            else:
+                fichier.seek(0)
+                audio = MutagenFile(fichier)
+                secondes = audio.info.length if audio else 0
+        except (OSError, ValueError, MutagenError, subprocess.SubprocessError):
+            secondes = 0
+        finally:
+            fichier.seek(0)
+
+        if not math.isfinite(secondes) or secondes <= 0:
+            raise serializers.ValidationError({'fichier_audio': 'Impossible de lire ce fichier audio.'})
+        if secondes > settings.MAX_AUDIO_DURATION:
+            raise serializers.ValidationError({'fichier_audio': 'La durée maximale du vocal est de 2 min 30.'})
+        # Le client ne fournit pas la durée. Le serveur la valide et l'enregistre.
+        attrs['duree'] = timedelta(seconds=secondes)
+        return attrs
+
 
 class FichierSerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,7 +1,7 @@
 import { useI18n } from "./i18n/context";
 import { useHashRoute, navigateHash } from "./lib/navigation";
 import LanguageSwitcher from "./components/LanguageSwitcher";
-import { useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import {
   ArrowRight,
   BookOpen,
@@ -23,6 +23,8 @@ import Authentication from "./components/Authentication";
 import PasswordRecovery from "./components/PasswordRecovery";
 import Workspace from "./components/Workspace";
 import HomeHighlights from "./components/HomeHighlights";
+import { authApi } from "./api/auth";
+import { loadOwnProfile } from "./lib/auth";
 
 type Page = "home" | "login" | "signup" | "forgot" | "reset" | "workspace";
 type Feature = {
@@ -391,90 +393,42 @@ function Home({
   );
 }
 
-// La navigation par hash permet le retour navigateur et fonctionne sur un hébergement statique.
-export default function App() {
-  const route = useHashRoute();
-
-
-
-  // ─── Détection du retour OAuth GitHub/Google ─────────────────────────────
-  // Quand l'utilisateur revient de Google/GitHub, l'URL contient
-  // #oauth-callback?access=...&refresh=...&email=...
-if (route.startsWith("oauth-callback")) {
-  const params = new URLSearchParams(route.slice("oauth-callback".length + 1))
-  const access = params.get("access")
-  const refresh = params.get("refresh")
-
-  if (access && refresh) {
-    localStorage.setItem("access_token", access)
-    localStorage.setItem("refresh_token", refresh)
-    // vide l'ancien profil pour éviter d'afficher un profil périmé
-    localStorage.removeItem('devafrica:profile')
-
-    // récupère le profil depuis le backend et le sauvegarde en localStorage
-    fetch('http://localhost:8000/api/auth/profil/', {
-      headers: { Authorization: `Bearer ${access}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        // construit le profil au format attendu par le frontend
-        const profile = {
-          id: `dev-${data.email}`,
-          email: data.email,
-          firstName: data.prenom || '',
-          lastName: data.nom || '',
-          name: data.nom || '',
-          pseudo: data.pseudo || '',
-          level: data.niveau === 'D' ? 'Débutant' : data.niveau === 'I' ? 'Intermédiaire' : 'Avancé',
-          country: data.pays || '',
-          age: String(data.age || ''),
-          bio: data.presentation || '',
-          skillDetails: [],
-          experiences: [],
-          documents: [],
-          accountStatus: data.banne ? 'banned' : 'active',
-        }
-        localStorage.setItem('devafrica:profile', JSON.stringify(profile))
-
-        // si le profil est incomplet (nouveau compte OAuth) →
-        // redirige vers le profil pour que le dev complète ses infos
-        // sinon → espace de travail directement
-        const profileIncomplet = !data.pays || data.age === 0 || !data.pseudo
-        navigateHash(profileIncomplet ? "workspace/profil" : "workspace")
-      })
-      .catch(() => navigateHash("workspace/profil"))
-  } else {
-    navigateHash("login")
-  }
-  // affiche un écran de chargement pendant que le fetch récupère le profil
-  // évite d'afficher le Workspace avec un profil périmé
-  return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '100vh',
-      flexDirection: 'column',
-      gap: '16px',
-      fontFamily: 'sans-serif',
-      color: '#666'
-    }}>
-      <div style={{
-        width: '40px',
-        height: '40px',
-        border: '3px solid #e0e0e0',
-        borderTop: '3px solid #4CAF50',
-        borderRadius: '50%',
-        animation: 'spin 1s linear infinite'
-      }} />
-      <p>Connexion en cours…</p>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  )
+function OAuthCallback({ route }: { route: string }) {
+  const { t } = useI18n();
+  useEffect(() => {
+    let cancelled = false;
+    const params = new URLSearchParams(route.slice("oauth-callback".length + 1));
+    const access = params.get("access");
+    const refresh = params.get("refresh");
+    async function loadProfile() {
+      if (!access || !refresh) {
+        navigateHash("login");
+        return;
+      }
+      localStorage.setItem("access_token", access);
+      localStorage.setItem("refresh_token", refresh);
+      try {
+        const profile = await loadOwnProfile();
+        if (cancelled) return;
+        localStorage.setItem("devafrica:profile", JSON.stringify(profile));
+        navigateHash(!profile.country || !profile.age || !profile.pseudo ? "workspace/profil" : "workspace");
+      } catch {
+        if (cancelled) return;
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        localStorage.removeItem("devafrica:profile");
+        navigateHash("login");
+      }
+    }
+    void loadProfile();
+    return () => { cancelled = true; };
+  }, [route]);
+  return <main className="panel" role="status">{t("Connexion en cours…", "Signing in…")}</main>;
 }
 
-  // ─────────────────────────────────────────────────────────────────────────
-
+export default function App() {
+  const route = useHashRoute();
+  if (route.startsWith("oauth-callback")) return <OAuthCallback route={route} />;
   const estConnecte = !!localStorage.getItem('access_token')
 
   function navigate(next: Page) {
@@ -515,14 +469,7 @@ if (route.startsWith("oauth-callback")) {
           const refresh = localStorage.getItem('refresh_token')
           if (refresh) {
             try {
-              await fetch('http://localhost:8000/api/auth/deconnexion/', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-                },
-                body: JSON.stringify({ refresh }),
-              })
+              await authApi.deconnexion(refresh)
             } catch {
               // si le backend est indisponible on déconnecte quand même côté client
             }

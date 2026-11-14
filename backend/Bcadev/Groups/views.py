@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -143,8 +144,9 @@ class MembreView(APIView):
         serializer = MembreSerializer(membres, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @transaction.atomic
     def post(self, request, id_group):
-        # Inviter un membre — admin ou modérateur
+        # Une invitation et sa notification sont créées ensemble.
         try:
             groupe = Group.objects.get(id_group=id_group, actif=True)
         except Group.DoesNotExist:
@@ -295,8 +297,11 @@ class MessagesGroupeView(APIView):
         if not get_membre(request.user, groupe):
             return Response({'erreur': 'Vous n\'êtes pas membre de ce groupe.'}, status=status.HTTP_403_FORBIDDEN)
 
-        messages = Message.objects.filter(groupe=groupe).order_by('date_envoie')
-        serializer = MessageSerializer(messages, many=True)
+        # Même historique pour le texte, les vocaux et les pièces jointes.
+        messages = Message.objects.filter(groupe=groupe).select_related(
+            'audio', 'envoyeur', 'message_parent__envoyeur',
+        ).prefetch_related('fichiers').order_by('date_envoie')
+        serializer = MessageSerializer(messages, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request, id_group):
@@ -335,7 +340,7 @@ class EnvoyerAudioGroupeView(APIView):
         if not get_membre(request.user, groupe):
             return Response({'erreur': 'Vous n\'êtes pas membre de ce groupe.'}, status=status.HTTP_403_FORBIDDEN)
 
-        serializer = AudioSerializer(data=request.data)
+        serializer = AudioSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             audio = serializer.save(
                 envoyeur=request.user,
@@ -344,7 +349,7 @@ class EnvoyerAudioGroupeView(APIView):
             )
             return Response({
                 'message': 'Audio envoyé.',
-                'data': AudioSerializer(audio).data
+                'data': AudioSerializer(audio, context={'request': request}).data
             }, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -364,6 +369,8 @@ class EnvoyerFichierGroupeView(APIView):
         message = Message.objects.create(
             envoyeur=request.user,
             groupe=groupe,
+            # Le texte et la pièce jointe appartiennent au même message.
+            contenu=request.data.get('contenu') or None,
             etat='envoye',
             message_parent_id=request.data.get('message_parent', None)
         )
@@ -394,7 +401,7 @@ class MesInvitationsView(APIView):
             invite=request.user,
             statut='P',
             groupe__actif=True
-        ).order_by('-date_invitation')
+        ).select_related('groupe', 'inviteur', 'invite').order_by('-date_invitation')
 
         serializer = InvitationSerializer(invitations, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -404,9 +411,10 @@ class AccepterInvitationView(APIView):
     """Accepter une invitation et rejoindre le groupe"""
     permission_classes = [IsAuthenticated]
 
+    @transaction.atomic
     def post(self, request, id_invitation):
         try:
-            invitation = InvitationGroupe.objects.get(
+            invitation = InvitationGroupe.objects.select_for_update().get(
                 id_invitation=id_invitation,
                 invite=request.user,
                 statut='P'
@@ -423,11 +431,10 @@ class AccepterInvitationView(APIView):
         invitation.date_reponse = timezone.now()
         invitation.save()
 
-        # Ajouter comme membre du groupe
-        Membre.objects.create(
-            id_groupe=invitation.groupe,
-            id_personne=request.user,
-            type='MB'  # Membre de base
+        # Crée l'adhésion dans la même transaction que l'acceptation.
+        Membre.objects.get_or_create(
+            id_groupe=invitation.groupe, id_personne=request.user,
+            defaults={'type': 'MB'},
         )
 
         # Notifier l'inviteur
@@ -449,9 +456,10 @@ class RefuserInvitationView(APIView):
     """Refuser une invitation"""
     permission_classes = [IsAuthenticated]
 
+    @transaction.atomic
     def post(self, request, id_invitation):
         try:
-            invitation = InvitationGroupe.objects.get(
+            invitation = InvitationGroupe.objects.select_for_update().get(
                 id_invitation=id_invitation,
                 invite=request.user,
                 statut='P'

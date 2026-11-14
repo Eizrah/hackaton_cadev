@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from "react";
-import { ArrowRight, BriefcaseBusiness, Building2, CalendarDays, ExternalLink, Mail, Plus, Search, Send, X } from "lucide-react";
+import { ArrowRight, Bookmark, BriefcaseBusiness, Building2, CalendarDays, ExternalLink, Mail, Plus, Search, Send, X } from "lucide-react";
 import { type Profile } from "../../data/models";
 import { useI18n } from "../../i18n/context";
 import { CountryFlag } from "../CountryFlag";
@@ -8,6 +8,8 @@ import CountrySelect from "../shared/CountrySelect";
 import SkillSearch from "../shared/SkillSearch";
 import Modal from "../Modal";
 import { publicationApi } from "../../api/publication";
+import { apiError } from "../../api/client";
+import { useSavedPublications } from "../../hooks/useSavedPublications";
 import ApplicationForm from "./ApplicationForm";
 
 interface Offre {
@@ -25,10 +27,11 @@ interface Offre {
   fichier?: string
   date_publication: string
   developper_email: string
+  developper_pseudo: string
   feu_vert: boolean
 }
 
-export default function Offers({ profile, onNotice, onNavigate }: { profile: Profile; onNotice: (text: string) => void; onNavigate: (path: string) => void; route?: string[] }) {
+export default function Offers({ profile, onNotice, onNavigate, route }: { profile: Profile; onNotice: (text: string) => void; onNavigate: (path: string) => void; route: string[] }) {
   const { t } = useI18n();
   
   // État
@@ -44,6 +47,40 @@ export default function Offers({ profile, onNotice, onNavigate }: { profile: Pro
   const [error, setError] = useState("")
   const [contract, setContract] = useState("CDI")
   
+  const savedPublications = useSavedPublications();
+  const focusOffer = route[0] === "offre" ? route[1] : undefined;
+
+  useEffect(() => {
+    if (!focusOffer) return;
+    let active = true;
+    void publicationApi.getOffre(focusOffer).then(({ data }) => {
+      if (active) setDetail(data);
+    }).catch(error => {
+      if (active) onNotice(apiError(error, t("Cette offre est indisponible.", "This offer is unavailable.")));
+    });
+    return () => { active = false; };
+  }, [focusOffer]);
+
+  async function toggleSaved(offre: Offre) {
+    if (savedPublications.error) {
+      savedPublications.retry();
+      return;
+    }
+    const saved = savedPublications.saved("offre_emploi", offre.id_publication);
+    try {
+      if (await savedPublications.toggle({
+        type: "offre_emploi",
+        publication: {
+          id: offre.id_publication, nom_poste: offre.nom_poste, localisation: offre.localisation,
+          date: offre.date_publication, auteur: offre.developper_pseudo,
+        },
+      })) onNotice(saved ? t("Offre retirée des enregistrements.", "Offer removed from saved items.")
+        : t("Offre enregistrée.", "Offer saved."));
+    } catch (err) {
+      onNotice(apiError(err, t("Impossible de modifier l’enregistrement.", "Could not update the saved item.")));
+    }
+  }
+
   const needsDuration = contract === "CDD" || contract === "Stage";
 
   // Charger les offres
@@ -313,6 +350,16 @@ export default function Offers({ profile, onNotice, onNavigate }: { profile: Pro
           <ExternalLink size={17} />
           Lien externe
         </a>}
+        <button type="button" className="btn-outline"
+          disabled={savedPublications.loading || savedPublications.busy}
+          aria-pressed={!!savedPublications.saved("offre_emploi", detail.id_publication)}
+          onClick={() => void toggleSaved(detail)}>
+          <Bookmark size={16} />
+          {savedPublications.error ? t("Recharger les enregistrements", "Reload saved items")
+            : savedPublications.saved("offre_emploi", detail.id_publication)
+              ? t("Retirer des enregistrements", "Remove from saved items")
+              : t("Enregistrer l’offre", "Save offer")}
+        </button>
         {detail.developper_email === profile.email ? <button
           className="btn-primary"
           onClick={() => { setDetail(null); onNavigate(`profil/recrutement/${detail.id_publication}`); }}>

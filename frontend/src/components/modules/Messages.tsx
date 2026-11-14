@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { BellOff, Check, ChevronRight, FileText, Flag, Images, Info, Link2, MessageCircle, MoreHorizontal, Pencil, Plus, Search, ShieldCheck, Slash, Trash2, UserMinus, UserPlus, UsersRound, X } from "lucide-react";
+import { BellOff, Camera, Check, ChevronRight, FileText, Flag, Images, Info, Link2, MessageCircle, MoreHorizontal, Pencil, Plus, Search, ShieldCheck, Slash, Trash2, UserMinus, UserPlus, UsersRound, X } from "lucide-react";
 import { useLocalData } from "../../lib/storage";
 import { normalizeText, type Profile } from "../../data/models";
 import { type ChatPreference } from "../../data/chat";
-import { usePeople } from "../../data/people";
 import { useI18n } from "../../i18n/context";
 import { safePortfolio } from "../../lib/urls";
 import { useAttachmentUrl, type StoredAttachment, readAttachment } from "../../lib/attachments";
@@ -14,8 +13,10 @@ import MessageComposer from "./MessageComposer";
 import { ReportModal } from "../shared/ReportModal";
 import { useConversations, useConversationMessages, useGroupes, useGroupeMembres, useGroupeMessages, useInvitations } from "../../hooks/useMessaging";
 import { messagingApi, groupsApi } from "../../api/messaging";
-import { blocageApi } from "../../api/auth";
+import { authApi, blocageApi } from "../../api/auth";
 import { moderationApi } from "../../api/moderation";
+import { apiError, mediaUrl } from "../../api/client";
+import ConfirmDialog from "../shared/ConfirmDialog";
 type UsefulLink = SharedLink & { conversation: string };
 function ChatAvatar({ name, photo, photoUrl, group = false }: { name: string; photo?: StoredAttachment; photoUrl?: string | null; group?: boolean }) {
   const localPhotoUrl = useAttachmentUrl(photo)
@@ -34,10 +35,11 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
   // ─── Backend Data ─────────────────────────────────────────────────────────
   const { conversations: backendConversations, reload: reloadConversations } = useConversations()
   const { groupes: backendGroupes, reload: reloadGroupes } = useGroupes()
-  const { invitations, reload: reloadInvitations } = useInvitations()
+  const { invitations, loading: invitationsLoading, error: invitationsError, reload: reloadInvitations } = useInvitations()
   
   // Déterminer l'email ou le groupe ID actuel
-  const isPrivateRoute = route[0] === "prive"
+  const section = route[0]
+  const isPrivateRoute = section === "prive"
   let currentEmail: string | null = null
   let currentGroupId: string | null = null
   
@@ -59,7 +61,6 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
   // ─── Local State ──────────────────────────────────────────────────────────
   const [preferences, setPreferences] = useLocalData<Record<string, ChatPreference>>("chat-preferences", {})
   const [links, setLinks] = useLocalData<UsefulLink[]>("chat-links", [])
-  const [registry] = usePeople()
   
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState("all")
@@ -69,21 +70,29 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
   const [menuOpen, setMenuOpen] = useState(false)
   const [memberQuery, setMemberQuery] = useState("")
   const [sending, setSending] = useState(false)
+  const [processingInvitation, setProcessingInvitation] = useState<string | null>(null)
+  const [confirmConversation, setConfirmConversation] = useState(false)
+  const [memberResults, setMemberResults] = useState<Array<{ email: string; pseudo: string }>>([])
   
   const [modal, setModal] = useState<"create" | "edit-name" | "link" | "members" | "clear" | "delete-group" | "invitations" | null>(null)
+  const [groupPhoto, setGroupPhoto] = useState<File>()
+  const [creatingGroup, setCreatingGroup] = useState(false)
+  const [groupFormError, setGroupFormError] = useState("")
   const [media, setMedia] = useState<"photos" | "files" | "links" | null>(null)
   const [reportTarget, setReportTarget] = useState<{ type: 'dev' | 'groupe'; id: string; name?: string } | null>(null)
   const [photoRefreshKey, setPhotoRefreshKey] = useState(Date.now())
   
   const menu = useRef<HTMLDivElement>(null)
+  const groupPhotoInput = useRef<HTMLInputElement>(null)
   const roomLog = useRef<HTMLDivElement>(null)
   const menuTrigger = useRef<HTMLButtonElement>(null)
   
   // ─── Derived State ────────────────────────────────────────────────────────
   const currentGroup = currentGroupId ? backendGroupes.find(g => g.id_group === currentGroupId) : undefined
-  const unavailable = route[0] === "groupe" && !currentGroup
+  const unavailable = section === "groupe" && !currentGroup
   const key = currentGroup ? `group:${currentGroup.id_group}` : currentEmail || ""
-  const title = currentGroup?.nom || currentEmail || ""
+  const currentContact = backendConversations.find(conversation => conversation.email === currentEmail)
+  const title = currentGroup?.nom || currentContact?.pseudo || currentEmail || ""
   const prefKey = `${profile.id}|${key}`
   const preference = preferences[prefKey] || {}
   
@@ -92,7 +101,7 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
   const joined = currentGroup ? groupMembers.some(m => m.dev_email === profile.email) : true
   const canWrite = (!currentGroup || joined) && !preference.blocked && !unavailable
   
-  const visibleFilter = route[0] === "groupes" ? "groups" : route[0] === "prives" ? "private" : filter
+  const visibleFilter = section === "groupes" || section === "invitations" ? "groups" : section === "prives" ? "private" : filter
   
   // Construire la liste des conversations (privées + groupes)
   const conversations = [
@@ -121,7 +130,7 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
   
   // Messages actuels
   const backendMessages = currentGroup ? groupMessages : privateMessages
-  const currentMessages = backendMessages.filter(m => !preference.hiddenMessages?.includes(Number(m.id_message)))
+  const currentMessages = backendMessages.filter(m => !preference.hiddenMessages?.includes(m.id_message))
   
   // Adapter les messages backend au format frontend
   const displayMessages = currentMessages
@@ -130,27 +139,26 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
       const fichiers = m.fichiers?.map(f => f.fichier).join(" ") || ""
       return normalizeText(`${content} ${fichiers}`).includes(normalizeText(messageQuery))
     })
-    .map((m, idx) => ({
-      id: m.id_message && !isNaN(Number(m.id_message)) ? Number(m.id_message) : `temp-${Date.now()}-${idx}`,
+    .map(m => ({
+      id: m.id_message,
       text: m.contenu || (m.supprime ? t("[Message supprimé]", "[Message deleted]") : ""),
       sentAt: m.date_envoie,
       author: m.envoyeur_pseudo,
       authorId: m.envoyeur_email,
       mine: m.envoyeur_email === profile.email,
-      attachments: m.fichiers?.map((f, fidx) => {
-        // Construire l'URL complète du fichier
-        const fileUrl = f.fichier.startsWith('http') 
-          ? f.fichier 
-          : `http://localhost:8000${f.fichier.startsWith('/') ? '' : '/'}${f.fichier}`
-        
-        return {
-          id: f.id_fichier || `temp-file-${idx}-${fidx}`,
-          name: f.fichier.split('/').pop() || f.fichier,
-          type: "application/octet-stream",
-          size: Number(f.taille) * 1024 * 1024,
-          url: fileUrl
-        }
-      }) || []
+      audioUrl: mediaUrl(m.fichier_audio),
+      attachments: (m.fichiers || []).flatMap(f => {
+        const url = mediaUrl(f.fichier)
+        if (!url) return []
+        const name = f.fichier.split('/').pop() || f.fichier
+        const extension = name.split('.').pop()?.toLowerCase()
+        const images: Record<string, string> = { jpg: "jpeg", jpeg: "jpeg", png: "png", webp: "webp", gif: "gif" }
+        return [{
+          id: f.id_fichier, name, url,
+          type: extension && images[extension] ? `image/${images[extension]}` : "application/octet-stream",
+          size: Number(f.taille) * 1024 * 1024
+        }]
+      })
     }))
   
   const files = displayMessages.flatMap(m => m.attachments || [])
@@ -168,6 +176,19 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
   ].filter((l, index, all) => all.findIndex(other => other.url === l.url) === index)
   // ─── Effects ──────────────────────────────────────────────────────────────
   
+  useEffect(() => {
+    const query = memberQuery.trim()
+    setMemberResults([])
+    if (modal !== "members" || !query) return
+    let active = true
+    const timer = setTimeout(() => {
+      void authApi.rechercherDevs(query).then(({ data }) => {
+        if (active) setMemberResults(data)
+      }).catch(() => {})
+    }, 200)
+    return () => { active = false; clearTimeout(timer) }
+  }, [memberQuery, modal])
+
   // Scroll to bottom on new messages
   useEffect(() => { 
     roomLog.current?.scrollTo({ top: roomLog.current.scrollHeight, behavior: "smooth" }) 
@@ -273,134 +294,80 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
   }
   
   async function handleDeleteConversation() {
-    if (!currentEmail) return
-    
-    try {
-      await messagingApi.supprimerConversation(currentEmail)
-      reloadConversations()
-      navigate("messages")
-      onNotice(t("Conversation supprimée.", "Conversation deleted."))
-    } catch (err: any) {
-      console.error('Erreur suppression:', err)
-      onNotice(t("Erreur lors de la suppression.", "Error deleting."))
-    }
+    if (!currentEmail) return;
+    await messagingApi.supprimerConversation(currentEmail);
+    void reloadConversations();
+    navigate("messages");
+    onNotice(t("Conversation supprimée.", "Conversation deleted."));
   }
-  
-  async function send(text: string, attachments: StoredAttachment[]) { 
-    if ((!text.trim() && !attachments.length) || !canWrite || sending) return
-    
-    setSending(true)
-    
+
+  async function send(text: string, attachments: StoredAttachment[]): Promise<boolean> {
+    if ((!text.trim() && !attachments.length) || !canWrite || sending || (!currentGroup && !currentEmail)) return false;
+    setSending(true);
     try {
-      if (currentGroup) {
-        // Envoyer dans un groupe
-        if (attachments.length > 0) {
-          // Envoyer chaque fichier séparément
-          for (const [attachmentIndex, attachment] of attachments.entries()) {
-            // Récupérer le blob depuis IndexedDB
-            const blob = await readAttachment(attachment.id)
-            if (!blob) {
-              console.error('Impossible de récupérer le fichier:', attachment.name)
-              continue
-            }
-            
-            // Créer un File à partir du Blob
-            const file = new File([blob], attachment.name, { type: attachment.type })
-            const formData = new FormData()
-            
-            // Déterminer si c'est un audio ou un fichier
-            const isAudio = attachment.type.startsWith('audio/')
-            
-            if (isAudio) {
-              formData.append('audio', file)
-              if (attachmentIndex === 0 && text.trim()) {
-                formData.append('contenu', text.trim())
-              }
-              await groupsApi.envoyerAudioGroupe(currentGroup.id_group, formData)
-            } else {
-              formData.append('fichier', file)
-              if (attachmentIndex === 0 && text.trim()) {
-                formData.append('contenu', text.trim())
-              }
-              await groupsApi.envoyerFichierGroupe(currentGroup.id_group, formData)
-            }
+      if (attachments.length) {
+        for (const [index, attachment] of attachments.entries()) {
+          const blob = await readAttachment(attachment.id);
+          if (!blob) throw new Error("Attachment missing");
+          const type = attachment.type.split(";")[0];
+          const file = new File([blob], attachment.name, { type });
+          const data = new FormData();
+          if (currentEmail) data.append("destinataire", currentEmail);
+          if (index === 0 && text.trim()) data.append("contenu", text.trim());
+
+          if (type.startsWith("audio/")) {
+            data.append("fichier_audio", file);
+            if (currentGroup) await groupsApi.envoyerAudioGroupe(currentGroup.id_group, data);
+            else await messagingApi.envoyerAudio(data);
+          } else {
+            data.append("fichier", file);
+            if (currentGroup) await groupsApi.envoyerFichierGroupe(currentGroup.id_group, data);
+            else await messagingApi.envoyerFichier(data);
           }
-        } else if (text.trim()) {
-          // Message texte uniquement
-          await groupsApi.envoyerMessageGroupe(currentGroup.id_group, {
-            contenu: text.trim()
-          })
         }
-        reloadGroupMessages()
+      } else if (currentGroup) {
+        await groupsApi.envoyerMessageGroupe(currentGroup.id_group, { contenu: text.trim() });
       } else if (currentEmail) {
-        // Envoyer message privé
-        if (attachments.length > 0) {
-          // Envoyer chaque fichier séparément
-          for (const [attachmentIndex, attachment] of attachments.entries()) {
-            // Récupérer le blob depuis IndexedDB
-            const blob = await readAttachment(attachment.id)
-            if (!blob) {
-              console.error('Impossible de récupérer le fichier:', attachment.name)
-              continue
-            }
-            
-            // Créer un File à partir du Blob
-            const file = new File([blob], attachment.name, { type: attachment.type })
-            const formData = new FormData()
-            formData.append('destinataire', currentEmail)
-            
-            // Déterminer si c'est un audio ou un fichier
-            const isAudio = attachment.type.startsWith('audio/')
-            
-            if (isAudio) {
-              formData.append('audio', file)
-              if (attachmentIndex === 0 && text.trim()) {
-                formData.append('contenu', text.trim())
-              }
-              await messagingApi.envoyerAudio(formData)
-            } else {
-              formData.append('fichier', file)
-              if (attachmentIndex === 0 && text.trim()) {
-                formData.append('contenu', text.trim())
-              }
-              await messagingApi.envoyerFichier(formData)
-            }
-          }
-        } else if (text.trim()) {
-          // Message texte uniquement
-          await messagingApi.envoyerMessage({
-            destinataire: currentEmail,
-            contenu: text.trim()
-          })
-        }
-        reloadPrivateMessages()
+        await messagingApi.envoyerMessage({ destinataire: currentEmail, contenu: text.trim() });
       }
-      
-        } catch (err: any) {
-      console.error('Erreur envoi message:', err)
-      
-      // Gestion spécifique pour les erreurs 403 (blocage)
-      if (err.response?.status === 403) {
-        onNotice(t(
-          "Vous ne pouvez pas envoyer de message à cet utilisateur. Vous avez peut-être été bloqué.",
-          "You cannot send a message to this user. You may have been blocked."
-        ))
-      } else {
-        onNotice(t("Erreur lors de l'envoi du message.", "Error sending message."))
-      }
+      if (currentGroup) void reloadGroupMessages();
+      else void reloadPrivateMessages();
+      void reloadConversations();
+      return true;
+    } catch (err) {
+      onNotice(apiError(err, t("Impossible d’envoyer le message.", "Could not send the message.")));
+      return false;
     } finally {
-      setSending(false)
+      setSending(false);
     }
   }
-  
-  async function join() { 
-    if (!currentGroup || joined) return
-    
-    // Note: Dans le nouveau système, on ne "rejoint" pas directement
-    // On doit être invité et accepter l'invitation
-    onNotice(t("Tu dois être invité pour rejoindre ce groupe.", "You must be invited to join this group."))
+
+  async function respondToInvitation(id: string, accept: boolean) {
+    if (processingInvitation) return;
+    setProcessingInvitation(id);
+    try {
+      if (accept) {
+        await groupsApi.accepterInvitation(id);
+        await reloadGroupes();
+      } else {
+        await groupsApi.refuserInvitation(id);
+      }
+      await reloadInvitations();
+      if (invitations.length === 1) closeInvitations();
+      onNotice(accept ? t("Tu as rejoint le groupe.", "You joined the group.")
+        : t("Invitation refusée.", "Invitation declined."));
+    } catch (err) {
+      onNotice(apiError(err, t("Impossible de traiter cette invitation.", "Could not respond to the invitation.")));
+    } finally {
+      setProcessingInvitation(null);
+    }
   }
-  
+
+  function closeInvitations() {
+    setModal(null);
+    if (section === "invitations") navigate("messages/groupes");
+  }
+
   async function removeMember(member: any) { 
     if (!admin || !currentGroup) return
     
@@ -645,7 +612,11 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
           )}
           <button
             aria-label={t("Créer un groupe", "Create a group")}
-            onClick={() => setModal("create")}>
+            onClick={() => {
+              setGroupPhoto(undefined)
+              setGroupFormError("")
+              setModal("create")
+            }}>
             <Plus size={21} />
           </button>
         </div>
@@ -724,7 +695,7 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
             <ChatAvatar
               key={`avatar-header-${photoRefreshKey}`}
               name={title}
-              photoUrl={currentGroup?.photo}
+              photoUrl={currentGroup?.photo || currentContact?.photoprofil}
               group={!!currentGroup} />
             <span>
               <h2>
@@ -772,7 +743,11 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
                 <button
                   role="menuitem"
                   className="danger"
-                  onClick={currentEmail ? handleDeleteConversation : () => { setMenuOpen(false); setModal("clear"); }}>
+                  onClick={() => {
+                    setMenuOpen(false);
+                    if (currentEmail) setConfirmConversation(true);
+                    else setModal("clear");
+                  }}>
                   <Trash2 size={17} />
                   {t("Effacer la discussion", "Clear conversation")}
                 </button>
@@ -838,7 +813,9 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
                   {message.text && <p>
                     {message.text}
                   </p>}
-                  {message.attachments?.map(file => <AttachmentCard
+                  {message.audioUrl && <audio className="message-voice" controls preload="metadata" src={message.audioUrl}
+                    aria-label={t("Écouter le vocal", "Listen to voice message")} />}
+                  {message.attachments.map(file => <AttachmentCard
                     key={file.id}
                     file={file} />)}
                   {mine && <Check
@@ -871,8 +848,8 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
           </p>
           <button
             className="btn-primary"
-            onClick={join}>
-            {t("Rejoindre le groupe", "Join group")}
+            onClick={() => setModal("invitations")}>
+            {t("Voir mes invitations", "View my invitations")}
           </button>
         </div> : <MessageComposer key={prefKey} onSend={send} />}
       </>}
@@ -884,6 +861,9 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
       links={sharedLinks}
       initialTab={media}
       onClose={() => setMedia(null)} />}
+    {confirmConversation && <ConfirmDialog
+      title={t("Supprimer cette conversation ?", "Delete this conversation?")}
+      onClose={() => setConfirmConversation(false)} onConfirm={handleDeleteConversation} />}
     {modal === "clear" && <Modal
       title={t("Effacer la discussion ?", "Clear the conversation?")}
       onClose={() => setModal(null)}>
@@ -898,7 +878,7 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
         </button>
         <button
           className="btn-primary"
-          onClick={() => { updatePreference({ hiddenMessages: currentMessages.map(m => Number(m.id_message)), hiddenLinks: links.filter(l => l.conversation === key).map(l => String(l.id)) }); setModal(null); onNotice(t("Discussion effacée de ton historique.", "Conversation cleared from your history.")); }}>
+          onClick={() => { updatePreference({ hiddenMessages: [...(preference.hiddenMessages || []), ...currentMessages.map(m => m.id_message)], hiddenLinks: links.filter(l => l.conversation === key).map(l => String(l.id)) }); setModal(null); onNotice(t("Discussion effacée de ton historique.", "Conversation cleared from your history.")); }}>
           {t("Effacer", "Clear")}
         </button>
       </div>
@@ -930,7 +910,7 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
         {groupMembers.map(member => <article key={member.dev_email}>
           <button
             className="member-profile"
-            onClick={() => navigate(member.dev_email === profile.email ? "profil" : `profil/${encodeURIComponent(member.dev_email)}`)}>
+            onClick={() => navigate(member.dev_email === profile.email ? "profil" : `profil/membre/${encodeURIComponent(member.dev_email)}`)}>
             <span className="avatar">
               {member.dev_pseudo.slice(0, 2)}
             </span>
@@ -983,29 +963,22 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
             {conv.pseudo}
           </button>)}
         
-        {/* Si recherche, afficher aussi les devs du registry */}
-        {memberQuery && registry
-          .filter(person => 
+        {memberQuery.trim() && memberResults
+          .filter(person =>
+            person.email !== profile.email &&
             !groupMembers.some(member => member.dev_email === person.email) &&
-            !backendConversations.some(conv => conv.email === person.email) &&
-            normalizeText(person.name).includes(normalizeText(memberQuery))
+            !backendConversations.some(conv => conv.email === person.email && normalizeText(conv.pseudo).includes(normalizeText(memberQuery)))
           )
-          .slice(0, 5)
-          .map(person => <button
-            key={`reg-${person.email}`}
-            onClick={async () => {
-              if (!admin) return
-              try {
-                await groupsApi.inviterMembre(currentGroup.id_group, person.email)
-                onNotice(t(`Invitation envoyée à ${person.name}`, `Invitation sent to ${person.name}`))
-              } catch (err) {
-                onNotice(t("Erreur lors de l'invitation", "Error sending invitation"))
-              }
-            }}>
-            <UserPlus size={17} />
-            {person.name}
+          .map(person => <button key={person.email} onClick={async () => {
+            try {
+              await groupsApi.inviterMembre(currentGroup.id_group, person.email)
+              onNotice(t(`Invitation envoyée à ${person.pseudo}`, `Invitation sent to ${person.pseudo}`))
+            } catch (err) {
+              onNotice(apiError(err, t("Erreur lors de l'invitation", "Error sending invitation")))
+            }
+          }}>
+            <UserPlus size={17} /> {person.pseudo}
           </button>)}
-          
         {backendConversations.length === 0 && !memberQuery && (
           <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '8px' }}>
             {t("Commence à discuter avec des développeurs pour les inviter.", "Start chatting with developers to invite them.")}
@@ -1015,41 +988,36 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
     </Modal>}
     {(modal === "create" || modal === "edit-name" || modal === "link") && <Modal
       title={modal === "create" ? t("Créer un groupe", "Create a group") : modal === "edit-name" ? t("Modifier le nom du groupe", "Edit group name") : t("Ajouter un lien utile", "Add a useful link")}
+      busy={creatingGroup}
       onClose={() => setModal(null)}>
       <form
         className="chat-settings-form"
+        key={modal}
         onSubmit={async e => { 
           e.preventDefault()
           const data = new FormData(e.currentTarget)
           const value = (name: string) => String(data.get(name) || "").trim()
           
-          if (modal === "create") { 
-            if (!value("name") || !value("description")) return
-            
+          if (modal === "create") {
+            if (creatingGroup) return
+            const nom = value("name")
+            const motif_creation = value("description")
+            if (!nom || !motif_creation) {
+              setGroupFormError(t("Renseigne le nom et la description du groupe.", "Enter the group name and description."))
+              return
+            }
+            setCreatingGroup(true)
+            setGroupFormError("")
             try {
-              const photoInput = e.currentTarget.querySelector('input[name="photo"]') as HTMLInputElement
-              const photo = photoInput?.files?.[0]
-              
-              const groupData: any = { 
-                nom: value("name"), 
-                motif_creation: value("description")
-              }
-              
-              // N'ajouter la photo que si elle existe
-              if (photo) {
-                groupData.photo = photo
-              }
-              
-              await groupsApi.creerGroupe(groupData)
-              
+              await groupsApi.creerGroupe({ nom, motif_creation, photo: groupPhoto })
               await reloadGroupes()
               setModal(null)
               onNotice(t("Groupe créé. Tu peux inviter tes premiers membres.", "Group created. You can add your first members."))
               navigate("messages/groupes")
-            } catch (err: any) {
-              console.error('Erreur création groupe:', err)
-              console.error('Détails:', err.response?.data)
-              onNotice(t("Erreur lors de la création du groupe.", "Error creating group."))
+            } catch (err) {
+              setGroupFormError(apiError(err, t("Erreur lors de la création du groupe.", "Error creating group.")))
+            } finally {
+              setCreatingGroup(false)
             }
           } else if (modal === "edit-name") { 
             if (!admin || !currentGroup || !value("name")) return
@@ -1076,20 +1044,49 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
           } 
         }}>
         {modal === "create" && <>
-          <label>
-            {t("Nom du groupe", "Group name")}
-            <input
-              name="name"
-              required
-              maxLength={80} />
-          </label>
-          <label>
-            {t("Photo du groupe (optionnel)", "Group photo (optional)")}
-            <input
-              name="photo"
-              type="file"
-              accept="image/*" />
-          </label>
+          <div>
+            <label htmlFor="new-group-name">{t("Nom du groupe", "Group name")}</label>
+            <div className="group-name-row">
+              <input id="new-group-name" name="name" maxLength={100} required disabled={creatingGroup} />
+              <button
+                type="button"
+                className="group-photo-button"
+                aria-label={groupPhoto ? t("Changer la photo du groupe", "Change group photo") : t("Ajouter une photo de groupe", "Add a group photo")}
+                title={t("Photo du groupe (optionnelle)", "Group photo (optional)")}
+                aria-describedby={groupPhoto ? "new-group-photo-name" : undefined}
+                disabled={creatingGroup}
+                onClick={() => groupPhotoInput.current?.click()}>
+                <Camera size={20} aria-hidden="true" />
+              </button>
+            </div>
+            <input ref={groupPhotoInput} type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={creatingGroup}
+              onChange={event => {
+                const file = event.currentTarget.files?.[0]
+                event.currentTarget.value = ""
+                if (!file) return
+                if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+                  setGroupFormError(t("Choisis une photo JPEG, PNG ou WebP.", "Choose a JPEG, PNG, or WebP photo."))
+                  return
+                }
+                if (file.size > 10 * 1024 * 1024) {
+                  setGroupFormError(t("La photo ne doit pas dépasser 10 Mo.", "The photo must be 10 MB or smaller."))
+                  return
+                }
+                setGroupPhoto(file)
+                setGroupFormError("")
+              }} />
+            {groupPhoto && <div className="group-photo-selection">
+              <small id="new-group-photo-name">{groupPhoto.name}</small>
+              <button type="button" className="quiet" disabled={creatingGroup}
+                aria-label={t("Retirer la photo du groupe", "Remove group photo")}
+                onClick={() => {
+                  setGroupPhoto(undefined)
+                  setGroupFormError("")
+                }}>
+                <X size={16} aria-hidden="true" />
+              </button>
+            </div>}
+          </div>
         </>}
         {modal === "edit-name" && <label>
           {t("Nom du groupe", "Group name")}
@@ -1104,6 +1101,7 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
           <textarea
             name="description"
             required
+            disabled={creatingGroup}
             maxLength={1000} />
         </label>}
         {modal === "link" && <>
@@ -1122,81 +1120,41 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
               placeholder="https://…" />
           </label>
         </>}
-        <button className="btn-primary">
-          {modal === "create" ? t("Créer le groupe", "Create group") : t("Enregistrer", "Save")}
+        {modal === "create" && groupFormError && <p className="form-error" role="alert">{groupFormError}</p>}
+        <button type="submit" className="btn-primary" disabled={creatingGroup}>
+          {creatingGroup ? t("Création…", "Creating…") : modal === "create" ? t("Créer le groupe", "Create group") : t("Enregistrer", "Save")}
         </button>
       </form>
     </Modal>}
-    {modal === "invitations" && <Modal
+    {(modal === "invitations" || section === "invitations") && <Modal
       title={t("Invitations en attente", "Pending invitations")}
-      onClose={() => setModal(null)}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      onClose={closeInvitations} busy={!!processingInvitation}>
+      <div className="invitation-list">
         {invitations.map(invitation => (
-          <div key={invitation.id_invitation} style={{
-            padding: '16px',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px'
-          }}>
+          <article className="invitation-card" key={invitation.id_invitation}>
             <div>
               <strong>{invitation.groupe_nom}</strong>
-              <p style={{ fontSize: '14px', color: '#6b7280', margin: '4px 0' }}>
-                {t("Invité par", "Invited by")} {invitation.inviteur_pseudo}
-              </p>
-              <small style={{ color: '#9ca3af' }}>
-                {new Date(invitation.date_invitation).toLocaleDateString(locale)}
-              </small>
+              <p>{t("Invité par", "Invited by")} {invitation.inviteur_pseudo}</p>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                className="btn-primary"
-                onClick={async () => {
-                  try {
-                    await groupsApi.accepterInvitation(invitation.id_invitation)
-                    await reloadInvitations()
-                    await reloadGroupes()
-                    if (invitations.length === 1) setModal(null)
-                    onNotice(t("Invitation acceptée !", "Invitation accepted!"))
-                  } catch (err: any) {
-                    console.error('Erreur acceptation:', err)
-                    console.error('Détails:', err.response?.data)
-                    onNotice(t("Erreur lors de l'acceptation", "Error accepting invitation"))
-                  }
-                }}
-                style={{ flex: 1 }}>
-                <Check size={16} />
-                {t("Accepter", "Accept")}
+            <div className="invitation-actions">
+              <button type="button" className="btn-primary" disabled={!!processingInvitation}
+                onClick={() => void respondToInvitation(invitation.id_invitation, true)}>
+                <Check size={16} /> {t("Rejoindre le groupe", "Join group")}
               </button>
-              <button
-                className="btn-outline"
-                onClick={async () => {
-                  try {
-                    await groupsApi.refuserInvitation(invitation.id_invitation)
-                    await reloadInvitations()
-                    if (invitations.length === 1) setModal(null)
-                    onNotice(t("Invitation refusée", "Invitation declined"))
-                  } catch (err: any) {
-                    console.error('Erreur refus:', err)
-                    onNotice(t("Erreur lors du refus", "Error declining invitation"))
-                  }
-                }}
-                style={{ flex: 1 }}>
-                <X size={16} />
-                {t("Refuser", "Decline")}
+              <button type="button" className="btn-primary btn-danger" disabled={!!processingInvitation}
+                onClick={() => void respondToInvitation(invitation.id_invitation, false)}>
+                <X size={16} /> {t("Refuser", "Decline")}
               </button>
             </div>
-          </div>
+          </article>
         ))}
-        {invitations.length === 0 && (
-          <p style={{ textAlign: 'center', color: '#6b7280', padding: '20px' }}>
-            {t("Aucune invitation en attente", "No pending invitations")}
-          </p>
-        )}
+        {invitationsLoading && <p className="muted" role="status">{t("Chargement…", "Loading…")}</p>}
+        {invitationsError && <p className="form-error" role="alert">{invitationsError}</p>}
+        {!invitationsLoading && !invitationsError && !invitations.length &&
+          <p className="muted">{t("Aucune invitation en attente", "No pending invitations")}</p>}
       </div>
     </Modal>}
-    
+
     {/* ─── Modal signalement ─── */}
     <ReportModal
       target={reportTarget}
