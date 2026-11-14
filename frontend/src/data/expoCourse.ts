@@ -1,4 +1,4 @@
-import {
+﻿import {
   lesson,
   levelColors,
   projectExample,
@@ -20,35 +20,131 @@ const expoDocs = "https://docs.expo.dev/";
 const beginner: WebLevel["chapters"] = [
   {
     id: "demarrage-expo",
-    title: "Expo et premier lancement",
+    title: "Expo et React Native : installation et premier lancement",
     description:
-      "Ouvre un atelier React Native sur un téléphone ou un émulateur.",
+      "Installe Node.js, Expo CLI et Expo Go. Comprends ce qui rend React Native unique par rapport aux autres approches mobile.",
     lessons: [
       lesson({
+        id: "introduction-react-native",
+        title: "Qu'est-ce que React Native et Expo ?",
+        minutes: 25,
+        summary:
+          "React Native permet de créer des applications iOS et Android natives avec JavaScript/TypeScript et les mêmes concepts que React web. Expo est la boîte à outils qui simplifie radicalement la configuration et le déploiement.",
+        sections: [
+          section(
+            "React Native : JavaScript pour le mobile natif",
+            "React Native traduit tes composants React en vues natives iOS et Android. Ce n'est pas une WebView : l'interface est vraiment native.",
+            [
+              "Natif, pas WebView : React Native utilise de vrais composants iOS et Android. View devient UIView (iOS) ou ViewGroup (Android).",
+              "JavaScript Bridge : Le code JS tourne dans un moteur JavaScript (Hermes). Un bridge communique avec les vues natives.",
+              "React partout : Si tu connais React, tu connais déjà la logique : composants, props, state, hooks. Seuls les composants changent.",
+              "iOS et Android : Un seul code base produit deux applications natives. Le comportement s'adapte automatiquement à chaque plateforme.",
+              "Communauté : React Native est soutenu par Meta (Facebook). Instagram, Airbnb, Shopify et bien d'autres l'utilisent en production.",
+              "React Native vs Flutter : React Native utilise des composants natifs (rendu différent par plateforme). Flutter dessine lui-même chaque pixel (rendu identique partout).",
+            ],
+          ),
+          section(
+            "Expo : React Native sans la complexité",
+            "Expo est une surcouche de React Native qui gère la configuration native (iOS/Android) pour toi.",
+            [
+              "Sans Expo : Pour React Native seul, tu dois installer Xcode (Mac), Android Studio, configurer les certificats iOS, etc. Très complexe.",
+              "Avec Expo Go : Tu développes en JavaScript uniquement. L'app Expo Go sur ton téléphone exécute ton code sans compilation native.",
+              "SDK Expo : Accès à l'appareil photo, géolocalisation, notifications push, etc. via des APIs JavaScript unifiées.",
+              "EAS (Expo Application Services) : Pour créer les vrais APK/IPA pour le store, Expo Build gère la compilation dans le cloud.",
+              "Expo Router : Système de navigation basé sur les fichiers, inspiré de Next.js. Les ateliers de ce cours utilisent React Navigation.",
+              "Limitations Expo Go : Certaines librairies avec code natif nécessitent un build personnalisé (Expo Development Build).",
+            ],
+          ),
+          section(
+            "Prérequis système",
+            "Le développement Expo/React Native nécessite Node.js. iOS peut être testé sur Windows grâce à Expo Go.",
+            [
+              "Node.js : Version 20 LTS ou supérieure. Télécharge depuis nodejs.org. Vérifie avec node --version.",
+              "npm ou Yarn : npm est inclus avec Node.js. Yarn : npm install -g yarn.",
+              "Windows : Fonctionne nativement. Pas besoin de Xcode ni d'Android Studio pour débuter avec Expo Go.",
+              "macOS : Fonctionne nativement. Xcode optionnel (nécessaire uniquement pour compiler pour iOS sans Expo Go).",
+              "Linux : Fonctionne nativement. Android Studio optionnel pour l'émulateur.",
+              "Téléphone : Expo Go disponible sur App Store (iOS) et Google Play (Android). Gratuit.",
+            ],
+          ),
+          section(
+            "Installation des outils",
+            "Quelques commandes suffisent pour être prêt à développer avec Expo.",
+            [
+              "Node.js : Télécharge et installe la version LTS depuis nodejs.org.",
+              "Expo CLI : npx create-expo-app fonctionne directement sans installation globale.",
+              "Expo Go : Installe l'application Expo Go sur ton téléphone depuis App Store ou Google Play.",
+              "VS Code : Éditeur recommandé. Installe l'extension React Native Tools et ES7+ React/Redux Snippets.",
+              "Émulateur Android (optionnel) : Installe Android Studio et crée un AVD dans le Device Manager.",
+              "Simulateur iOS (Mac uniquement) : Inclus avec Xcode depuis l'App Store.",
+            ],
+          ),
+          section(
+            "Créer et lancer un projet Expo",
+            "npx create-expo-app génère un projet configuré avec TypeScript et toutes les dépendances nécessaires.",
+            [
+              "Créer : npx create-expo-app mon-app --template blank-typescript crée un projet TypeScript.",
+              "Installer : cd mon-app puis npm install pour installer les dépendances.",
+              "Lancer : npx expo start (ou npm start). Un QR code s'affiche dans le terminal.",
+              "Ouvrir sur téléphone : Scanne le QR code avec Expo Go (Android) ou l'app Appareil photo (iOS).",
+              "Ouvrir sur émulateur Android : Appuie sur a dans le terminal après avoir lancé l'émulateur.",
+              "Hot Reload : Modifie App.tsx, enregistre. L'application se recharge instantanément sur le téléphone.",
+            ],
+          ),
+          section(
+            "Structure d'un projet Expo",
+            "Un projet Expo/React Native suit une structure standard que tu retrouveras dans tous les ateliers.",
+            [
+              "App.tsx : Point d'entrée de l'application. Le composant racine retourné par cette fonction est ce qui s'affiche.",
+              "index.js : Enregistre App comme composant racine avec registerRootComponent.",
+              "package.json : Dépendances et scripts. scripts.start lance le serveur Expo.",
+              "app.json : Configuration de l'application (nom, icône, couleur de splash screen, permissions).",
+              "assets/ : Images, polices et autres fichiers statiques.",
+              "node_modules/ : Dépendances installées par npm. Ne jamais éditer, ne pas committer.",
+            ],
+          ),
+        ],
+        files: projectExample(profile, "package.json"),
+        task: "Installe Node.js LTS et Expo Go sur ton téléphone. Lance npx create-expo-app test-app --template blank-typescript. Démarre avec npm start, scanne le QR code et ouvre l'app. Modifie le texte dans App.tsx et observe le rechargement instantané.",
+        takeaway:
+          "React Native traduit JavaScript en vues natives iOS et Android. Expo simplifie radicalement la configuration : Expo Go sur ton téléphone exécute ton code sans aucune compilation native. Un seul code base pour iOS et Android.",
+        quiz: quiz(
+          "Qu'est-ce qu'Expo Go permet de faire sans configuration complexe ?",
+          [
+            "Compiler un APK pour le Google Play Store",
+            "Tester ton application React Native sur ton téléphone en scannant un QR code",
+            "Créer une application web avec React",
+          ],
+          1,
+          "Expo Go exécute ton bundle JavaScript directement sur le téléphone, sans avoir besoin de compiler le code natif.",
+        ),
+        link: expoDocs + "get-started/installation/",
+      }),
+      lesson({
         id: "demarrer-expo-go",
-        title: "Installer les outils et ouvrir Expo Go",
+        title: "Ouvrir un atelier et vérifier la compatibilité SDK",
         minutes: 20,
         summary:
-          "Expo lance le serveur de développement qui prépare les fichiers de l’application. Expo Go charge l’atelier sur le téléphone en scannant le QR code.",
+          "Expo lance le serveur de développement qui prépare les fichiers de l'application. Expo Go charge l'atelier sur le téléphone en scannant le QR code.",
         sections: [
           section(
             "Lancer depuis le dossier du ZIP",
             "Installe les paquets avec npm install puis lance npm start. Le projet est configuré pour le SDK Expo 54.",
             [
-              "Vérifie que la version d’Expo Go correspond au SDK de l’atelier.",
+              "Vérifie que la version d'Expo Go correspond au SDK de l'atelier.",
               "Sur un téléphone, utilise le même réseau que ton ordinateur. Pour Android, tu peux aussi lancer un émulateur puis appuyer sur a dans le terminal Expo.",
-              "Dans package.json, scripts.start définit la commande. App.tsx contient l’écran que tu peux modifier.",
+              "Dans package.json, scripts.start définit la commande. App.tsx contient l'écran que tu peux modifier.",
             ],
           ),
         ],
         files: projectExample(profile, "package.json"),
-        task: "Démarre la carte et vérifie son ouverture. Change le nom dans App.tsx et observe l’actualisation.",
+        task: "Démarre la carte et vérifie son ouverture. Change le nom dans App.tsx et observe l'actualisation.",
         takeaway:
           "Le terminal prépare le projet. Expo Go affiche son bundle mobile.",
         quiz: quiz(
           "Quelles versions doivent être compatibles ?",
           [
-            "La version de Windows et le nom de l’écran",
+            "La version de Windows et le nom de l'écran",
             "Le SDK Expo du projet et Expo Go",
             "Les tailles de tous les écrans",
           ],
@@ -640,6 +736,7 @@ export const expoLevels: WebLevel[] = [
     prerequisites:
       "Installe Node.js et prépare Expo Go compatible SDK 54 sur un téléphone ou un émulateur.",
     outcomes: [
+      "Comprendre l'architecture React Native et ce qui différencie Expo des autres approches.",
       "Créer une interface avec View, Text, Image et un bouton.",
       "Aligner les éléments grâce à Flexbox.",
       "Relier un champ et des compteurs à useState.",
@@ -651,6 +748,8 @@ export const expoLevels: WebLevel[] = [
     id: "intermediaire",
     title: "Intermédiaire",
     subtitle: "FlatList, navigation et Context API",
+    definition:
+      "React Navigation organise les écrans en piles et en onglets. Context API partage des données entre composants sans passer par tous les niveaux intermédiaires.",
     objective:
       "Affiche des collections et partage des données entre les écrans natifs.",
     color: levelColors[1],
@@ -667,6 +766,8 @@ export const expoLevels: WebLevel[] = [
     id: "avance",
     title: "Avancé",
     subtitle: "Axios, stockage, Zustand et Reanimated",
+    definition:
+      "Axios gère les requêtes HTTP. AsyncStorage et SecureStore persistent les données localement. Zustand organise l'état global. Reanimated anime les transitions avec des performances natives.",
     objective:
       "Connecte une application à un serveur, persiste une préférence et anime des données.",
     color: levelColors[2],

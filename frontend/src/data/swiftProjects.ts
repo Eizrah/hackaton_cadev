@@ -1,438 +1,494 @@
-import { swiftFiles, swiftPath } from "./swiftAuthoring";
+import { swiftFiles } from "./swiftAuthoring";
 import type { WebProject } from "./webCourseTypes";
 
-export const swiftBasics = "Exemples/Bases.swift";
+// Code pour les variables Swift
+const swiftBasics = `// VARIABLES ET CONSTANTES EN SWIFT
+// var = variable (peut changer), let = constante (ne peut pas changer)
 
-const basics = String.raw`struct Profil {
-    let nom: String
-    var domaine: String
-    var portfolio: String?
-}
+// Déclaration avec inférence de type
+var nom = "Alice"              // String déduit
+var age = 25                   // Int déduit
+var taille = 1.75              // Double déduit
+var estEtudiant = true         // Bool déduit
 
-func lienDuProfil(_ profil: Profil) -> String {
-    guard let adresse = profil.portfolio, !adresse.isEmpty else {
-        return "Portfolio à renseigner"
-    }
-    return adresse
-}
+// Constantes avec let (préférée en Swift)
+let pi = 3.14159
+let maxUtilisateurs = 100
 
-var profil = Profil(nom: "Soa", domaine: "Mobile", portfolio: nil)
-profil.domaine = "Développement iOS"
+// Modification
+nom = "Charlie"                // OK (var)
+// pi = 3.14                   // ERREUR (let ne peut pas changer)
 
-let niveau = "débutant"
-switch niveau {
-case "débutant":
-    print("Bienvenue dans le parcours Swift.")
-default:
-    print("Prêt pour la suite.")
-}
+// Affichage
+print("Nom: \\(nom)")
+print("Age: \\(age) ans")
 
-if let adresse = profil.portfolio {
-    print("Voir le portfolio : \(adresse)")
+// Optionals (valeurs pouvant être nil)
+var email: String? = nil       // Optional String
+
+// Unwrapping sécurisé
+if let emailValide = email {
+    print("Email: \\(emailValide)")
 } else {
-    print("\(profil.nom) · \(profil.domaine)")
+    print("Pas d'email")
 }
-print(lienDuProfil(profil))
-`;
 
-const profileView = String.raw`import SwiftUI
+// Nil coalescing
+let affichage = email ?? "Non renseigné"
+print(affichage)`;
+
+// Carte de visite
+const identityCard = `import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.08, green: 0.22, blue: 0.43), .indigo],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            ScrollView {
-                VStack(spacing: 18) {
-                    Image(systemName: "person.crop.circle.fill")
-                        .resizable()
-                        .scaledToFit()
-                        .padding(12)
-                        .frame(width: 104, height: 104)
-                        .background(Color.white.opacity(0.14), in: Circle())
-                        .overlay(Circle().strokeBorder(Color.white.opacity(0.7), lineWidth: 2))
-                        .accessibilityHidden(true)
-
-                    Text("Soa Rakoto")
-                        .font(.largeTitle.bold())
-                        .accessibilityAddTraits(.isHeader)
-                    Text("Développeuse iOS")
-                        .font(.title3.weight(.medium))
-                        .foregroundStyle(Color(red: 0.78, green: 0.90, blue: 1))
-
-                    Label("Toamasina · Madagascar", systemImage: "location")
-                        .font(.subheadline)
-                    Text("J’aime transformer une idée en application.")
-                        .multilineTextAlignment(.center)
-                }
-                .foregroundStyle(.white)
-                .padding(24)
-                .frame(maxWidth: 420)
-                .background(Color.white.opacity(0.09), in: RoundedRectangle(cornerRadius: 28))
-                .padding(24)
-                .frame(maxWidth: .infinity)
+        VStack(spacing: 20) {
+            Image(systemName: "person.circle.fill")
+                .font(.system(size: 100))
+                .foregroundColor(.blue)
+            
+            Text("Alice Dupont")
+                .font(.title)
+                .fontWeight(.bold)
+            
+            Text("Développeuse iOS")
+                .font(.headline)
+                .foregroundColor(.gray)
+            
+            Divider()
+                .padding(.horizontal, 50)
+            
+            VStack(alignment: .leading, spacing: 12) {
+                ContactRow(icon: "envelope.fill", text: "alice@example.com")
+                ContactRow(icon: "phone.fill", text: "+33 6 12 34 56 78")
+                ContactRow(icon: "mappin.circle.fill", text: "Paris, France")
             }
-            .defaultScrollAnchor(.center)
+            
+            Spacer()
+        }
+        .padding()
+    }
+}
+
+struct ContactRow: View {
+    let icon: String
+    let text: String
+    
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(.blue)
+                .frame(width: 30)
+            Text(text)
+                .font(.body)
         }
     }
 }
-`;
 
-const pointsView = String.raw`import SwiftUI
+#Preview {
+    ContentView()
+}`;
+
+// Compteur
+const counter = `import SwiftUI
 
 struct ContentView: View {
-    @State private var score = 0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
+    @State private var count = 0
+    
     var body: some View {
-        ScrollView {
-            VStack(spacing: 22) {
-                Text("Défi des points")
-                    .font(.largeTitle.bold())
-                    .accessibilityAddTraits(.isHeader)
-                Text("Modifie le nombre avec les boutons.")
-                    .foregroundStyle(.secondary)
-                Text(score.formatted())
-                    .font(.system(.largeTitle, design: .rounded).weight(.heavy))
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                    .accessibilityLabel("Score : \(score)")
-                    .padding(28)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 24))
-                HStack {
-                    Button("−1") { change(by: -1) }
-                        .accessibilityLabel("Soustraire un point")
-                    Button("+1") { change(by: 1) }
-                        .accessibilityLabel("Ajouter un point")
+        VStack(spacing: 30) {
+            Text("Compteur")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+            
+            Text("\\(count)")
+                .font(.system(size: 80, weight: .bold))
+                .foregroundColor(count >= 0 ? .green : .red)
+            
+            HStack(spacing: 20) {
+                Button(action: { count -= 1 }) {
+                    Label("Décrémenter", systemImage: "minus.circle.fill")
+                        .font(.headline)
+                        .padding()
+                        .background(Color.red.opacity(0.2))
+                        .cornerRadius(10)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                
+                Button(action: { count = 0 }) {
+                    Label("Reset", systemImage: "arrow.counterclockwise")
+                        .font(.headline)
+                        .padding()
+                        .background(Color.gray.opacity(0.2))
+                        .cornerRadius(10)
+                }
+                
+                Button(action: { count += 1 }) {
+                    Label("Incrémenter", systemImage: "plus.circle.fill")
+                        .font(.headline)
+                        .padding()
+                        .background(Color.green.opacity(0.2))
+                        .cornerRadius(10)
+                }
             }
-            .padding(24)
-            .frame(maxWidth: 440)
-            .frame(maxWidth: .infinity)
+            
+            Spacer()
         }
-        .defaultScrollAnchor(.center)
-    }
-
-    private func change(by amount: Int) {
-        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.22)) {
-            score += amount
-        }
+        .padding()
     }
 }
-`;
 
+#Preview {
+    ContentView()
+}`;
+
+// Projets débutants
 export const swiftBeginnerProjects: WebProject[] = [
   {
-    id: "carte-visite-swiftui",
-    title: "La carte de visite virtuelle",
-    description:
-      "Crée une carte en SwiftUI avec un portrait circulaire, un nom et un arrière-plan personnalisé.",
-    minutes: 70,
+    id: "carte-visite-swift",
+    title: "La carte de visite iOS",
+    description: "Crée un écran SwiftUI centré avec une image et des informations de contact.",
+    minutes: 75,
     requirements: [
-      "Affiche un portrait circulaire, le nom et le métier dans une VStack.",
-      "Place un fond personnalisé derrière la carte avec ZStack.",
-      "Adapte les textes à ton profil et teste l’écran avec une taille de texte élevée.",
+      "Utilise VStack pour disposer les éléments verticalement.",
+      "Affiche une image SF Symbol comme avatar.",
+      "Crée un composant ContactRow réutilisable.",
     ],
     hints: [
-      "Text et Label décrivent le contenu. Image(systemName:) charge une icône SF Symbols.",
-      "Une ZStack superpose le dégradé et le contenu. Les modificateurs s’appliquent dans leur ordre d’écriture.",
-      "Le script Exemples/Bases.swift permet d’essayer les types et les optionnels dans un terminal.",
+      "Image(systemName:) affiche des icônes SF Symbols gratuites.",
+      ".font() et .foregroundColor() stylisent les textes.",
+      "Spacer() pousse le contenu vers le haut.",
     ],
     files: swiftFiles("Carte de visite", {
       id: "carte",
-      view: profileView,
-      notes:
-        "Remplace le nom et le domaine dans ContentView.swift. Dans l’exemple portable, modifie la valeur optionnelle du portfolio. Avec Swift installé, exécute swift Exemples/Bases.swift sur Mac, Windows ou Linux. Sur Windows, suis https://www.swift.org/install/windows/ pour installer le compilateur et ses outils.",
-      extra: { [swiftBasics]: basics },
+      main: identityCard,
+      notes: "Personnalise le nom et les informations de contact dans ContentView.swift.",
+      extra: { "Variables.swift": swiftBasics },
     }),
   },
   {
-    id: "compteur-points-swiftui",
-    title: "Le compteur de points",
-    description:
-      "Ajoute ou retire des points en faisant réagir une vue SwiftUI à son état local.",
-    minutes: 65,
+    id: "compteur-swift",
+    title: "Le compteur interactif",
+    description: "Utilise @State pour gérer un compteur qui change avec des boutons.",
+    minutes: 60,
     requirements: [
-      "Affiche le score dans un texte central lisible.",
-      "Place les deux boutons dans une HStack et modifie le score à chaque appui.",
-      "Anime le changement de nombre et essaie l’option Réduire les animations.",
+      "Déclare une variable @State private var count = 0.",
+      "Affiche le compteur avec Text.",
+      "Crée 3 boutons : incrémenter, reset, décrémenter.",
     ],
     hints: [
-      "Déclare le score avec @State private var score = 0.",
-      "Utilise une fonction commune qui reçoit +1 ou −1.",
-      "Applique contentTransition(.numericText()) puis change le score dans withAnimation.",
+      "@State rend la variable mutable dans la vue.",
+      "Button(action: { count += 1 }) modifie l'état au clic.",
     ],
-    files: swiftFiles("Compteur de points", {
-      id: "points",
-      view: pointsView,
-      notes:
-        "Appuie deux fois sur +1 et une fois sur −1. Le score attendu est 1. Active Réduire les animations dans Réglages → Accessibilité → Animation et recommence.",
+    files: swiftFiles("Compteur", {
+      id: "compteur",
+      main: counter,
+      notes: "Modifie les actions des boutons pour tester différentes opérations.",
+      extra: { "Variables.swift": swiftBasics },
     }),
   },
 ];
 
-const taskModel = `import Foundation
+// Todo List
+const todoModel = `import Foundation
 
-struct TodoTask: Identifiable {
+struct TodoItem: Identifiable {
     let id = UUID()
-    let title: String
-    var completed = false
-}
-`;
+    var title: String
+    var isCompleted: Bool = false
+}`;
 
-const todoViewModel = `import Combine
-import Foundation
+const todoList = `import SwiftUI
 
-@MainActor
-final class TodoViewModel: ObservableObject {
-    @Published private(set) var tasks = [
-        TodoTask(title: "Ouvrir le projet dans Xcode"),
-        TodoTask(title: "Créer ma première tâche"),
-    ]
-
-    func add(_ input: String) {
-        let title = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !title.isEmpty else { return }
-        tasks.append(TodoTask(title: title))
-    }
-
-    func toggle(_ id: UUID) {
-        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
-        tasks[index].completed.toggle()
-    }
-
-    func remove(at offsets: IndexSet) {
-        for index in offsets.reversed() {
-            tasks.remove(at: index)
-        }
-    }
-}
-`;
-
-const todoView = String.raw`import SwiftUI
-
-@MainActor
 struct ContentView: View {
-    @StateObject private var model = TodoViewModel()
-    @State private var title = ""
-
+    @State private var todos: [TodoItem] = []
+    @State private var showingAddSheet = false
+    
     var body: some View {
-        NavigationStack {
+        NavigationView {
             List {
-                Section("Nouvelle tâche") {
-                    TextField("Titre de la tâche", text: $title)
-                        .onSubmit(addTask)
-                    Button("Ajouter", action: addTask)
-                        .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-                Section("Mes tâches") {
-                    if model.tasks.isEmpty {
-                        Text("Ajoute une tâche pour commencer.")
-                            .foregroundStyle(.secondary)
-                    }
-                    ForEach(model.tasks) { task in
-                        NavigationLink(value: task.id) {
-                            Label(task.title, systemImage: task.completed ? "checkmark.circle.fill" : "circle")
-                                .accessibilityValue(task.completed ? "Terminée" : "À faire")
+                ForEach($todos) { $todo in
+                    HStack {
+                        Button(action: { todo.isCompleted.toggle() }) {
+                            Image(systemName: todo.isCompleted ? "checkmark.circle.fill" : "circle")
+                                .foregroundColor(todo.isCompleted ? .green : .gray)
                         }
+                        
+                        Text(todo.title)
+                            .strikethrough(todo.isCompleted)
+                        
+                        Spacer()
                     }
-                    .onDelete(perform: model.remove)
                 }
+                .onDelete(perform: deleteTodo)
             }
             .navigationTitle("Mes tâches")
-            .toolbar { EditButton() }
-            .navigationDestination(for: UUID.self) { id in
-                TaskDetail(id: id, model: model)
+            .toolbar {
+                Button(action: { showingAddSheet = true }) {
+                    Image(systemName: "plus")
+                }
+            }
+            .sheet(isPresented: $showingAddSheet) {
+                AddTodoSheet(onAdd: addTodo)
             }
         }
     }
-
-    private func addTask() {
-        model.add(title)
-        title = ""
+    
+    func addTodo(title: String) {
+        todos.append(TodoItem(title: title))
+        showingAddSheet = false
+    }
+    
+    func deleteTodo(at offsets: IndexSet) {
+        todos.remove(atOffsets: offsets)
     }
 }
 
-@MainActor
-struct TaskDetail: View {
-    let id: UUID
-    @ObservedObject var model: TodoViewModel
-
+struct AddTodoSheet: View {
+    @Environment(\\.dismiss) var dismiss
+    @State private var title = ""
+    let onAdd: (String) -> Void
+    
     var body: some View {
-        Form {
-            if let task = model.tasks.first(where: { $0.id == id }) {
-                Section("Titre") {
-                    Text(task.title)
+        NavigationView {
+            Form {
+                TextField("Titre de la tâche", text: $title)
+            }
+            .navigationTitle("Nouvelle tâche")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Annuler") { dismiss() }
                 }
-                Section("Suivi") {
-                    Text(task.completed ? "Terminée" : "À faire")
-                    Button(task.completed ? "Remettre à faire" : "Marquer comme terminée") {
-                        model.toggle(id)
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Ajouter") {
+                        if !title.isEmpty {
+                            onAdd(title)
+                            dismiss()
+                        }
                     }
                 }
-            } else {
-                Text("Cette tâche a été retirée.")
             }
         }
-        .navigationTitle("Détail de la tâche")
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
-`;
 
-const expenseModel = `import Foundation
+#Preview {
+    ContentView()
+}`;
 
-struct Expense: Identifiable {
-    let id = UUID()
-    let label: String
-    let amount: Int
-}
-`;
+// Panier
+const productModel = `import Foundation
 
-const expenseBook = `import Combine
-import Foundation
+struct Product: Identifiable, Codable {
+    let id: Int
+    let title: String
+    let price: Double
+    let description: String
+}`;
 
-@MainActor
-final class ExpenseBook: ObservableObject {
-    @Published private(set) var expenses: [Expense] = []
+const cartView = `import SwiftUI
 
-    var total: Int {
-        expenses.reduce(0) { $0 + $1.amount }
-    }
-
-    func add(label: String, amount: Int) -> Bool {
-        let cleanedLabel = label.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanedLabel.isEmpty, (1...1_000_000_000).contains(amount) else { return false }
-        expenses.append(Expense(label: cleanedLabel, amount: amount))
-        return true
-    }
-
-    func remove(at offsets: IndexSet) {
-        for index in offsets.reversed() {
-            expenses.remove(at: index)
-        }
-    }
-}
-`;
-
-const expenseView = String.raw`import SwiftUI
-
-@MainActor
 struct ContentView: View {
-    @StateObject private var book = ExpenseBook()
-    @State private var label = ""
-    @State private var amount = ""
-    @State private var inputError = false
-
+    @State private var cartItems: [Product] = []
+    
+    var totalPrice: Double {
+        cartItems.reduce(0) { $0 + $1.price }
+    }
+    
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Total") {
-                    Text("\(book.total.formatted()) Ar")
-                        .font(.title.bold())
-                        .monospacedDigit()
-                }
-
-                Section("Nouvelle dépense") {
-                    TextField("Intitulé", text: $label)
-                    TextField("Montant entier en ariary", text: $amount)
-                        .keyboardType(.numberPad)
-                    Button("Ajouter la dépense", action: add)
-                    if inputError {
-                        Text("Saisis un intitulé et un montant de 1 à 1 000 000 000 Ar.")
-                            .foregroundStyle(.red)
+        NavigationView {
+            VStack {
+                if cartItems.isEmpty {
+                    EmptyCartView()
+                } else {
+                    List {
+                        ForEach(cartItems) { product in
+                            HStack {
+                                Text(product.title)
+                                Spacer()
+                                Text(String(format: "%.2f €", product.price))
+                            }
+                        }
+                        .onDelete(perform: removeFromCart)
+                        
+                        Section {
+                            HStack {
+                                Text("Total")
+                                    .font(.headline)
+                                Spacer()
+                                Text(String(format: "%.2f €", totalPrice))
+                                    .font(.title2)
+                                    .foregroundColor(.green)
+                            }
+                        }
                     }
-                }
-
-                Section("Historique de la session") {
-                    if book.expenses.isEmpty {
-                        Text("Aucune dépense saisie.")
-                            .foregroundStyle(.secondary)
-                    }
-                    ForEach(book.expenses) { expense in
-                        LabeledContent(expense.label, value: "\(expense.amount.formatted()) Ar")
-                    }
-                    .onDelete(perform: book.remove)
                 }
             }
-            .navigationTitle("Mes dépenses")
-            .toolbar { EditButton() }
+            .navigationTitle("Mon panier")
         }
     }
-
-    private func add() {
-        guard let amountValue = Int(amount.trimmingCharacters(in: .whitespacesAndNewlines)),
-              book.add(label: label, amount: amountValue) else {
-            inputError = true
-            return
-        }
-        inputError = false
-        label = ""
-        amount = ""
+    
+    func removeFromCart(at offsets: IndexSet) {
+        cartItems.remove(atOffsets: offsets)
     }
 }
-`;
 
+struct EmptyCartView: View {
+    var body: some View {
+        VStack {
+            Image(systemName: "cart")
+                .font(.system(size: 80))
+                .foregroundColor(.gray)
+            Text("Votre panier est vide")
+        }
+    }
+}
+
+#Preview {
+    ContentView()
+}`;
+
+// Projets intermédiaires
 export const swiftIntermediateProjects: WebProject[] = [
   {
-    id: "taches-swiftui-mvvm",
-    title: "Le gestionnaire de tâches",
-    description:
-      "Crée une liste SwiftUI pilotée par un ViewModel et ouvre les détails par la navigation native.",
-    minutes: 95,
+    id: "todo-list-swift",
+    title: "La liste de tâches",
+    description: "Gère une liste de tâches avec ajout et suppression.",
+    minutes: 90,
     requirements: [
-      "Ajoute une tâche et affiche toutes les tâches dans une List.",
-      "Ouvre le détail d’une tâche via NavigationLink.",
-      "Modifie son état depuis le détail et retrouve-le en revenant à la liste.",
+      "Affiche les tâches avec List et ForEach.",
+      "Implémente l'ajout avec un sheet modal.",
+      "Active swipe-to-delete avec .onDelete.",
     ],
     hints: [
-      "Donne un UUID à chaque tâche pour que SwiftUI suive la bonne ligne après un ajout ou une suppression.",
-      "La liste crée le ViewModel avec @StateObject. Le détail observe la même instance avec @ObservedObject.",
-      "Passe l’identifiant de la tâche au détail pour lire sa valeur actuelle dans le ViewModel.",
+      "TodoItem doit être Identifiable pour ForEach.",
+      ".sheet(isPresented:) affiche un modal.",
     ],
-    files: swiftFiles("Mes tâches", {
-      id: "taches",
-      view: todoView,
-      notes:
-        "Ajoute « Tester la navigation », ouvre la ligne, marque-la comme terminée puis reviens. Supprime une tâche avec le bouton Modifier ou par un balayage. Le tableau vit en mémoire pendant la session.",
-      extra: {
-        [`${swiftPath}/TodoTask.swift`]: taskModel,
-        [`${swiftPath}/TodoViewModel.swift`]: todoViewModel,
-      },
+    files: swiftFiles("Todo List", {
+      id: "todo",
+      main: todoList,
+      notes: "Teste l'ajout et la suppression. Le modèle TodoItem est dans TodoModel.swift.",
+      extra: { "TodoModel.swift": todoModel },
     }),
   },
   {
-    id: "depenses-swiftui-mvvm",
-    title: "Le suivi de dépenses",
-    description:
-      "Ajoute des dépenses en ariary. Le ViewModel calcule le total à partir de la liste.",
-    minutes: 90,
+    id: "panier-swift",
+    title: "Le panier e-commerce",
+    description: "Affiche un panier avec calcul du total.",
+    minutes: 85,
     requirements: [
-      "Ajoute deux dépenses avec un libellé et un montant entier positif.",
-      "Affiche leur total puis vérifie qu’il se met à jour après une suppression.",
-      "Traite un intitulé vide ou un montant invalide avec un message lisible.",
+      "Calcule le total avec reduce.",
+      "Gère l'état vide avec une vue conditionnelle.",
     ],
     hints: [
-      "La vue garde le texte des champs avec @State.",
-      "ExpenseBook valide les montants, conserve la liste et expose une propriété calculée total.",
-      "Utilise les identifiants stables pour supprimer la dépense choisie.",
+      "cartItems.reduce(0) { $0 + $1.price } additionne les prix.",
+      "if cartItems.isEmpty affiche une vue différente.",
     ],
-    files: swiftFiles("Mes dépenses", {
-      id: "depenses",
-      view: expenseView,
-      notes:
-        "Saisis « Transport » à 1 200 Ar puis « Cahier » à 800 Ar, en entrant les chiffres sans espaces dans le champ. Le total attendu est 2 000 Ar. Retire le transport pour obtenir 800 Ar. La liste est conservée pendant la session.",
-      extra: {
-        [`${swiftPath}/Expense.swift`]: expenseModel,
-        [`${swiftPath}/ExpenseBook.swift`]: expenseBook,
-      },
+    files: swiftFiles("Panier", {
+      id: "panier",
+      main: cartView,
+      notes: "Le panier démarre vide. Le modèle Product est dans ProductModel.swift.",
+      extra: { "ProductModel.swift": productModel },
+    }),
+  },
+];
+
+// Application météo
+const weatherService = `import Foundation
+
+class WeatherService {
+    func fetchWeather(for city: String) async throws -> WeatherResponse {
+        let url = URL(string: "https://api.openweathermap.org/data/2.5/weather?q=\\(city)&units=metric")!
+        let (data, _) = try await URLSession.shared.data(from: url)
+        return try JSONDecoder().decode(WeatherResponse.self, from: data)
+    }
+}
+
+struct WeatherResponse: Codable {
+    let name: String
+    let main: Main
+    
+    struct Main: Codable {
+        let temp: Double
+        let humidity: Int
+    }
+}`;
+
+const weatherView = `import SwiftUI
+
+struct ContentView: View {
+    @StateObject private var viewModel = WeatherViewModel()
+    @State private var cityName = ""
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                TextField("Entrez une ville", text: $cityName)
+                    .textFieldStyle(.roundedBorder)
+                    .padding()
+                
+                Button("Rechercher") {
+                    Task {
+                        await viewModel.searchWeather(for: cityName)
+                    }
+                }
+                
+                if viewModel.isLoading {
+                    ProgressView()
+                } else if let weather = viewModel.weather {
+                    Text(weather.name)
+                        .font(.largeTitle)
+                    Text("\\(Int(weather.main.temp))°C")
+                        .font(.system(size: 60))
+                }
+                
+                Spacer()
+            }
+            .navigationTitle("Météo")
+        }
+    }
+}
+
+@MainActor
+class WeatherViewModel: ObservableObject {
+    @Published var weather: WeatherResponse?
+    @Published var isLoading = false
+    
+    private let service = WeatherService()
+    
+    func searchWeather(for city: String) async {
+        isLoading = true
+        do {
+            weather = try await service.fetchWeather(for: city)
+        } catch {}
+        isLoading = false
+    }
+}
+
+#Preview {
+    ContentView()
+}`;
+
+// Projets avancés
+export const swiftAdvancedProjects: WebProject[] = [
+  {
+    id: "meteo-swift",
+    title: "L'application météo",
+    description: "Récupère la météo d'une ville avec URLSession.",
+    minutes: 120,
+    requirements: [
+      "Implémente WeatherService avec async/await.",
+      "Crée WeatherViewModel avec @Published.",
+      "Utilise @StateObject dans la vue principale.",
+    ],
+    hints: [
+      "URLSession.shared.data(from:) envoie la requête HTTP.",
+      "JSONDecoder().decode() parse le JSON.",
+    ],
+    files: swiftFiles("Météo", {
+      id: "meteo",
+      main: weatherView,
+      notes: "Le ViewModel utilise @Published pour notifier les changements.",
+      extra: { "WeatherService.swift": weatherService },
     }),
   },
 ];

@@ -17,42 +17,70 @@ import re
 
 from langchain_core.tools import tool
 
-# ─── Liste noire de mots interdits ────────────────────────────────────────────
+# ─── Liste noire de mots/expressions interdits ────────────────────────────────
 # Mots clairement inappropriés pour une plateforme professionnelle de devs.
 # On garde cette liste simple — le LLM gère les cas nuancés.
+# 
+# IMPORTANT : Ces patterns sont détectés comme MOTS COMPLETS avec regex \b
+# pour éviter de bloquer "conversation" à cause de "con", etc.
+
+import re
+
 MOTS_INTERDITS = [
     # ── insultes directes (français) ──
-    "idiot", "imbécile", "connard", "abruti", "crétin",
-    "salaud", "enculé", "fils de pute", "bâtard", "con",
-    "conne", "débile", "attardé", "mongol", "bouffon",
+    r"\bidiot\b", r"\bimbécile\b", r"\bconnard\b", r"\babruti\b", r"\bcrétin\b",
+    r"\bsalaud\b", r"\benculé\b", r"fils de pute", r"\bbâtard\b",
+    r"\bcon\b", r"\bconne\b", r"\bdébile\b", r"\battardé\b", 
+    r"\bmongol\b", r"\bbouffon\b", r"\benfoiré\b", r"\bputain\b",
 
     # ── insultes directes (anglais) ──
-    "idiot", "moron", "asshole", "bastard", "dickhead",
-    "dumbass", "retard", "loser", "jerk", "scumbag",
+    r"\bmoron\b", r"\basshole\b", r"\bbastard\b", r"\bdickhead\b",
+    r"\bdumbass\b", r"\bretard\b", r"\bloser\b", r"\bjerk\b", r"\bscumbag\b",
+    r"\bfuck\b", r"\bshit\b", r"\bbitch\b",
 
-    # ── harcèlement / violence (français) ──
-    "suicide", "tuer", "mourir", "mort", "crève",
-    "je vais te tuer", "tu vas mourir",
+    # ── incitation au suicide / violence (français) ──
+    r"suicide-toi", r"suicid[eé]-toi", r"va te suicider", r"vas te suicider",
+    r"tue-toi", r"va te tuer", r"vas te tuer",
+    r"je vais te tuer", r"tu vas mourir", r"va crever", r"vas crever",
+    r"crève", r"\bcrever\b",
 
-    # ── harcèlement / violence (anglais) ──
-    "kill yourself", "kys", "die", "go die",
-    "i will kill", "you will die",
+    # ── incitation au suicide / violence (anglais) ──
+    r"kill yourself", r"\bkys\b", r"go die", r"you should die",
+    r"i will kill you", r"you will die", r"go kill yourself",
 
-    # ── contenu haineux (français) ──
-    "raciste", "nazi", "terroriste", "islamiste",
-    "antisémite", "xénophobe",
-
-    # ── contenu haineux (anglais) ──
-    "racist", "nazism", "terrorist", "white supremacy",
-    "antisemitic", "xenophobic", "nigger", "faggot",
+    # ── contenu haineux / discrimination (français) ──
+    r"\bnazi\b", r"\bnazis\b", r"\bnéonazi\b",
+    r"sale (arabe|noir|juif|musulman|africain|asiatique)",
+    r"(arabes|noirs|juifs|musulmans|africains|asiatiques) de merde",
+    r"retourne dans ton pays",
+    r"\bantisémite\b", r"\bantisémites\b",
+    r"(heil hitler|sieg heil)",
+    
+    # ── contenu haineux / discrimination (anglais) ──
+    r"\bnigger\b", r"\bnigga\b", r"\bfaggot\b", r"\bfag\b",
+    r"white supremacy", r"white power",
+    r"\bnazism\b", r"terrorist scum",
+    r"go back to your country",
+    
+    # ── contenu sexuel explicite / pornographique (français) ──
+    r"porn(o|ographie)", r"site (porno|pornographique|xxx)",
+    r"sexe gratuit", r"cam(girl|boy)s?\b",
+    r"escort(es?)?\b.*sexe", r"prostitution",
+    
+    # ── contenu sexuel explicite / pornographique (anglais) ──
+    r"free porn", r"xxx videos", r"\bpornh", r"sex videos",
+    r"nude pics", r"nudes for",
 ]
 
 @tool
 def check_mots_interdits(texte: str) -> dict:
     """
-    Vérifie si le texte contient des mots explicitement interdits.
+    Vérifie si le texte contient des mots/expressions explicitement interdits.
+    Utilise des regex avec limites de mots (\b) pour éviter les faux positifs.
+    Par exemple, "con" est détecté seulement s'il est seul, pas dans "conversation".
+    
     Utilise cet outil en premier pour un filtrage rapide avant l'analyse LLM.
-    Retourne la liste des mots trouvés et un booléen indiquant si le contenu
+    Retourne la liste des patterns trouvés et un booléen indiquant si le contenu
     doit être bloqué immédiatement.
     """
     texte_lower = texte.casefold()
@@ -63,12 +91,12 @@ def check_mots_interdits(texte: str) -> dict:
     ]
 
     return {
-        # True si des mots interdits ont été trouvés
-        "contient_mots_interdits": len(mots_trouves) > 0,
-        # liste des mots trouvés pour expliquer le refus
-        "mots_trouves": mots_trouves,
-        # nombre de mots interdits détectés
-        "nombre": len(mots_trouves)
+        # True si des patterns interdits ont été trouvés
+        "contient_mots_interdits": len(patterns_trouves) > 0,
+        # liste des patterns trouvés pour expliquer le refus
+        "mots_trouves": patterns_trouves,
+        # nombre de patterns interdits détectés
+        "nombre": len(patterns_trouves)
     }
 
 @tool

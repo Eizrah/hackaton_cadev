@@ -20,6 +20,106 @@ const docs = "https://developer.android.com/develop/ui/compose/";
 
 const beginner: WebLevel["chapters"] = [
   {
+    id: "installation-compose",
+    title: "Installation et configuration Jetpack Compose",
+    description:
+      "Installe Android Studio, configure ton environnement et comprends ce qui rend Jetpack Compose unique pour le développement Android.",
+    lessons: [
+      lesson({
+        id: "introduction-compose",
+        title: "Qu'est-ce que Jetpack Compose et comment l'installer ?",
+        minutes: 30,
+        summary:
+          "Jetpack Compose est la boîte à outils moderne d'Android pour construire des interfaces déclaratives en Kotlin. Elle remplace le système de vues XML et permet de décrire l'UI comme des fonctions.",
+        sections: [
+          section(
+            "Jetpack Compose : pourquoi c'est différent",
+            "Compose adopte une approche déclarative : tu décris CE QUE l'écran doit afficher selon l'état, pas COMMENT mettre à jour chaque vue manuellement.",
+            [
+              "Déclaratif : Une fonction @Composable décrit l'UI pour un état donné. Compose recalcule les parties qui en dépendent quand l'état change.",
+              "Kotlin-first : Compose est conçu pour Kotlin. Les coroutines, lambdas et extensions du langage sont des outils naturels.",
+              "Moins de code : Plus de findViewById, setText ou setOnClickListener. L'UI et la logique sont colocalisées dans des fonctions.",
+              "Prévisualisation instantanée : @Preview affiche le composable directement dans Android Studio sans lancer un émulateur.",
+              "Interopérabilité : Compose fonctionne côte à côte avec les vues XML dans les projets existants.",
+              "Material 3 inclus : Material Design 3 est la bibliothèque de composants par défaut de Compose.",
+            ],
+          ),
+          section(
+            "Différences avec le système de vues XML",
+            "Le système de vues XML impose de séparer layout (XML) et logique (Java/Kotlin), et de synchroniser l'état manuellement.",
+            [
+              "Vues XML : Tu gonfles un layout XML, récupères chaque vue par son ID et mets à jour ses propriétés à la main.",
+              "Compose : Une seule fonction Kotlin décrit tout. Quand l'état change, Compose ne met à jour que les composables concernés (recomposition).",
+              "RecyclerView vs LazyColumn : LazyColumn remplace RecyclerView avec beaucoup moins de code (plus d'Adapter ni ViewHolder).",
+              "Fragments : Compose peut remplacer les fragments pour la navigation avec le composant Navigation Compose.",
+              "Avantage Compose : Moins de bugs liés à la désynchronisation entre l'état et l'UI. Code plus testable.",
+            ],
+          ),
+          section(
+            "Prérequis système",
+            "Le développement Jetpack Compose nécessite Android Studio et un JDK. Il fonctionne sur Windows, macOS et Linux.",
+            [
+              "Android Studio : Hedgehog (2023.1.1) ou supérieur. Télécharge depuis developer.android.com/studio.",
+              "JDK : Android Studio inclut son propre JDK (JDK 17). Pas besoin d'en installer un séparément.",
+              "RAM : 8 GB minimum, 16 GB recommandés pour faire tourner un émulateur confortablement.",
+              "Disque : Minimum 8 GB libres pour Android Studio, le SDK Android et un émulateur.",
+              "Kotlin : Compose requiert Kotlin 1.9+. Android Studio configure automatiquement la bonne version.",
+            ],
+          ),
+          section(
+            "Installation d'Android Studio",
+            "Android Studio est l'IDE officiel pour le développement Android. Il inclut l'émulateur, le SDK Manager et les outils Gradle.",
+            [
+              "Télécharge Android Studio depuis developer.android.com/studio et lance l'installeur.",
+              "Première ouverture : L'assistant Setup Wizard installe le SDK Android et crée un premier émulateur.",
+              "SDK Manager (Tools > SDK Manager) : Installe le SDK 35 (Android 15). Coche aussi les Build-Tools et Platform-Tools.",
+              "Émulateur : Tools > Device Manager > Create Virtual Device. Choisis un Pixel récent avec l'API 35.",
+              "Vérification : Crée un nouveau projet (Empty Activity), attends la synchronisation Gradle et lance-le sur l'émulateur.",
+            ],
+          ),
+          section(
+            "Créer un nouveau projet Compose",
+            "Android Studio génère automatiquement un projet Compose configuré avec toutes les dépendances nécessaires.",
+            [
+              "File > New > New Project > Empty Activity (Compose). C'est le point de départ recommandé.",
+              "Kotlin DSL : Les projets Compose utilisent build.gradle.kts (Kotlin) plutôt que build.gradle (Groovy).",
+              "Dépendances clés dans build.gradle.kts : implementation(libs.androidx.compose.ui), implementation(libs.androidx.material3).",
+              "MainActivity : hérite de ComponentActivity et appelle setContent { } pour installer l'UI Compose.",
+              "Structure : app/src/main/java (Kotlin), app/src/main/res (ressources), AndroidManifest.xml (déclarations).",
+              "kotlin-compose plugin : active le compilateur Compose dans le fichier build.gradle.kts de l'app.",
+            ],
+          ),
+          section(
+            "Appareil physique vs émulateur",
+            "Tu peux tester tes applications sur un émulateur Android Studio ou sur un vrai téléphone Android.",
+            [
+              "Émulateur : Gratuit, intégré à Android Studio, supporte différentes versions d'Android. Peut être lent selon la machine.",
+              "Appareil physique : Plus rapide, comportement réel. Nécessite d'activer le Mode développeur et le Débogage USB dans les paramètres.",
+              "Mode développeur : Paramètres > À propos du téléphone > appuie 7 fois sur Numéro de version. Puis Paramètres > Options développeur > Débogage USB.",
+              "flutter devices dans le terminal liste les appareils disponibles. Android Studio les affiche dans la barre d'outils.",
+              "Wireless debugging (Android 11+) : Tu peux déboguer sans câble USB via le même réseau Wi-Fi.",
+            ],
+          ),
+        ],
+        files: projectExample(profile, `${composePath}/MainActivity.kt`),
+        task: "Installe Android Studio, crée un nouveau projet Empty Activity (Compose), lance-le sur l'émulateur. Localise MainActivity.kt et repère setContent { }. Modifie le texte dans le composable et observe la prévisualisation @Preview se mettre à jour.",
+        takeaway:
+          "Jetpack Compose est déclaratif : tu décris l'UI avec des fonctions @Composable, sans manipuler des vues XML à la main. Android Studio est l'IDE officiel qui inclut l'émulateur, le SDK et les prévisualisations en temps réel.",
+        quiz: quiz(
+          "Quelle est la principale différence entre Compose et le système de vues XML ?",
+          [
+            "Compose utilise Java, les vues XML utilisent Kotlin",
+            "Compose est déclaratif : tu décris l'état souhaité. Les vues XML imposent de mettre à jour chaque vue manuellement",
+            "Compose fonctionne uniquement sur les appareils récents",
+          ],
+          1,
+          "Compose décrit CE QUE l'écran affiche pour un état donné. Avec les vues XML, tu dois synchroniser manuellement chaque vue avec les données.",
+        ),
+        link: docs + "setup-compose-dependencies-and-compiler",
+      }),
+    ],
+  },
+  {
     id: "compose-environnement",
     title: "Environnement et premiers composants",
     description: "Ouvre un projet Android et affiche tes premiers éléments.",
@@ -550,6 +650,108 @@ const advanced: WebLevel["chapters"] = [
     ],
   },
   {
+    id: "compose-reseau",
+    title: "Requêtes réseau et désérialisation JSON",
+    description: "Charge des données distantes depuis un ViewModel et affiche leur progression.",
+    lessons: [
+      lesson({
+        id: "retrofit-compose",
+        title: "Appeler une API REST avec Retrofit",
+        minutes: 25,
+        summary:
+          "Retrofit décrit chaque route HTTP comme une interface Kotlin. Le ViewModel lance la requête dans une coroutine et publie le résultat via StateFlow.",
+        sections: [
+          section(
+            "Décrire l'API et construire le client",
+            "Une interface Retrofit associe une fonction suspend à une route GET. Retrofit et Gson sont ajoutés dans build.gradle.kts.",
+            [
+              "Ajoute les dépendances : implementation(libs.retrofit) et implementation(libs.converter.gson) dans build.gradle.kts.",
+              "Déclare la permission INTERNET dans AndroidManifest.xml avec la balise uses-permission.",
+              "Retrofit.Builder().baseUrl(url).addConverterFactory(GsonConverterFactory.create()).build() construit le client.",
+              "Une data class Kotlin correspond aux champs JSON attendus. Gson remplit les propriétés à la réception.",
+              "Une fonction suspend dans l'interface Retrofit s'appelle depuis une coroutine sans bloquer le fil principal.",
+            ],
+          ),
+          section(
+            "Lancer la requête depuis le ViewModel",
+            "viewModelScope.launch démarre une coroutine liée au cycle de vie du ViewModel. L'état de chargement et le résultat sont publiés séparément.",
+            [
+              "Dispatchers.IO n'est pas nécessaire avec Retrofit : ses conversions sont déjà déplacées hors du fil principal.",
+              "Un sealed interface avec Loading, Success et Error représente les trois états possibles de la requête.",
+              "try/catch entoure l'appel pour transformer une exception réseau en état Error sans faire planter l'écran.",
+              "Le ViewModel garde le dernier résultat. Tourner l'écran ne relance pas la requête.",
+            ],
+          ),
+          section(
+            "Afficher le chargement, le résultat et l'erreur",
+            "Le composable collecte le StateFlow et choisit ce qu'il affiche selon l'état reçu.",
+            [
+              "collectAsStateWithLifecycle() lit le StateFlow en respectant le cycle de vie du composable.",
+              "CircularProgressIndicator s'affiche pendant l'état Loading.",
+              "Un bouton Réessayer dans l'état Error rappelle la fonction de chargement dans le ViewModel.",
+              "LazyColumn affiche la liste reçue dans l'état Success.",
+            ],
+          ),
+        ],
+        files: shop.files,
+        task: "Repère la fonction qui charge les produits dans le ViewModel. Coupe le réseau de l'émulateur et vérifie l'état d'erreur affiché.",
+        takeaway:
+          "Retrofit décrit l'API. Le ViewModel gère l'état de la requête. Le composable affiche loading, succès ou erreur.",
+        quiz: quiz(
+          "Où lancer l'appel Retrofit dans une architecture Compose MVVM ?",
+          ["Directement dans un @Composable", "Dans le ViewModel avec viewModelScope.launch", "Dans MainActivity"],
+          1,
+          "Le ViewModel isole la logique réseau et expose l'état via un StateFlow.",
+        ),
+        link: "https://square.github.io/retrofit/",
+      }),
+      lesson({
+        id: "kotlinx-serialization-compose",
+        title: "Désérialiser le JSON avec kotlinx.serialization",
+        minutes: 22,
+        summary:
+          "kotlinx.serialization génère le code de désérialisation à la compilation. L'annotation @Serializable marque les data classes qui correspondent à la réponse JSON.",
+        sections: [
+          section(
+            "Annoter les modèles et configurer le convertisseur",
+            "@Serializable sur une data class suffit pour que le plugin génère le désérialiseur.",
+            [
+              "Ajoute le plugin kotlinx-serialization dans build.gradle.kts et la dépendance kotlinx-serialization-json.",
+              "Remplace GsonConverterFactory par retrofit2-kotlinx-serialization-converter dans le client Retrofit.",
+              "@SerialName relie un champ JSON au nom de propriété Kotlin choisi.",
+              "Les propriétés avec valeur par défaut restent facultatives dans le JSON reçu.",
+              "kotlinx.serialization est plus rapide que Gson car il génère du code à la compilation au lieu d'utiliser la réflexion.",
+            ],
+          ),
+          section(
+            "Lire une réponse imbriquée",
+            "Un objet JSON peut contenir d'autres objets ou des listes. Chaque niveau correspond à une data class annotée.",
+            [
+              "Une data class peut contenir une autre data class annotée : le désérialiseur les parcourt récursivement.",
+              "List<Produit> désérialise directement un tableau JSON.",
+              "Si un champ peut être absent, déclare la propriété nullable : val description: String? = null.",
+            ],
+          ),
+        ],
+        files: shop.files,
+        task: "Repère la data class qui représente un produit. Ajoute un champ optionnel et vérifie que l'application fonctionne si ce champ est absent de la réponse.",
+        takeaway:
+          "@Serializable génère le code de désérialisation. Les data classes décrivent la structure JSON attendue.",
+        quiz: quiz(
+          "Quel avantage kotlinx.serialization a-t-il sur Gson ?",
+          [
+            "Il fonctionne uniquement avec Compose",
+            "Il génère le code à la compilation, sans réflexion à l'exécution",
+            "Il n'a pas besoin d'annotations",
+          ],
+          1,
+          "Le code de désérialisation est généré au moment de la compilation, ce qui évite la réflexion et améliore les performances.",
+        ),
+        link: "https://kotlinlang.org/docs/serialization.html",
+      }),
+    ],
+  },
+  {
     id: "compose-animations",
     title: "Transitions et micro-interactions",
     description: "Anime l’ajout, la couleur et le retrait d’une tâche.",
@@ -671,6 +873,7 @@ export const composeLevels: WebLevel[] = [
       "Définir un graphe de navigation et passer un argument.",
       "Observer un StateFlow depuis Compose.",
       "Séparer actions, état et affichage.",
+      "Appeler une API REST avec Retrofit et désérialiser le JSON.",
       "Animer la visibilité et la couleur.",
     ],
     chapters: advanced,

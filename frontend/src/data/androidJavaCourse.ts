@@ -24,6 +24,104 @@ const androidDocs = "https://developer.android.com/";
 
 const beginner: WebLevel["chapters"] = [
   {
+    id: "installation-android-java",
+    title: "Installation et configuration Android Java",
+    description:
+      "Installe Android Studio, comprends l'architecture Android et ce qui différencie Java des autres approches Android.",
+    lessons: [
+      lesson({
+        id: "introduction-android-java",
+        title: "Android avec Java : histoire, architecture et installation",
+        minutes: 30,
+        summary:
+          "Java est le langage original d'Android, utilisé depuis le premier Android SDK en 2008. Il reste largement utilisé dans les projets existants et les entreprises. Android Studio est l'IDE officiel pour le développement Android Java.",
+        sections: [
+          section(
+            "Java Android : le langage historique",
+            "Java a été le seul langage officiel Android pendant 9 ans, avant l'arrivée de Kotlin. Des milliards de lignes de code Android sont écrites en Java.",
+            [
+              "Histoire : Android SDK lancé en 2008 avec Java. Java reste le langage de tous les vieux tutoriels et de beaucoup d'applications en production.",
+              "Java vs Kotlin : Kotlin est plus concis et plus sûr (null safety), mais Java reste valide et parfaitement supporté sur Android.",
+              "Java vs Compose : Ce cours utilise le système de vues XML (l'approche classique). Jetpack Compose (Kotlin) est la nouvelle approche déclarative.",
+              "Interopérabilité : Un projet Android peut mélanger Java et Kotlin dans les mêmes modules.",
+              "Entreprises : Beaucoup d'entreprises maintiennent encore des apps Android Java. Comprendre ce système reste précieux.",
+              "API Android : L'intégralité de l'API Android est accessible depuis Java. Les dernières fonctionnalités sont documentées en Java et Kotlin.",
+            ],
+          ),
+          section(
+            "Architecture d'une application Android",
+            "Une application Android est composée de composants spécialisés. Comprendre leur rôle est essentiel avant d'écrire du code.",
+            [
+              "Activity : Représente un écran de l'application. Chaque écran est une classe qui hérite d'Activity ou AppCompatActivity.",
+              "Layout XML : Chaque Activity a un fichier XML qui décrit ses vues (TextView, Button, EditText, etc.).",
+              "AndroidManifest.xml : Déclare toutes les activités, les permissions et les métadonnées de l'application.",
+              "Gradle : Système de build qui compile le code Java et les ressources XML en un APK installable.",
+              "res/ : Dossier des ressources : layout/ (fichiers XML), drawable/ (images), values/ (couleurs, textes, dimensions).",
+              "APK : Android Package, le fichier final installé sur l'appareil. Gradle le génère automatiquement.",
+            ],
+          ),
+          section(
+            "Prérequis système",
+            "Android Studio fonctionne sur Windows, macOS et Linux. Un minimum de RAM est nécessaire pour l'émulateur.",
+            [
+              "RAM : 8 GB minimum, 16 GB fortement recommandés pour l'émulateur Android.",
+              "Disque : 8 GB minimum pour Android Studio, le SDK Android 35 et un émulateur (un émulateur seul pèse 1-2 GB).",
+              "JDK : Android Studio inclut son propre JDK (JDK 17). Pas besoin d'en installer un séparément.",
+              "Windows : Windows 10 64-bit ou supérieur. Activez la virtualisation BIOS/UEFI pour l'émulateur (Intel HAXM ou Hyper-V).",
+              "macOS : macOS 10.14 (Mojave) ou supérieur. L'émulateur fonctionne nativement sur Apple Silicon.",
+              "Linux : Ubuntu 20.04+ ou Debian 10+. L'émulateur nécessite KVM (sudo apt install cpu-checker puis kvm-ok).",
+            ],
+          ),
+          section(
+            "Installation d'Android Studio",
+            "Android Studio est l'IDE officiel pour Android. Il inclut l'émulateur, le SDK Manager et le débogueur.",
+            [
+              "Télécharge Android Studio depuis developer.android.com/studio et lance l'installeur standard.",
+              "Setup Wizard : La première ouverture installe le SDK Android, les Build-Tools et crée un émulateur par défaut.",
+              "SDK Manager (Tools > SDK Manager) : Installe le SDK 35 (Android 15) et vérifie que les Build-Tools sont à jour.",
+              "Device Manager (Tools > Device Manager) : Crée un appareil virtuel. Choisis Pixel 8, API 35 comme point de départ.",
+              "Vérification : Crée un nouveau projet (Empty Views Activity), attends la synchronisation Gradle et lance-le.",
+            ],
+          ),
+          section(
+            "Créer un nouveau projet Android Java",
+            "Android Studio génère automatiquement la structure de base d'un projet Android Java.",
+            [
+              "File > New > New Project > Empty Views Activity. Choisis Java comme langage (et non Kotlin).",
+              "Package name : Identifiant unique de l'application (ex: com.tonnom.monapp). Suit la convention Java de nommage inversé.",
+              "Minimum SDK : API 26 (Android 8.0) couvre 95%+ des appareils Android actifs.",
+              "MainActivity.java : Première activité générée. Elle hérite d'AppCompatActivity et appelle setContentView(R.layout.activity_main).",
+              "activity_main.xml : Layout XML généré. Par défaut, un TextView 'Hello World' dans un ConstraintLayout.",
+              "build.gradle (Module: app) : Déclare les dépendances, le SDK cible et la version minimum.",
+            ],
+          ),
+          section(
+            "Appareil physique vs émulateur",
+            "Tu peux tester sur un émulateur Android Studio ou brancher un vrai téléphone Android.",
+            [
+              "Émulateur : Intégré à Android Studio. Lent si peu de RAM. Supporte différentes versions Android et tailles d'écran.",
+              "Appareil physique : Plus rapide. Nécessite d'activer le Mode développeur et le Débogage USB.",
+              "Mode développeur : Paramètres > À propos du téléphone > appuie 7 fois sur Numéro de version. Puis Options développeur > Débogage USB.",
+              "adb devices dans le terminal liste les appareils connectés. Android Studio les affiche dans la barre d'outils.",
+              "Wireless debugging (Android 11+) : Outils > Wireless Debugging pour connecter sans câble USB.",
+            ],
+          ),
+        ],
+        files: projectExample(score, "app/src/main/AndroidManifest.xml"),
+        task: "Installe Android Studio, crée un nouveau projet Empty Views Activity en Java, lance-le sur l'émulateur. Localise MainActivity.java et activity_main.xml. Modifie le texte du TextView dans le XML et relance.",
+        takeaway:
+          "Java est le langage historique d'Android, encore très présent en entreprise. Une app Android = Java pour la logique + XML pour le layout + Gradle pour la compilation. AndroidManifest.xml déclare tous les composants.",
+        quiz: quiz(
+          "Quel fichier déclare les activités et permissions d'une application Android ?",
+          ["build.gradle", "MainActivity.java", "AndroidManifest.xml"],
+          2,
+          "AndroidManifest.xml est lu par Android pour connaître les composants de l'application et ses besoins.",
+        ),
+        link: androidDocs + "studio",
+      }),
+    ],
+  },
+  {
     id: "projet-vues-xml",
     title: "Premiers pas dans Android Studio et XML",
     description:
@@ -698,6 +796,7 @@ export const javaAndroidLevels: WebLevel[] = [
     prerequisites:
       "Une première expérience des variables suffit pour commencer. Installe Android Studio et prépare un émulateur ou un appareil Android.",
     outcomes: [
+      "Comprendre l'architecture Android et ce qui différencie Java des autres approches.",
       "Créer une classe et utiliser plusieurs objets indépendants.",
       "Repérer les fichiers Java, XML et le manifeste dans Android Studio.",
       "Relier une vue à son identifiant, écouter les clics et comprendre le cycle de vie.",

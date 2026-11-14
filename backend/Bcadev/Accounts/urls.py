@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import *
 from .views import OAuthTokenView
+from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
     path('inscription/', InscriptionView.as_view(), name='inscription'),
