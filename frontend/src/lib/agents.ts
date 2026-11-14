@@ -1,10 +1,31 @@
+import { isAxiosError } from "axios";
+import client from "../api/client";
 import { courses } from "../data/learning";
 import { normalizeText } from "../data/models";
-import { apiRequest } from "./api";
 import type { Language } from "../i18n/context";
 import { isLessonContext, localContextExplanation, localLessonExplanation, type LearningTutorContext } from "./learningTutorContext";
 import { findLearningTerms } from "../data/learningGlossary";
 export type TutorMessage = { role: "user" | "assistant"; content: string };
+
+export const usesDjangoTutor = (import.meta.env.VITE_AGENT_MODE || import.meta.env.VITE_AUTH_MODE) === "api";
+
+export function tutorErrorMessage(error: unknown, language: Language) {
+  const english = language === "en";
+  if (isAxiosError(error)) {
+    if (error.response?.status === 401) return english
+      ? "Sign in again to ask the assistant a question."
+      : "Reconnecte-toi pour poser une question à l’assistant.";
+    if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") return english
+      ? "The assistant is taking too long to respond. Try again in a moment."
+      : "L’assistant met trop de temps à répondre. Réessaie dans un instant.";
+    if (error.response?.status === 503) return english
+      ? "Django could not get a response from the AI model. Try again in a moment."
+      : "Django n’a pas obtenu de réponse du modèle IA. Réessaie dans un instant.";
+  }
+  return english
+    ? "The assistant is unavailable. Check the Django server and try again."
+    : "L’assistant est indisponible. Vérifie la connexion à Django puis réessaie.";
+}
 
 function mentionsTopic(question: string, topic: string) {
   const escaped = normalizeText(topic).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -16,14 +37,15 @@ export async function askTutor(
   language: Language,
   context?: LearningTutorContext,
 ): Promise<string> {
-  if (import.meta.env.VITE_AGENT_MODE === "api") {
-    const response = await apiRequest<{ answer: string }>(
-      "api/agents/learning/chat/",
-      { method: "POST", body: JSON.stringify({ messages, language, ...(context ? { context } : {}) }) },
+  if (usesDjangoTutor) {
+    const { data } = await client.post<{ answer?: string }>(
+      "/api/agents/learning/chat/",
+      { messages: messages.slice(-13), language, context },
+      { timeout: 90_000 },
     );
-    if (typeof response.answer !== "string")
+    if (typeof data?.answer !== "string" || !data.answer.trim())
       throw new Error("Réponse de l’agent invalide.");
-    return response.answer;
+    return data.answer;
   }
   const question =
     messages.filter((m) => m.role === "user").at(-1)?.content || "";

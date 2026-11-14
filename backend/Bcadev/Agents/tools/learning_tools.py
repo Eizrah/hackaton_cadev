@@ -126,7 +126,11 @@ def charger_doc_technologie(technologie: str) -> dict:
     """
     try:
         # import depuis le RAG — dans le même venv agents
-        from Agents.rag.vectorstore import charger_documentation, get_vectorstore
+        from Agents.rag.vectorstore import DOCS_URLS, charger_documentation, get_vectorstore
+
+        # Évite de charger les embeddings si aucune documentation ne peut être indexée.
+        if technologie not in DOCS_URLS:
+            raise ValueError(f"Documentation indisponible pour '{technologie}'.")
 
         # vérifie d'abord si la collection existe déjà dans ChromaDB
         vectorstore = get_vectorstore(technologie)

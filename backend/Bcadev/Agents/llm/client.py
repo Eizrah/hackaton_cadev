@@ -12,40 +12,35 @@ from .config import (
     OPENROUTER_MODEL_FALLBACK,
 )
 
-def get_llm_verification(temperature: float = 0.1):
-    """
-    LLM pour l'agent vérification.
-    Temperature très basse — réponses déterministes et structurées.
-    Fallback automatique vers OpenRouter si Groq est indisponible.
-    """
-    llm_principal = ChatGroq(
-        model=GROQ_MODEL_VERIFICATION,
+
+def _get_llm(modele_groq, temperature):
+    # Charge uniquement les fournisseurs configurés. Groq garde la priorité.
+    if not GROQ_API_KEY and not OPENROUTER_API_KEY:
+        raise RuntimeError("Aucun fournisseur IA n'est configuré.")
+
+    groq = ChatGroq(
+        model=modele_groq,
         api_key=GROQ_API_KEY,
         temperature=temperature,
-    )
-    llm_backup = ChatOpenAI(
+        timeout=20,
+        max_retries=0,
+    ) if GROQ_API_KEY else None
+    openrouter = ChatOpenAI(
         model=OPENROUTER_MODEL_FALLBACK,
         api_key=OPENROUTER_API_KEY,
         base_url="https://openrouter.ai/api/v1",
         temperature=temperature,
-    )
-    return llm_principal.with_fallbacks([llm_backup])
+        timeout=20,
+        max_retries=0,
+    ) if OPENROUTER_API_KEY else None
+    if groq is not None and openrouter is not None:
+        return groq.with_fallbacks([openrouter])
+    return groq if groq is not None else openrouter
+
+
+def get_llm_verification(temperature: float = 0.1):
+    return _get_llm(GROQ_MODEL_VERIFICATION, temperature)
+
 
 def get_llm_assistant(temperature: float = 0.4):
-    """
-    LLM pour l'agent assistant pédagogique.
-    Temperature plus haute — réponses variées et pédagogiques.
-    Fallback automatique vers OpenRouter si Groq est indisponible.
-    """
-    llm_principal = ChatGroq(
-        model=GROQ_MODEL_ASSISTANT,
-        api_key=GROQ_API_KEY,
-        temperature=temperature,
-    )
-    llm_backup = ChatOpenAI(
-        model=OPENROUTER_MODEL_FALLBACK,
-        api_key=OPENROUTER_API_KEY,
-        base_url="https://openrouter.ai/api/v1",
-        temperature=temperature,
-    )
-    return llm_principal.with_fallbacks([llm_backup])
+    return _get_llm(GROQ_MODEL_ASSISTANT, temperature)

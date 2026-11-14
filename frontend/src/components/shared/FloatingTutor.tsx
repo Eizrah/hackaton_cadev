@@ -1,6 +1,6 @@
 import { useSyncExternalStore, useCallback, useEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { Bot, CircleHelp, History, LoaderCircle, Plus, Send, X } from "lucide-react";
-import { askTutor, type TutorMessage } from "../../lib/agents";
+import { askTutor, tutorErrorMessage, usesDjangoTutor, type TutorMessage } from "../../lib/agents";
 import { isLessonContext, saveLearningCodeContext, type LearningLessonContext, type LearningTutorContext } from "../../lib/learningTutorContext";
 import { createLocalId } from "../../lib/format";
 import { useLocalData } from "../../lib/storage";
@@ -37,12 +37,29 @@ export default function FloatingTutor({ children }: { children: ReactNode }) {
   const dismiss = useCallback(() => { setOpen(false); anchor.current?.focus({ preventScroll: true }); }, []);
   useEffect(() => { if (!open) return; const reposition = () => place(), key = (e: KeyboardEvent) => { if (e.key === "Escape") dismiss(); }; window.addEventListener("resize", reposition); document.addEventListener("keydown", key); return () => { window.removeEventListener("resize", reposition); document.removeEventListener("keydown", key); }; }, [open, place, dismiss]);
   useEffect(() => { scroll.current?.scrollTo({ top: scroll.current.scrollHeight, behavior: "smooth" }); }, [thread?.messages.length, busy]);
-  async function send() {
-    const content = question.trim(); if (!content || busy) return;
-    const id = selected ?? createLocalId(), messages: TutorMessage[] = [...(thread?.messages || []), { role: "user", content }], currentContext = attached;
+  async function send(override?: string) {
+    const content = (override ?? question).trim();
+    if (!content || busy) return;
+    const id = selected ?? createLocalId();
+    const history = thread?.messages || [];
+    const previous = history.at(-1);
+    const messages: TutorMessage[] = previous?.role === "user" && previous.content === content
+      ? history
+      : [...history, { role: "user", content }];
+    const currentContext = attached;
     setThreads(current => current.some(item => item.id === id) ? current.map(item => item.id === id ? { ...item, messages } : item) : [{ id, title: currentContext ? `${currentContext.courseTitle} · ${contextLabel}` : content.slice(0, 48), messages, createdAt: new Date().toISOString(), context: currentContext }, ...current]);
     setSelected(id); setQuestion(""); setBusy(true); setError("");
-    try { const answer = await askTutor(messages, language, currentContext); setThreads(current => current.map(item => item.id === id ? { ...item, messages: [...item.messages, { role: "assistant", content: answer }] } : item)); } catch { setError(t("L’agent est indisponible. Tu peux réessayer ou vérifier la connexion Django.", "The agent is unavailable. Try again or check the Django connection.")); } finally { setBusy(false); }
+    try {
+      const answer = await askTutor(messages, language, currentContext);
+      setThreads(current => current.map(item => item.id === id
+        ? { ...item, messages: [...item.messages, { role: "assistant", content: answer }] }
+        : item));
+    } catch (error) {
+      setError(tutorErrorMessage(error, language));
+      setQuestion(draft => draft || content);
+    } finally {
+      setBusy(false);
+    }
   }
   return <LessonHelpRegistration.Provider value={registerLesson}>
     <TutorOverlay.Provider value={openTutor}>
@@ -119,8 +136,7 @@ export default function FloatingTutor({ children }: { children: ReactNode }) {
               key={index}
               message={message}
               onResend={message.role === "user" && index === thread.messages.length - 1 ? () => {
-                setQuestion(message.content);
-                void send();
+                void send(message.content);
               } : undefined}
             />)}
             {busy && <p
@@ -148,7 +164,7 @@ export default function FloatingTutor({ children }: { children: ReactNode }) {
               value={question}
               maxLength={8000}
               onChange={e => setQuestion(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }} />
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(); } }} />
             <button
               className="btn-primary"
               disabled={busy || !question.trim()}
@@ -157,7 +173,7 @@ export default function FloatingTutor({ children }: { children: ReactNode }) {
             </button>
           </form>
           <small className="floating-tutor-mode">
-            {import.meta.env.VITE_AGENT_MODE === "api" ? t("Agent connecté à Django", "Agent connected to Django") : t("Aide locale · connexion IA à configurer", "Local help · AI connection to configure")}
+            {usesDjangoTutor ? t("Assistant Django", "Django assistant") : t("Aide locale · connexion IA à configurer", "Local help · AI connection to configure")}
           </small>
         </>}
       </section>}

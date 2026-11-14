@@ -1,221 +1,156 @@
-"""
-Agents/views.py
+"""API de l'assistant et de l'aide contextuelle pendant les cours."""
 
-Endpoints API pour l'agent d'apprentissage interactif (FloatingTutor).
-Utilisé par le frontend pour les discussions contextuelles pendant les cours.
-"""
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from .services.assistant_services import repondre_question
 import logging
+import re
+
+from rest_framework import serializers, status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 
 logger = logging.getLogger(__name__)
 
+TECHNOLOGIES = {
+    'react native': 'react-native',
+    'jetpack compose': 'kotlin',
+    'html': 'html-css',
+    'css': 'html-css',
+    'typescript': 'typescript',
+    'ts': 'typescript',
+    'javascript': 'javascript',
+    'js': 'javascript',
+    'node.js': 'nodejs',
+    'nodejs': 'nodejs',
+    'node': 'nodejs',
+    'spring boot': 'spring',
+    'spring': 'spring',
+    'vue.js': 'vue',
+    'vuejs': 'vue',
+    'vue': 'vue',
+    'angular': 'angular',
+    'express': 'express',
+    'django': 'django',
+    'laravel': 'laravel',
+    'python': 'python',
+    'react': 'react',
+    'kotlin': 'kotlin',
+    'swift': 'swift',
+    'flutter': 'flutter',
+    'c++': 'cpp',
+    'cpp': 'cpp',
+    'c': 'c',
+    'java': 'java',
+    'php': 'php',
+    'sql': 'sql',
+}
+
+
+class ChatMessageSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(choices=('user', 'assistant'))
+    content = serializers.CharField(trim_whitespace=False)
+
+
+class ChatContextSerializer(serializers.Serializer):
+    courseId = serializers.CharField(required=False, allow_blank=True)
+    courseTitle = serializers.CharField(required=False, allow_blank=True)
+    lessonTitle = serializers.CharField(required=False, allow_blank=True)
+    lessonContent = serializers.CharField(required=False, allow_blank=True)
+    explanation = serializers.CharField(required=False, allow_blank=True)
+    file = serializers.CharField(required=False, allow_blank=True)
+    code = serializers.CharField(required=False, allow_blank=True, trim_whitespace=False)
+    language = serializers.CharField(required=False, allow_blank=True)
+
+
+class ChatRequestSerializer(serializers.Serializer):
+    messages = ChatMessageSerializer(many=True, allow_empty=False)
+    language = serializers.ChoiceField(choices=('fr', 'en'), default='fr')
+    context = ChatContextSerializer(required=False, allow_null=True)
+
 
 class ChatAgentView(APIView):
-    """
-    POST /api/agents/learning/chat/
-    
-    Endpoint unifié pour discuter avec l'agent d'apprentissage.
-    Supporte les conversations contextuelles (leçon ou code).
-    
-    Requête :
-    {
-        "messages": [
-            {"role": "user", "content": "Qu'est-ce qu'une variable ?"},
-            {"role": "assistant", "content": "Une variable..."},
-            {"role": "user", "content": "Donne un exemple"}
-        ],
-        "language": "fr",  # ou "en"
-        "context": {  # Optionnel
-            "courseTitle": "Python",
-            "lessonTitle": "Les variables",
-            "lessonContent": "...",
-            "file": "example.py",  # Pour mode code
-            "code": "x = 5",       # Pour mode code
-            "language": "python"   # Pour mode code
-        }
-    }
-    
-    Réponse :
-    {
-        "answer": "Voici un exemple de variable en Python : ..."
-    }
-    """
-    
+    """POST /api/agents/learning/chat/"""
+
     permission_classes = [IsAuthenticated]
-    
-    def _extraire_code_context(self, context):
-        """
-        Extrait le contexte de code si présent.
-        Retourne (code, file, explanation) ou (None, None, None).
-        """
-        if not context:
-            return None, None, None
-        
-        code = context.get('code', '').strip()
-        file = context.get('file', '')
-        explanation = context.get('explanation', '')
-        
-        if code:
-            return code, file, explanation
-        
-        return None, None, None
-    
+
     def post(self, request):
+        serializer = ChatRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        messages = serializer.validated_data['messages']
+        dernier_tour = next(
+            (i for i in range(len(messages) - 1, -1, -1)
+             if messages[i]['role'] == 'user' and messages[i]['content'].strip()),
+            None,
+        )
+        if dernier_tour is None:
+            return Response(
+                {'error': 'Aucune question utilisateur trouvée dans les messages.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        langue = serializer.validated_data['language']
+        contexte = serializer.validated_data.get('context') or {}
+        question = messages[dernier_tour]['content'].strip()[:8000]
+        # Les deux écrans partagent une route. Les clients existants peuvent
+        # transmettre le texte de la leçon sous lessonContent ou explanation.
+        texte_lecon = (contexte.get('lessonContent') or contexte.get('explanation') or '')[:4000]
+        contexte_cours = None
+        if contexte.get('courseTitle') or contexte.get('lessonTitle') or texte_lecon:
+            contexte_cours = {
+                'courseTitle': contexte.get('courseTitle', '')[:200],
+                'lessonTitle': contexte.get('lessonTitle', '')[:200],
+                'lessonContent': texte_lecon,
+            }
+        code = contexte.get('code', '')[:3000]
+        if code.strip():
+            fichier = contexte.get('file', '')[:200]
+            question = f"Fichier : {fichier}\n\n```\n{code}\n```\n\nQuestion : {question}"
+
+        # Les premiers tours restent dans l'historique de l'interface. Le modèle
+        # reçoit les derniers échanges pour pouvoir répondre aux questions de suivi.
+        historique = [
+            {'role': tour['role'], 'content': tour['content'][:2000]}
+            for tour in messages[max(0, dernier_tour - 12):dernier_tour]
+            if tour['content'].strip()
+        ]
         try:
-            # Extraction des données
-            messages = request.data.get('messages', [])
-            language = request.data.get('language', 'fr')
-            context = request.data.get('context')
-            
-            # Validation
-            if not messages:
-                return Response(
-                    {'error': 'Le champ "messages" est requis'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Extraire la dernière question de l'utilisateur
-            last_user_message = next(
-                (msg['content'] for msg in reversed(messages) 
-                 if msg.get('role') == 'user'),
-                None
+            # Le reste de Django peut démarrer même si le fournisseur IA est indisponible.
+            from .services.assistant_services import AssistantUnavailable, repondre_question
+        except (ImportError, RuntimeError):
+            logger.exception("Le service d'assistance Django ne peut pas être chargé.")
+            return self._indisponible(langue)
+
+        try:
+            reponse = repondre_question(
+                question=question,
+                technologie=self._extraire_technologie(contexte),
+                niveau=request.user.niveau,
+                email_dev=request.user.email,
+                contexte_cours=contexte_cours,
+                historique=historique,
+                langue=langue,
+                signaler_indisponibilite=True,
             )
-            
-            if not last_user_message:
-                return Response(
-                    {'error': 'Aucune question utilisateur trouvée dans les messages'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Déterminer la technologie depuis le contexte
-            technologie = self._extraire_technologie(context)
-            
-            # Récupérer l'email du développeur authentifié
-            email_dev = request.user.email if request.user.is_authenticated else ""
-            
-            # Extraire le contexte de cours si disponible
-            contexte_cours = None
-            if context and 'courseTitle' in context:
-                contexte_cours = {
-                    'courseTitle': context.get('courseTitle'),
-                    'lessonTitle': context.get('lessonTitle'),
-                    'lessonContent': context.get('lessonContent', '')[:500]
-                }
-            
-            # Extraire le contexte de code si présent
-            code, file, explanation = self._extraire_code_context(context)
-            
-            if code:
-                # Mode explication de code
-                logger.info(f"Explication de code ({file}) pour {email_dev}")
-                
-                # Enrichir la question avec le code
-                last_user_message = f"""
-[FICHIER: {file}]
+        except AssistantUnavailable:
+            return self._indisponible(langue)
+        return Response({'answer': reponse})
 
-CODE:
-```
-{code[:3000]}
-```
+    @staticmethod
+    def _indisponible(langue):
+        message = ("The assistant is temporarily unavailable." if langue == 'en'
+                   else "L'assistant est temporairement indisponible.")
+        return Response({'error': message}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-QUESTION: {last_user_message}
+    @staticmethod
+    def _extraire_technologie(contexte):
+        langue_du_code = contexte.get('language', '').lower()
+        if langue_du_code in TECHNOLOGIES:
+            return TECHNOLOGIES[langue_du_code]
 
-CONTEXTE DU COURS:
-{explanation[:500] if explanation else 'Pas de contexte supplémentaire'}
-"""
-            elif contexte_cours:
-                # Mode cours - ajouter restriction stricte au contexte
-                logger.info(f"Question de {email_dev} dans cours {contexte_cours['courseTitle']}")
-                
-                last_user_message = f"""
-[CONTEXTE: Tu es dans le cours "{contexte_cours['courseTitle']}", leçon "{contexte_cours['lessonTitle']}"]
-
-{last_user_message}
-
-[IMPORTANT: Reste dans le contexte de {technologie}. Ne parle PAS d'autres technologies sauf si explicitement demandé par l'utilisateur.]
-"""
-            
-            # Appeler le service IA
-            logger.info(f"Question sur {technologie}: {last_user_message[:100]}")
-            
-            answer = repondre_question(
-                question=last_user_message,
-                technologie=technologie,
-                niveau="I",  # Par défaut intermédiaire, sera affiné par le profil
-                email_dev=email_dev,
-                contexte_cours=contexte_cours
-            )
-            
-            logger.info(f"Réponse générée ({len(answer)} caractères)")
-            
-            return Response(
-                {'answer': answer},
-                status=status.HTTP_200_OK
-            )
-            
-        except Exception as e:
-            logger.error(f"Erreur dans ChatAgentView : {str(e)}", exc_info=True)
-            return Response(
-                {
-                    'error': 'Erreur interne de l\'agent',
-                    'detail': str(e) if request.user.is_staff else 'L\'agent est temporairement indisponible'
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-    
-    def _extraire_technologie(self, context):
-        """
-        Extrait la technologie depuis le contexte de la leçon.
-        
-        Exemples :
-        - "Python : Les variables" → "python"
-        - "React : Hooks" → "react"
-        - "Django : ORM" → "django"
-        """
-        if not context:
-            return "python"  # Par défaut
-        
-        # Essayer d'extraire depuis courseTitle
-        course_title = context.get('courseTitle', '').lower()
-        
-        # Map des technologies reconnues
-        tech_map = {
-            'python': 'python',
-            'javascript': 'javascript',
-            'js': 'javascript',
-            'typescript': 'typescript',
-            'ts': 'typescript',
-            'react': 'react',
-            'vue': 'vue',
-            'vuejs': 'vue',
-            'django': 'django',
-            'laravel': 'laravel',
-            'spring': 'spring',
-            'springboot': 'spring',
-            'express': 'express',
-            'node': 'node',
-            'nodejs': 'node',
-            'c++': 'cpp',
-            'cpp': 'cpp',
-            'c': 'c',
-            'java': 'java',
-            'php': 'php',
-        }
-        
-        # Chercher une correspondance
-        for key, value in tech_map.items():
-            if key in course_title:
-                return value
-        
-        # Si mode code, essayer d'extraire depuis le langage du code
-        if 'code' in context:
-            lang = context.get('language', '').lower()
-            if lang in tech_map:
-                return tech_map[lang]
-        
-        return "python"  # Fallback par défaut
+        # Les identifiants de cours et les mots entiers évitent de lire React
+        # comme « C » ou NestJS comme une occurrence de « js ».
+        titre = ' '.join((contexte.get('courseTitle', ''), contexte.get('courseId', ''))).lower()
+        for terme, technologie in TECHNOLOGIES.items():
+            if re.search(rf"(?<!\w){re.escape(terme)}(?!\w)", titre):
+                return technologie
+        return None

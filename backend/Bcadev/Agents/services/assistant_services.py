@@ -32,8 +32,10 @@ from Agents.graph.assistant_graph import (
 
 logger = logging.getLogger(__name__)
 
+class AssistantUnavailable(Exception):
+    """Le modèle n'a pas produit de réponse exploitable."""
 
-def _invoquer_graphe(state: dict) -> str:
+def _invoquer_graphe(state: dict, signaler_indisponibilite: bool = False) -> str:
     """
     Fonction interne partagée — invoque le graphe assistant
     et retourne la réponse finale.
@@ -43,10 +45,16 @@ def _invoquer_graphe(state: dict) -> str:
     try:
         graph = get_assistant_graph()
         result = graph.invoke(state)
-        return result.get("reponse", "Aucune réponse générée.")
+        reponse = result.get("reponse", "")
+        if reponse.strip():
+            return reponse
     except Exception as e:
         logger.error(f"Erreur graphe assistant : {e}")
-        return "L'assistant est temporairement indisponible. Réessaie dans quelques instants."
+
+    # La route de chat peut signaler un échec plutôt que l'afficher comme une réponse.
+    if signaler_indisponibilite:
+        raise AssistantUnavailable()
+    return "L'assistant est temporairement indisponible. Réessaie dans quelques instants."
 
 
 def _etat_initial(tache: str, email_dev: str, **kwargs) -> dict:
@@ -67,6 +75,8 @@ def _etat_initial(tache: str, email_dev: str, **kwargs) -> dict:
         "enonce_exercice": kwargs.get("enonce_exercice"),
         "domaine_interet": kwargs.get("domaine_interet"),
         "contexte_cours": kwargs.get("contexte_cours"),  # Nouveau : contexte de la leçon
+        "historique": kwargs.get("historique") or [],
+        "langue": kwargs.get("langue"),
         # résultats intermédiaires — initialisés à vide
         # le graphe les remplira pendant l'exécution
         "niveau_dev": "I",
@@ -84,7 +94,11 @@ def repondre_question(
     technologie: str,
     niveau: str,
     email_dev: str = "",
-    contexte_cours: dict = None
+    contexte_cours: dict = None,
+    *,
+    historique: list[dict] | None = None,
+    langue: str | None = None,
+    signaler_indisponibilite: bool = False,
 ) -> str:
     """
     Répond à une question technique via le graphe assistant.
@@ -107,9 +121,11 @@ def repondre_question(
         email_dev=email_dev,
         technologie=technologie,
         question=question,
-        contexte_cours=contexte_cours
+        contexte_cours=contexte_cours,
+        historique=historique,
+        langue=langue,
     )
-    return _invoquer_graphe(etat)
+    return _invoquer_graphe(etat, signaler_indisponibilite)
 
 
 def generer_exercice(

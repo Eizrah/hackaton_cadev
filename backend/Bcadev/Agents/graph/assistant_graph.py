@@ -47,7 +47,7 @@ import logging
 from typing import TypedDict, Optional
 
 from langgraph.graph import StateGraph, END, START
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from Agents.llm.client import get_llm_assistant
 from Agents.prompt.assistant_prompts import (
@@ -84,6 +84,8 @@ class AssistantState(TypedDict):
     enonce_exercice: Optional[str]  # énoncé de l'exercice pour la correction
     domaine_interet: Optional[str]  # domaine pour les recommandations
     contexte_cours: Optional[dict]  # contexte du cours (si le dev est dans une leçon)
+    historique: list[dict]         # messages précédant la dernière question
+    langue: Optional[str]          # langue de réponse demandée par l'interface
 
     # ── résultats intermédiaires ──
     niveau_dev: str                 # "D", "I" ou "A"
@@ -121,7 +123,7 @@ def preparer_contexte(state: AssistantState) -> AssistantState:
         competences_dev = []
 
     # Détection rapide : messages simples (salutations, remerciements)
-    question_lower = state.get("question", "").lower().strip()
+    question_lower = (state.get("question") or "").lower().strip()
     is_simple_message = (
         len(question_lower) < 30 and 
         any(word in question_lower for word in [
@@ -181,6 +183,20 @@ def preparer_contexte(state: AssistantState) -> AssistantState:
 
 # ─── Nœud 2a : génération avec RAG ────────────────────────────────────────────
 
+def _messages_assistant(state: AssistantState, human_prompt: str):
+    # Les tours précédents conservent leur rôle dans la conversation avec le modèle.
+    instruction = {"fr": "Réponds en français.", "en": "Reply in English."}.get(state.get("langue"), "")
+    historique = [
+        (HumanMessage if tour["role"] == "user" else AIMessage)(content=tour["content"])
+        for tour in state.get("historique", [])
+    ]
+    return [
+        SystemMessage(content=f"{ASSISTANT_SYSTEM_PROMPT}\n{instruction}"),
+        *historique,
+        HumanMessage(content=human_prompt),
+    ]
+
+
 def generer_avec_rag(state: AssistantState) -> AssistantState:
     """
     Génère une réponse enrichie par la documentation officielle (RAG).
@@ -224,17 +240,12 @@ def generer_avec_rag(state: AssistantState) -> AssistantState:
                 domaine_interet=state.get("domaine_interet", "général")
             )
 
-        messages = [
-            SystemMessage(content=ASSISTANT_SYSTEM_PROMPT),
-            HumanMessage(content=human_prompt),
-        ]
-
-        reponse = llm.invoke(messages)
+        reponse = llm.invoke(_messages_assistant(state, human_prompt))
         return {**state, "reponse": reponse.content.strip()}
 
     except Exception as e:
         logger.error(f"Erreur LLM avec RAG : {e}")
-        return {**state, "reponse": "L'assistant est temporairement indisponible."}
+        return {**state, "reponse": ""}
 
 # ─── Nœud 2b : génération sans RAG ────────────────────────────────────────────
 
@@ -286,17 +297,12 @@ def generer_sans_rag(state: AssistantState) -> AssistantState:
                 domaine_interet=state.get("domaine_interet", "général")
             )
 
-        messages = [
-            SystemMessage(content=ASSISTANT_SYSTEM_PROMPT),
-            HumanMessage(content=human_prompt),
-        ]
-
-        reponse = llm.invoke(messages)
+        reponse = llm.invoke(_messages_assistant(state, human_prompt))
         return {**state, "reponse": reponse.content.strip()}
 
     except Exception as e:
         logger.error(f"Erreur LLM sans RAG : {e}")
-        return {**state, "reponse": "L'assistant est temporairement indisponible."}
+        return {**state, "reponse": ""}
 
 # ─── Nœud 3 : formatage de la réponse ────────────────────────────────────────
 
@@ -308,13 +314,14 @@ def formatter(state: AssistantState) -> AssistantState:
     reponse = state.get("reponse", "")
 
     # si le RAG n'était pas disponible, ajoute une note en bas
-    if not state["rag_disponible"] and state.get("technologie"):
-        reponse += (
-            f"\n\n---\n"
-            f"*Note : Cette réponse est basée sur les connaissances générales "
-            f"du modèle. La documentation officielle de {state['technologie']} "
-            f"n'était pas disponible au moment de la réponse.*"
+    if reponse and not state["rag_disponible"] and state.get("technologie"):
+        technologie = state["technologie"]
+        note = (
+            f"This answer is based on the model's general knowledge. The official {technologie} documentation was unavailable."
+            if state.get("langue") == "en"
+            else f"Cette réponse s’appuie sur les connaissances du modèle. La documentation officielle de {technologie} était indisponible."
         )
+        reponse += f"\n\n---\n*{note}*"
 
     return {**state, "reponse": reponse}
 

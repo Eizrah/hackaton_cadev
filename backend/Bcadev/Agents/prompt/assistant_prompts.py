@@ -85,6 +85,18 @@ def question_prompt(
     
     Le contexte_cours indique si le dev est dans un cours (lessonContext fourni).
     """
+    sujet = technologie or "le développement informatique"
+    contexte_info = ""
+    if contexte_cours:
+        # La leçon fournie par l'écran complète les passages de la documentation.
+        contexte_info = (
+            f"\n**Contexte** : cours « {contexte_cours.get('courseTitle', '')} », "
+            f"leçon « {contexte_cours.get('lessonTitle', '')} ».\n"
+        )
+        extrait = contexte_cours.get("lessonContent")
+        if extrait:
+            contexte_info += f"\n**Extrait de la leçon** :\n{extrait}\n"
+
     # Détection des messages simples (salutations, remerciements)
     question_lower = question.lower().strip()
     
@@ -95,7 +107,7 @@ def question_prompt(
 Le dev dit : "{question}"
 
 Réponds chaleureusement et demande-lui ce qu'il souhaite apprendre ou comprendre.
-Puisque tu es dans le contexte {technologie}, propose ton aide sur ce sujet.
+Propose ton aide sur {sujet}.
 Reste bref (2-3 phrases maximum).
 """
     
@@ -123,12 +135,12 @@ Reste très bref (1-2 phrases).
             return f"""
 Le dev demande : "{question}"
 
-Il semble vouloir **apprendre** ou **commencer** avec {technologie}.
+Il semble vouloir **apprendre** ou **commencer** avec {sujet}.
 
 🎯 **Tu DOIS le rediriger vers les cours de la plateforme** :
 
 Réponds avec enthousiasme :
-1. Dis-lui que DevAfrica Connect a des **cours complets sur {technologie}**
+1. Aide-le à trouver les cours de DevAfrica Connect en lien avec {sujet}
 2. Explique qu'il y trouvera des leçons progressives (débutant → avancé)
 3. Mentionne qu'il peut revenir te voir s'il bloque sur une notion
 4. Suggère-lui d'aller dans l'onglet "Apprentissage" pour explorer les cours
@@ -139,7 +151,7 @@ Réponds avec enthousiasme :
 - Termine par "Reviens me voir si tu bloques sur quelque chose !" ou similaire
 
 **Exemple de réponse** :
-"Super choix ! 🎉 DevAfrica Connect a un cours complet sur {technologie} qui part de zéro.
+"Super choix ! 🎉 Va dans Apprentissage pour trouver un cours sur {sujet}.
 Tu trouveras des leçons progressives avec des exercices pratiques.
 Va dans l'onglet **Apprentissage** pour le découvrir !
 Si tu bloques sur une notion pendant le cours, je serai là pour t'expliquer."
@@ -147,12 +159,8 @@ Si tu bloques sur une notion pendant le cours, je serai là pour t'expliquer."
     
     # Question technique dans un cours - inclure la doc si disponible
     if contexte_documentation and "Aucune documentation" not in contexte_documentation:
-        contexte_info = ""
-        if contexte_cours:
-            contexte_info = f"\n**Contexte** : Le dev est dans le cours '{contexte_cours.get('courseTitle')}', leçon '{contexte_cours.get('lessonTitle')}'.\n"
-        
         return f"""
-Un développeur {niveau} demande en {technologie} :
+Un développeur {niveau} pose une question sur {sujet}.
 {contexte_info}
 **Question** : {question}
 
@@ -167,12 +175,8 @@ En te basant sur cette documentation, réponds de façon claire et naturelle.
 """
     
     # Sans documentation
-    contexte_info = ""
-    if contexte_cours:
-        contexte_info = f"\n**Contexte** : Le dev est dans le cours '{contexte_cours.get('courseTitle')}', leçon '{contexte_cours.get('lessonTitle')}'.\n"
-    
     return f"""
-Un développeur {niveau} demande en {technologie} :
+Un développeur {niveau} pose une question sur {sujet}.
 {contexte_info}
 **Question** : {question}
 

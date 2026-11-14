@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "../../i18n/context";
 import { useLocalData } from "../../lib/storage";
-import { askTutor, type TutorMessage } from "../../lib/agents";
+import { askTutor, tutorErrorMessage, usesDjangoTutor, type TutorMessage } from "../../lib/agents";
 import { isLessonContext, readLearningCodeContext, tutorCodeQuestion, type LearningCodeContext, type LearningTutorContext } from "../../lib/learningTutorContext";
 import { checkContent, useReviews, type Review } from "../../data/workflow";
 import { initialPosts, migratePosts, initialJobs, migrateJobs } from "../../data/models";
@@ -97,10 +97,11 @@ function AssistantConversation({ initialContext, onNavigate }: { initialContext?
     if (!content || busy) return;
     const id = selected ?? createLocalId();
     const previous = threads.find((h) => h.id === id);
-    const messages: TutorMessage[] = [
-      ...(previous?.messages || []),
-      { role: "user", content },
-    ];
+    const history = previous?.messages || [];
+    const last = history.at(-1);
+    const messages: TutorMessage[] = last?.role === "user" && last.content === content
+      ? history
+      : [...history, { role: "user", content }];
     setThreads((current) =>
       previous
         ? current.map((h) => (h.id === id ? { ...h, messages } : h))
@@ -134,13 +135,9 @@ function AssistantConversation({ initialContext, onNavigate }: { initialContext?
             : h,
         ),
       );
-    } catch {
-      setError(
-        t(
-          "L’assistant est indisponible. Vérifie la connexion au serveur Django puis réessaie.",
-          "The assistant is unavailable. Check the connection to Django and try again.",
-        ),
-      );
+    } catch (error) {
+      setError(tutorErrorMessage(error, language));
+      setQuestion((draft) => draft || content);
     } finally {
       setBusy(false);
     }
@@ -223,8 +220,8 @@ function AssistantConversation({ initialContext, onNavigate }: { initialContext?
             {t("Assistant IA", "AI assistant")}
           </span>
           <small>
-            {import.meta.env.VITE_AGENT_MODE === "api"
-              ? t("Connecté au serveur", "Server mode")
+            {usesDjangoTutor
+              ? t("Assistant Django", "Django assistant")
               : t("Mode démo · réponses locales", "Demo mode · local replies")}
           </small>
           <button type="button" className="assistant-history-toggle"

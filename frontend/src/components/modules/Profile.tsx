@@ -6,7 +6,6 @@ import { useI18n } from "../../i18n/context";
 import ApplicationDashboard from "./ApplicationDashboard";
 import { useState, type FormEvent } from "react";
 import {
-  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Camera,
@@ -20,7 +19,6 @@ import {
   Pencil,
   Share2,
   Sparkles,
-  Trash2,
   UserRound,
 } from "lucide-react";
 import { type Profile } from "../../data/models";
