@@ -3,24 +3,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenRefreshView
-from django.db import IntegrityError, transaction
-from uuid import UUID
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
-from rest_framework.fields import UUIDField
 from .serializers import (
-    InscriptionSerializer, ConnexionSerializer, DevelopperSerializer, NotifSerializer,
-    ProfilInfosSerializer, ProfilMembreSerializer, ModifierIdentifiantsSerializer,
-    RafraichirConnexionSerializer, ProfilPersonnelSerializer, ExperienceSerializer,
-    PossessionSerializer,
+    InscriptionSerializer, ConnexionSerializer, DevelopperSerializer,
+    NotifSerializer, ExperienceSerializer, PossessionSerializer
 )
 from Groups.models import Group
-from Learning.models import Competence
 from .models import Developper, Blocage, Sourdine, Notif, Experience, Possession
 import os
 from django.db.models import Q
@@ -41,13 +34,12 @@ class InscriptionView(APIView):
 
     @method_decorator(ratelimit(key='ip', rate='5/h', method='POST', block=True))
     def post(self, request):
-        serializer = InscriptionSerializer(data=request.data, context={'request': request})
+        serializer = InscriptionSerializer(data=request.data)
         if serializer.is_valid():
             dev = serializer.save()
             refresh = RefreshToken.for_user(dev)
             return Response({
                 'message': 'Compte créé avec succès.',
-                'identifiant': str(dev.identifiant),
                 'email': dev.email,
                 'nom': dev.nom,
                 'prenom': dev.prenom,
@@ -58,8 +50,6 @@ class InscriptionView(APIView):
                 'lien_portfolio': dev.lien_portfolio,
                 'lien_github': dev.lien_github,
                 'point_penalite': dev.point_penalite,
-                # Le frontend récupère les identifiants des expériences dès l'inscription.
-                'profil': ProfilPersonnelSerializer(dev, context={'request': request}).data,
                 'tokens':{
                     'access': str(refresh.access_token),
                     'refresh': str(refresh),
@@ -90,10 +80,6 @@ class ConnexionView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
-class RafraichirConnexionView(TokenRefreshView):
-    serializer_class = RafraichirConnexionSerializer
-
-
 class DeconnexionView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -110,44 +96,15 @@ class ProfilView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        serializer = ProfilPersonnelSerializer(request.user, context={"request": request})
+        serializer = DevelopperSerializer(request.user)
         return Response(serializer.data)
 
     def put(self, request):
-        # L'ancienne route respecte aussi la vérification du mot de passe pour le pseudo.
-        serializer = ProfilInfosSerializer(
-            request.user, data=request.data, partial=True, context={'request': request},
-        )
+        serializer = DevelopperSerializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class ProfilMembreView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        membre = request.query_params.get('membre', '').strip()
-        if not membre:
-            return Response({'erreur': 'Indiquez un membre.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Accepte les liens déjà utilisés par la communauté et les liens partagés à UUID stable.
-        comptes = Developper.objects.filter(banne=False, is_active=True).prefetch_related(
-            'possessions__competence', 'experiences',
-        )
-        try:
-            identifiant = UUID(membre)
-        except ValueError:
-            identifiant = None
-        profil = comptes.filter(identifiant=identifiant).first() if identifiant else None
-        if profil is None:
-            profil = comptes.filter(Q(email=membre) | Q(pseudo=membre)).first()
-        if profil is None and membre.startswith('dev-') and '@' in membre:
-            profil = comptes.filter(email=membre[4:]).first()
-        if profil is None:
-            return Response({'erreur': 'Membre introuvable.'}, status=status.HTTP_404_NOT_FOUND)
-        return Response(ProfilMembreSerializer(profil, context={'request': request}).data)
-
 
 class MotDePasseOublieView(APIView):
     permission_classes = [AllowAny]
@@ -471,55 +428,73 @@ class ModifierInfosView(APIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request):
-        serializer = ProfilInfosSerializer(
-            request.user, data=request.data, partial=True, context={'request': request},
+        # modifier nom, prénom, age, photo — sans mot de passe
+        serializer = DevelopperSerializer(
+            request.user,
+            data=request.data,
+            partial=True
         )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({
-            'message': 'Profil mis à jour.',
-            'profil': serializer.data,
-            'experiences_enregistrees': serializer.experiences_enregistrees,
-        })
-
+        if serializer.is_valid():
+            # empêche la modification d'email et pseudo via cet endpoint
+            for champ_sensible in ['email', 'pseudo']:
+                serializer.validated_data.pop(champ_sensible, None)
+            serializer.save()
+            return Response({
+                'message': 'Profil mis à jour.',
+                'profil': serializer.data
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ModifierEmailPseudoView(APIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request):
-        serializer = ModifierIdentifiantsSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        valeurs = serializer.validated_data
-        try:
-            with transaction.atomic():
-                dev = Developper.objects.select_for_update().get(identifiant=request.user.identifiant)
-                if not dev.check_password(valeurs['mot_de_passe']):
-                    return Response({'erreur': 'Mot de passe incorrect.'}, status=status.HTTP_403_FORBIDDEN)
+        # modifier email ou pseudo — mot de passe requis
+        mot_de_passe = request.data.get('mot_de_passe')
+        if not mot_de_passe:
+            return Response(
+                {'erreur': 'Le mot de passe est requis pour modifier l\'email ou le pseudo.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-                email = valeurs.get('email', dev.email)
-                pseudo = valeurs.get('pseudo', dev.pseudo)
-                autres = Developper.objects.exclude(pk=dev.pk)
-                if autres.filter(email=email).exists():
-                    return Response({'erreur': 'Cet email est déjà utilisé.'}, status=status.HTTP_400_BAD_REQUEST)
-                if autres.filter(pseudo=pseudo).exists():
-                    return Response({'erreur': 'Ce pseudo est déjà pris.'}, status=status.HTTP_400_BAD_REQUEST)
+        # vérifie le mot de passe
+        if not request.user.check_password(mot_de_passe):
+            return Response(
+                {'erreur': 'Mot de passe incorrect.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
-                # L'email est la clé primaire historique. save() tenterait une insertion.
-                # Django crée des FK différées sur PostgreSQL : réaffecter les références
-                # dans la même transaction conserve les messages, offres et autres relations.
-                Developper.objects.filter(pk=dev.pk).update(email=email, pseudo=pseudo)
-                if email != dev.email:
-                    for relation in Developper._meta.get_fields(include_hidden=True):
-                        if (relation.auto_created and not relation.concrete and
-                            (relation.one_to_many or relation.one_to_one) and
-                            relation.field.target_field.primary_key):
-                            champ = relation.field.attname
-                            relation.related_model._base_manager.filter(**{champ: dev.email}).update(**{champ: email})
-        except IntegrityError:
-            return Response({'erreur': 'Cet email ou ce pseudo est déjà utilisé.'}, status=status.HTTP_400_BAD_REQUEST)
+        nouvel_email = request.data.get('email')
+        nouveau_pseudo = request.data.get('pseudo')
 
-        return Response({'message': 'Email/pseudo mis à jour.', 'email': email, 'pseudo': pseudo})
+        if nouvel_email:
+            # vérifie que le nouvel email n'est pas déjà utilisé
+            if Developper.objects.filter(email=nouvel_email).exclude(
+                email=request.user.email
+            ).exists():
+                return Response(
+                    {'erreur': 'Cet email est déjà utilisé.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            request.user.email = nouvel_email
 
+        if nouveau_pseudo:
+            # vérifie que le pseudo n'est pas déjà pris
+            if Developper.objects.filter(pseudo=nouveau_pseudo).exclude(
+                email=request.user.email
+            ).exists():
+                return Response(
+                    {'erreur': 'Ce pseudo est déjà pris.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            request.user.pseudo = nouveau_pseudo
+
+        request.user.save()
+        return Response({
+            'message': 'Email/pseudo mis à jour.',
+            'email': request.user.email,
+            'pseudo': request.user.pseudo,
+        }, status=status.HTTP_200_OK)
 
 class ChangerMotDePasseView(APIView):
     permission_classes = [IsAuthenticated]
@@ -643,8 +618,8 @@ class CompterNotifsNonLuesView(APIView):
 
 class ExperienceListCreateView(APIView):
     """
-    GET  /api/auth/experiences/       → liste toutes les expériences du dev connecté
-    POST /api/auth/experiences/       → ajoute une nouvelle expérience
+    GET  /api/accounts/experiences/       → liste toutes les expériences du dev connecté
+    POST /api/accounts/experiences/       → ajoute une nouvelle expérience
     """
     permission_classes = [IsAuthenticated]
 
@@ -667,8 +642,8 @@ class ExperienceListCreateView(APIView):
 
 class ExperienceDetailView(APIView):
     """
-    PUT    /api/auth/experiences/<id>/  → modifie une expérience
-    DELETE /api/auth/experiences/<id>/  → supprime une expérience
+    PUT    /api/accounts/experiences/<id>/  → modifie une expérience
+    DELETE /api/accounts/experiences/<id>/  → supprime une expérience
     """
     permission_classes = [IsAuthenticated]
 
@@ -703,13 +678,16 @@ class ExperienceDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         experience.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {'message': 'Expérience supprimée avec succès.'},
+            status=status.HTTP_204_NO_CONTENT
+        )
 
 
 class PossessionListCreateView(APIView):
     """
-    GET  /api/auth/competences/        → liste les compétences du dev connecté
-    POST /api/auth/competences/        → ajoute une compétence au profil
+    GET  /api/accounts/competences/        → liste les compétences du dev connecté
+    POST /api/accounts/competences/        → ajoute une compétence au profil
          body : { "competence": "<uuid>" }
     """
     permission_classes = [IsAuthenticated]
@@ -722,14 +700,14 @@ class PossessionListCreateView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
+        from Learning.models import Competence
         competence_id = request.data.get('competence')
         if not competence_id:
             return Response(
                 {'erreur': 'Le champ "competence" (UUID) est requis.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        competence_id = UUIDField().run_validation(competence_id)
-        # Vérifie que la compétence existe avant de créer une possession.
+        # vérifie que la compétence existe
         try:
             competence = Competence.objects.get(id_competence=competence_id)
         except Competence.DoesNotExist:
@@ -737,21 +715,24 @@ class PossessionListCreateView(APIView):
                 {'erreur': 'Compétence introuvable.'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        possession, created = Possession.objects.get_or_create(
+        # vérifie que le dev ne la possède pas déjà
+        if Possession.objects.filter(
             developper=request.user, competence=competence
-        )
-        if not created:
+        ).exists():
             return Response(
                 {'erreur': 'Tu possèdes déjà cette compétence.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        possession = Possession.objects.create(
+            developper=request.user, competence=competence
+        )
         serializer = PossessionSerializer(possession)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class PossessionDeleteView(APIView):
     """
-    DELETE /api/auth/competences/<id>/  → retire une compétence du profil
+    DELETE /api/accounts/competences/<id>/  → retire une compétence du profil
     """
     permission_classes = [IsAuthenticated]
 
