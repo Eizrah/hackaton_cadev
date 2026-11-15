@@ -23,9 +23,7 @@ import {
 } from "../data/profile";
 import { SkillChip } from "./TechIcon";
 import CredentialFields from "./shared/CredentialFields";
-import { AttachmentCard, AttachmentPicker } from "./shared/Attachments";
 import type { CredentialAttachment } from "../data/profile";
-import { safePortfolio } from "../lib/urls";
 import "./profile-fields.css";
 export function PersonalFields({
   value,
@@ -215,7 +213,7 @@ export function ExperienceFields({
           <button
             type="button"
             className="remove-entry"
-            aria-label={`${t("Retirer l’expérience", "Remove experience")} ${i + 1}`}
+            aria-label={`${t("Retirer l'expérience", "Remove experience")} ${i + 1}`}
             onClick={() => change(latest.current.filter(entry => entry.id !== row.id))}
           >
             <Trash2 size={16} />
@@ -247,8 +245,8 @@ export function ExperienceFields({
                 )}
               />
             </label>
-            <label>
-              {t("Années d’expérience", "Years of experience")}
+            <label style={{ maxWidth: "200px" }}>
+              {t("Durée (en années)", "Duration (in years)")}
               <input
                 type="number"
                 inputMode="numeric"
@@ -261,34 +259,6 @@ export function ExperienceFields({
                 placeholder="1.5"
               />
             </label>
-            {([
-              ["diploma", "diplomaFile", "diplomaUrl", t("Diplôme", "Diploma"), 200],
-              ["certificate", "certificateFile", "certificateUrl", t("Certificat", "Certificate"), 100],
-            ] as const).map(([name, fileKey, urlKey, label, maxLength]) => {
-              const file = row[fileKey];
-              const url = file === undefined ? safePortfolio(row[urlKey] || "") : null;
-              return <div className="credential-field" key={name}>
-                <label>
-                  {label} {t("(facultatif)", "(optional)")}
-                  <input
-                    value={row[name]}
-                    maxLength={maxLength}
-                    onChange={e => update(row.id, { [name]: e.target.value })} />
-                </label>
-                <AttachmentPicker
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
-                  label={name === "diploma" ? t("Joindre le diplôme", "Attach the diploma") : t("Joindre le certificat", "Attach the certificate")}
-                  onBusy={onBusy}
-                  onAdd={([file]) => update(row.id, { [fileKey]: file })} />
-                {file && <AttachmentCard file={file} preview={false} onRemove={() => update(row.id, { [fileKey]: undefined })} />}
-                {url && <>
-                  <a href={url} target="_blank" rel="noopener noreferrer">{t("Ouvrir le document", "Open document")}</a>
-                  <button type="button" className="quiet" onClick={() => update(row.id, { [fileKey]: null })}>
-                    {t("Retirer le document", "Remove document")}
-                  </button>
-                </>}
-              </div>;
-            })}
           </div>
         </fieldset>
       ))}

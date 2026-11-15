@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: cadev_db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cadev_network
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend/Bcadev
+      dockerfile: Dockerfile.prod
+    container_name: cadev_backend
+    env_file:
+      - ./backend/Bcadev/.env
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+    volumes:
+      - media_files:/app/media
+      - static_files:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - cadev_network
+    restart: always
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=/api
+    container_name: cadev_frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+    networks:
+      - cadev_network
+    restart: always
+
+volumes:
+  postgres_data:
+  media_files:
+  static_files:
+
+networks:
+  cadev_network:
+    driver: bridge

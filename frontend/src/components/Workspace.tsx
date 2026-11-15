@@ -381,8 +381,13 @@ export default function Workspace({
                   const merged = withLocalProfile(mapDjangoProfile(data.profil), next, next.experiences.map(row =>
                     written.get(row.id) ?? row.serverId,
                   ));
+                  
+                  // Mise à jour du profil et attente avant navigation
                   setProfile(merged);
                   setNotice(t("Profil mis à jour.", "Profile updated."));
+                  
+                  // Petit délai pour s'assurer que React a mis à jour l'état
+                  await new Promise(resolve => setTimeout(resolve, 100));
                   navigate("profil");
                 }}
                 onCancel={() => navigate("profil")}
