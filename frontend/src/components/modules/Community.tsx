@@ -80,6 +80,13 @@ function mapForumPost(post: ForumPostResponse): ForumPost {
   };
 }
 
+// Les publications identifient leur auteur par e-mail ; normaliser avant de comparer.
+function isOwnPost(post: ForumPost, profile: Profile) {
+  const authorEmail = post.authorId.trim().toLocaleLowerCase();
+  const profileEmail = profile.email.trim().toLocaleLowerCase();
+  return !!authorEmail && !!profileEmail && authorEmail === profileEmail;
+}
+
 function mapComment(comment: DjangoComment): PostComment {
   return {
     id: comment.id_commentaire,
@@ -503,7 +510,7 @@ export default function Community({
     }
   }
 
-  const visible = posts.filter(post => post.moderation === "approved" || post.authorId === profile.email);
+  const visible = posts.filter(post => post.moderation === "approved" || isOwnPost(post, profile));
   const displayedPosts = isSearching
     ? visible.filter(post => post.moderation === "approved" && searchIds.includes(post.id))
     : visible;
@@ -690,7 +697,7 @@ export default function Community({
 
         {/* ─── Liste des posts ─── */}
         {displayedPosts.map((post) => {
-          const owner = post.authorId === profile.email;
+          const owner = isOwnPost(post, profile);
           const thread = threads[post.id] || [];
           return (
             <article
@@ -863,7 +870,7 @@ export default function Community({
                   {post.commentCount} {t("commentaires", "comments")}
                 </button>
 
-                {post.collaboration && (
+                {post.collaboration && !owner && (
                   <button
                     className="collab-action"
                     onClick={() => onNavigate(`messages/prive/${encodeURIComponent(post.authorId || post.author)}`)}

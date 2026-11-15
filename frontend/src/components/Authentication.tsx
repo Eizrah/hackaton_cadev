@@ -34,7 +34,6 @@ import {
 } from "../data/profile";
 import { ExperienceFields, PersonalFields, SkillFields } from "./ProfileFields";
 import GithubIcon from "./GithubIcon";
-import GoogleIcon from "./GoogleIcon";
 import LanguageSwitcher from "./LanguageSwitcher";
 import "../authentication.css";
 type AuthMode = "signup" | "login" | "forgot";
@@ -102,27 +101,6 @@ function SocialOptions() {
         </span>
       </div>
       <div className="register-social-buttons">
-        <button
-          type="button"
-          onClick={() => {
-            // Créer un formulaire POST pour social-auth
-            const form = document.createElement('form')
-            form.method = 'POST'
-            form.action = 'http://localhost:8000/social-auth/login/google-oauth2/'
-            document.body.appendChild(form)
-            form.submit()
-          }}
-          aria-label={t(
-            "Se connecter avec Google",
-            "Sign in with Google",
-          )}
-          title={t(
-            "Connexion avec Google",
-            "Sign in with Google",
-          )}
-        >
-          <GoogleIcon />
-        </button>
         <button
           type="button"
           onClick={() => {

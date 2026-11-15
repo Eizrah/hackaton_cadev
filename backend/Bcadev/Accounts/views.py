@@ -11,6 +11,7 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from .serializers import (
     InscriptionSerializer, ConnexionSerializer, DevelopperSerializer,
+    ProfilPersonnelSerializer,
     NotifSerializer, ExperienceSerializer, PossessionSerializer
 )
 from Groups.models import Group
@@ -40,6 +41,7 @@ class InscriptionView(APIView):
             refresh = RefreshToken.for_user(dev)
             return Response({
                 'message': 'Compte créé avec succès.',
+                'identifiant': str(dev.identifiant),
                 'email': dev.email,
                 'nom': dev.nom,
                 'prenom': dev.prenom,
@@ -53,7 +55,9 @@ class InscriptionView(APIView):
                 'tokens':{
                     'access': str(refresh.access_token),
                     'refresh': str(refresh),
-                }
+                },
+                # Le frontend utilise ce profil pour ouvrir la session après l'inscription.
+                'profil': ProfilPersonnelSerializer(dev, context={'request': request}).data,
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
