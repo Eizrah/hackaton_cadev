@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from "react";
-import { ArrowRight, Bookmark, BriefcaseBusiness, Building2, CalendarDays, ExternalLink, Mail, Plus, Search, Send, X } from "lucide-react";
+import { ArrowRight, Bookmark, BriefcaseBusiness, Building2, CalendarDays, ExternalLink, Flag, Mail, Plus, Search, Send, Trash2, X } from "lucide-react";
 import { type Profile } from "../../data/models";
 import { useI18n } from "../../i18n/context";
 import { CountryFlag } from "../CountryFlag";
@@ -29,6 +29,11 @@ interface Offre {
   developper_email: string
   developper_pseudo: string
   feu_vert: boolean
+  ma_candidature?: {
+    id: number
+    etat: 'accepte' | 'refuse' | 'en_attente'
+    date_postule: string
+  } | null
 }
 
 export default function Offers({ profile, onNotice, onNavigate, route }: { profile: Profile; onNotice: (text: string) => void; onNavigate: (path: string) => void; route: string[] }) {
@@ -46,6 +51,10 @@ export default function Offers({ profile, onNotice, onNavigate, route }: { profi
   const [country, setCountry] = useState("")
   const [error, setError] = useState("")
   const [contract, setContract] = useState("CDI")
+  const [publishing, setPublishing] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [reporting, setReporting] = useState(false)
+  const [reportReason, setReportReason] = useState("")
   
   const savedPublications = useSavedPublications();
   const focusOffer = route[0] === "offre" ? route[1] : undefined;
@@ -145,8 +154,47 @@ export default function Offers({ profile, onNotice, onNavigate, route }: { profi
     setApplying(offre)
   }
 
+  async function deleteOffre(offre: Offre) {
+    if (!confirm(t("Êtes-vous sûr de vouloir supprimer cette offre ?", "Are you sure you want to delete this offer?"))) {
+      return
+    }
+    
+    setDeleting(true)
+    try {
+      await publicationApi.supprimerOffre(offre.id_publication)
+      setDetail(null)
+      onNotice(t("Offre supprimée avec succès", "Offer deleted successfully"))
+      loadOffres()
+    } catch (err) {
+      onNotice(apiError(err, t("Impossible de supprimer l'offre", "Could not delete the offer")))
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  async function reportOffre(offre: Offre) {
+    if (!reportReason.trim()) {
+      onNotice(t("Veuillez indiquer un motif", "Please provide a reason"))
+      return
+    }
+    
+    setReporting(true)
+    try {
+      await publicationApi.signalerOffre(offre.id_publication, reportReason)
+      setReportReason("")
+      setDetail(null)
+      onNotice(t("Offre signalée avec succès", "Offer reported successfully"))
+    } catch (err) {
+      onNotice(apiError(err, t("Impossible de signaler l'offre", "Could not report the offer")))
+    } finally {
+      setReporting(false)
+    }
+  }
+
   async function publish(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (publishing) return
+    
     if (!skills.length) {
       setError(t("Ajoute au moins une compétence recherchée.", "Add at least one required skill."))
       return
@@ -180,6 +228,9 @@ export default function Offers({ profile, onNotice, onNavigate, route }: { profi
       }
     }
 
+    setPublishing(true)
+    setError("")
+
     try {
       const data = {
         nom_poste: get("title"),
@@ -211,6 +262,8 @@ export default function Offers({ profile, onNotice, onNavigate, route }: { profi
       } else {
         setError(err.response?.data?.message || t("Erreur lors de la création de l'offre", "Error creating job offer"))
       }
+    } finally {
+      setPublishing(false)
     }
   }
 
@@ -387,16 +440,75 @@ export default function Offers({ profile, onNotice, onNavigate, route }: { profi
               ? t("Retirer des enregistrements", "Remove from saved items")
               : t("Enregistrer l’offre", "Save offer")}
         </button>
-        {detail.developper_email === profile.email ? <button
-          className="btn-primary"
-          onClick={() => { setDetail(null); onNavigate(`profil/recrutement/${detail.id_publication}`); }}>
-          {t("Voir les candidats", "View applicants")}
-        </button> : <button
-          className="btn-primary"
-          onClick={() => startApply(detail)}>
-          <Send size={16} />
-          {t("Postuler à cette offre", "Apply for this job")}
-        </button>}
+        
+        {detail.developper_email === profile.email ? (
+          <div className="flex gap-2">
+            <button
+              className="btn-outline flex-1"
+              onClick={() => { setDetail(null); onNavigate(`profil/recrutement/${detail.id_publication}`); }}>
+              {t("Voir les candidats", "View applicants")}
+            </button>
+            <button
+              className="btn-outline"
+              disabled={deleting}
+              onClick={() => deleteOffre(detail)}>
+              <Trash2 size={16} />
+              {deleting ? t("Suppression…", "Deleting…") : t("Supprimer", "Delete")}
+            </button>
+          </div>
+        ) : (
+          <>
+            {!detail.ma_candidature && (
+              <button
+                className="btn-primary"
+                onClick={() => startApply(detail)}>
+                <Send size={16} />
+                {t("Postuler à cette offre", "Apply for this job")}
+              </button>
+            )}
+            
+            {detail.ma_candidature && (
+              <div className="p-3 bg-gray-800 rounded-lg text-sm">
+                {detail.ma_candidature.etat === 'en_attente' && (
+                  <p className="text-blue-400">
+                    {t("Candidature envoyée le", "Application sent on")} {formatDate(detail.ma_candidature.date_postule)}
+                  </p>
+                )}
+                {detail.ma_candidature.etat === 'accepte' && (
+                  <p className="text-green-400">
+                    {t("✅ Candidature acceptée", "✅ Application accepted")}
+                  </p>
+                )}
+                {detail.ma_candidature.etat === 'refuse' && (
+                  <p className="text-red-400">
+                    {t("❌ Candidature non retenue", "❌ Application not accepted")}
+                  </p>
+                )}
+              </div>
+            )}
+            
+            <div className="border-t border-gray-700 pt-3 mt-3">
+              <label className="block text-sm mb-2">
+                {t("Signaler cette offre", "Report this offer")}
+              </label>
+              <textarea
+                className="w-full p-2 bg-gray-800 border border-gray-700 rounded text-sm mb-2"
+                rows={2}
+                placeholder={t("Motif du signalement…", "Reason for reporting…")}
+                value={reportReason}
+                onChange={e => setReportReason(e.target.value)}
+                disabled={reporting}
+              />
+              <button
+                className="btn-outline w-full"
+                disabled={reporting || !reportReason.trim()}
+                onClick={() => reportOffre(detail)}>
+                <Flag size={16} />
+                {reporting ? t("Signalement…", "Reporting…") : t("Signaler", "Report")}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </Modal>}
 
@@ -404,9 +516,18 @@ export default function Offers({ profile, onNotice, onNavigate, route }: { profi
       <ApplicationForm
         offreId={applying.id_publication}
         onClose={() => setApplying(null)}
-        onSuccess={() => {
+        onSuccess={async () => {
           setApplying(null)
           onNotice(t("Candidature envoyée avec succès !", "Application sent successfully!"))
+          // Recharger le détail de l'offre pour afficher le statut de candidature
+          if (applying) {
+            try {
+              const { data } = await publicationApi.getOffre(applying.id_publication)
+              setDetail(data)
+            } catch (err) {
+              console.error('Erreur rechargement offre:', err)
+            }
+          }
         }}
       />
     )}
@@ -528,9 +649,14 @@ export default function Offers({ profile, onNotice, onNavigate, route }: { profi
           {t(error)}
         </p>}
         <button
-          className="btn-primary">
-          <Plus size={17} />
-          {t("Publier l'offre", "Post job")}
+          className="btn-primary"
+          disabled={publishing}>
+          {publishing ? (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Plus size={17} />
+          )}
+          {publishing ? t("Publication…", "Publishing…") : t("Publier l'offre", "Post job")}
         </button>
       </form>
     </Modal>}

@@ -82,9 +82,9 @@ export const authApi = {
     client.get(`/api/auth/rechercher/?q=${encodeURIComponent(query)}`),
 
   // Suppression de compte avec confirmation par mot de passe
-  supprimerCompte: (password: string, refresh?: string) =>
+  supprimerCompte: (data: { password: string; refresh?: string }) =>
     client.delete('/api/auth/supprimer-compte/', {
-      data: { password, refresh }
+      data
     }),
 
   // Catalogue partagé par l'inscription, le profil et les offres.
