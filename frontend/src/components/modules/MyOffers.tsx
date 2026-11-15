@@ -113,7 +113,7 @@ export default function MyOffers({ onNavigate, onNotice, focusJob }: MyOffersPro
                 <span className="flex items-center gap-1">
                   <Briefcase className="w-4 h-4" />
                   {offre.type_contrat}
-                  {offre.duree && ` - ${offre.duree}`}
+                  {offre.duree && ` - ${offre.duree} ${t("mois", "months")}`}
                 </span>
                 <span>{getTypeTravail(offre.type_travail)}</span>
               </div>

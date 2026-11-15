@@ -159,18 +159,40 @@ class MotDePasseOublieView(APIView):
             dev = Developper.objects.get(email=email)
             token = default_token_generator.make_token(dev)
             uid = urlsafe_base64_encode(force_bytes(dev.pk))
-            frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+            frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
             reset_link = f"{frontend_url}/#reset?uid={uid}&token={token}"
 
+            # Message texte avec un peu de style
+            message_texte = f"""
+Bonjour {dev.prenom or dev.pseudo},
 
-            # lien que le frontend utilisera pour réinitialiser le mot de passe
-            #reset_link = f"http://localhost:3000/reset-password/{uid}/{token}/"
-            send_mail(
-                subject='Réinitialisation de votre mot de passe',
-                message=f'Cliquez sur ce lien pour réinitialiser votre mot de passe : {reset_link}',
-                from_email='noreply@cadev.com',
-                recipient_list=[email],
+Vous avez demandé à réinitialiser votre mot de passe sur DevAfrica Connect.
+
+Cliquez sur le lien ci-dessous pour définir un nouveau mot de passe :
+{reset_link}
+
+⚠️ IMPORTANT : Ce lien est valide pendant 1 heure seulement.
+
+Si vous n'avez pas demandé cette réinitialisation, ignorez simplement cet email.
+
+---
+DevAfrica Connect - Plateforme de développement Africaine
+Cet email a été envoyé automatiquement, merci de ne pas y répondre.
+            """
+
+            # send_mail(
+            #     subject='🔐 Réinitialisation de votre mot de passe - DevAfrica Connect',
+            #     message=message_texte.strip(),
+            #     from_email='noreply@cadev.com',
+            #     recipient_list=[email],
+            # )
+            from fonction_utils.emails import envoyer_reset_password
+            envoyer_reset_password(
+                destinataire=email,
+                nom=dev.prenom or dev.pseudo,
+                lien=reset_link
             )
+
         except Developper.DoesNotExist:
             pass  # on ne révèle pas si l'email existe ou non
         return Response({'message': 'Si cet email existe, un lien a été envoyé.'}, status=status.HTTP_200_OK)
@@ -742,4 +764,35 @@ class PossessionDeleteView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         possession.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {'message': 'Compétence retirée du profil.'},
+            status=status.HTTP_204_NO_CONTENT
+        )
+
+
+class GitHubLoginView(View):
+    """
+    Vue proxy pour accepter les requêtes GET vers GitHub OAuth.
+    Redirige vers l'URL social-auth avec la bonne méthode.
+    """
+    def get(self, request):
+        from django.shortcuts import redirect
+        # Redirige vers la vue social-django avec tous les paramètres
+        return redirect('/social-auth/login/github/')
+    
+    def post(self, request):
+        from django.shortcuts import redirect
+        return redirect('/social-auth/login/github/')
+
+
+class GoogleLoginView(View):
+    """
+    Vue proxy pour accepter les requêtes GET vers Google OAuth.
+    """
+    def get(self, request):
+        from django.shortcuts import redirect
+        return redirect('/social-auth/login/google-oauth2/')
+    
+    def post(self, request):
+        from django.shortcuts import redirect
+        return redirect('/social-auth/login/google-oauth2/')

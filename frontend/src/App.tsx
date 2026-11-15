@@ -428,7 +428,107 @@ function OAuthCallback({ route }: { route: string }) {
 
 export default function App() {
   const route = useHashRoute();
-  if (route.startsWith("oauth-callback")) return <OAuthCallback route={route} />;
+
+
+
+  // ─── Détection du retour OAuth GitHub/Google ─────────────────────────────
+  // Quand l'utilisateur revient de Google/GitHub, l'URL contient
+  // #oauth-callback?access=...&refresh=...&email=...
+if (route.startsWith("oauth-callback")) {
+  const params = new URLSearchParams(route.slice("oauth-callback".length + 1))
+  const access = params.get("access")
+  const refresh = params.get("refresh")
+
+  if (access && refresh) {
+    localStorage.setItem("access_token", access)
+    localStorage.setItem("refresh_token", refresh)
+    // vide l'ancien profil pour éviter d'afficher un profil périmé
+    localStorage.removeItem('devafrica:profile')
+
+    // récupère le profil depuis le backend et le sauvegarde en localStorage
+    fetch('http://localhost:8000/api/auth/profil/', {
+      headers: { Authorization: `Bearer ${access}` }
+    })
+      .then(res => res.json())
+      .then(data => {
+        // construit le profil au format attendu par le frontend
+        const profile = {
+          id: `dev-${data.email}`,
+          email: data.email,
+          firstName: data.prenom || '',
+          lastName: data.nom || '',
+          name: data.nom || '',
+          pseudo: data.pseudo || '',
+          level: data.niveau === 'D' ? 'Débutant' : data.niveau === 'I' ? 'Intermédiaire' : 'Avancé',
+          country: data.pays || '',
+          age: String(data.age || ''),
+          bio: data.presentation || '',
+          portfolio: data.lien_portfolio || '',
+          photo: data.photoprofil ? `http://localhost:8000${data.photoprofil}` : '',
+          role: data.niveau === 'D' ? 'Développeur Débutant' : data.niveau === 'I' ? 'Développeur Intermédiaire' : 'Développeur Avancé',
+          skills: (data.possessions || []).map((p: any) => p.competence_nom).filter(Boolean).join(', '),
+          experience: (data.experiences || []).map((e: any) => e.nom_poste).filter(Boolean).join('\n') || 'Parcours non renseigné.',
+          skillDetails: (data.possessions || []).map((p: any) => ({
+            id: String(p.id ?? `skill-${Math.random()}`),
+            name: p.competence_nom || '',
+            difficulty: p.competence_difficulte || '',
+            domain: p.competence_domaine || '',
+            competenceId: p.competence || '',
+          })),
+          experiences: (data.experiences || []).map((e: any) => ({
+            id: String(e.id ?? `exp-${Math.random()}`),
+            position: e.nom_poste || '',
+            nbr_annee_exp: String(e.nbr_annee_exp || ''),
+            description: e.description || '',
+            diploma: e.diplome || '',
+            certificate: e.certificat || '',
+            diplomaFileUrl: e.fichier_diplome_url || '',
+            certificateFileUrl: e.fichier_certificat_url || '',
+          })),
+          documents: [],
+          accountStatus: data.banne ? 'banned' : 'active',
+        }
+        localStorage.setItem('devafrica:profile', JSON.stringify(profile))
+
+        // si le profil est incomplet (nouveau compte OAuth) →
+        // redirige vers le profil pour que le dev complète ses infos
+        // sinon → espace de travail directement
+        const profileIncomplet = !data.pays || data.age === 0 || !data.pseudo
+        navigateHash(profileIncomplet ? "workspace/profil" : "workspace")
+      })
+      .catch(() => navigateHash("workspace/profil"))
+  } else {
+    navigateHash("login")
+  }
+  // affiche un écran de chargement pendant que le fetch récupère le profil
+  // évite d'afficher le Workspace avec un profil périmé
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100vh',
+      flexDirection: 'column',
+      gap: '16px',
+      fontFamily: 'sans-serif',
+      color: '#666'
+    }}>
+      <div style={{
+        width: '40px',
+        height: '40px',
+        border: '3px solid #e0e0e0',
+        borderTop: '3px solid #4CAF50',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite'
+      }} />
+      <p>Connexion en cours…</p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  )
+}
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   const estConnecte = !!localStorage.getItem('access_token')
 
   function navigate(next: Page) {

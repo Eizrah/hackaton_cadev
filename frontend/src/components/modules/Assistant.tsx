@@ -10,12 +10,14 @@ import {
   Bot,
   Check,
   CheckCheck,
+  Copy,
   FileText,
   Flag,
   History,
   LoaderCircle,
   MessageSquare,
   Plus,
+  RefreshCw,
   Search,
   Send,
   ShieldCheck,
@@ -38,19 +40,65 @@ type TutorThread = {
   context?: LearningTutorContext;
 };
 function Reply({ content }: { content: string }) {
+  const { t } = useI18n();
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [copiedMessage, setCopiedMessage] = useState(false);
+
+  const copyToClipboard = async (text: string, index?: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (index !== undefined) {
+        setCopiedIndex(index);
+        setTimeout(() => setCopiedIndex(null), 2000);
+      } else {
+        setCopiedMessage(true);
+        setTimeout(() => setCopiedMessage(false), 2000);
+      }
+    } catch (error) {
+      console.error("Failed to copy:", error);
+    }
+  };
+
   const parts = content.split(/```(?:[a-zA-Z0-9]+)?\n?/);
+  
   return (
-    <>
+    <div className="message-body">
       {parts.map((part, i) =>
         i % 2 ? (
-          <pre key={i}>
-            <code>{part.trim()}</code>
-          </pre>
+          <div key={i} className="code-block-wrapper">
+            <button
+              className="code-copy-btn"
+              onClick={() => copyToClipboard(part.trim(), i)}
+              title={t("Copier le code", "Copy code")}
+            >
+              {copiedIndex === i ? (
+                <Check size={14} />
+              ) : (
+                <Copy size={14} />
+              )}
+            </button>
+            <pre>
+              <code>{part.trim()}</code>
+            </pre>
+          </div>
         ) : (
-          <p key={i}>{part}</p>
+          part.trim() && <p key={i}>{part}</p>
         ),
       )}
-    </>
+      <div className="message-actions">
+        <button
+          className="message-action-btn icon-only"
+          onClick={() => copyToClipboard(content)}
+          title={t("Copier le message", "Copy message")}
+        >
+          {copiedMessage ? (
+            <Check size={13} />
+          ) : (
+            <Copy size={13} />
+          )}
+        </button>
+      </div>
+    </div>
   );
 }
 export default function Assistant({
@@ -282,14 +330,45 @@ function AssistantConversation({ initialContext, onNavigate }: { initialContext?
                     <Bot size={20} />
                   </span>
                 )}
-                <div>
-                  <small>
-                    {m.role === "assistant"
-                      ? t("Assistant IA", "AI assistant")
-                      : t("Toi", "You")}
-                  </small>
-                  <Reply content={m.content} />
-                </div>
+                {m.role === "assistant" ? (
+                  <div>
+                    <small>
+                      {import.meta.env.VITE_AGENT_MODE === "api" ? t("Agent apprentissage", "Learning agent") : t("Agent apprentissage · démo", "Learning agent · demo")}
+                    </small>
+                    <Reply content={m.content} />
+                  </div>
+                ) : (
+                  <div className="user-message-wrapper">
+                    <div className="message-body user-message-body">
+                      <p>{m.content}</p>
+                    </div>
+                    <div className="message-actions user-message-actions">
+                      <button
+                        className="message-action-btn icon-only"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(m.content);
+                          } catch (error) {
+                            console.error("Failed to copy:", error);
+                          }
+                        }}
+                        title={t("Copier le message", "Copy message")}
+                      >
+                        <Copy size={14} />
+                      </button>
+                      {i === thread.messages.length - 2 && (
+                        <button
+                          className="message-action-btn icon-only"
+                          onClick={() => send(m.content)}
+                          disabled={busy}
+                          title={t("Renvoyer ce message", "Resend this message")}
+                        >
+                          <RefreshCw size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </article>
             ))}
           </div>

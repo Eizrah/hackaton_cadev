@@ -186,7 +186,7 @@ export function migrateProfile(saved: unknown): Profile {
     experiences,
     bio: text("bio"),
     role: text("role"),
-    portfolio: text("portfolio"),
+    portfolio: text("portfolio", text("lien_portfolio")),
     photo: text("photo"),
     documents: Array.isArray(value.documents) ? value.documents.flatMap(row => {
       if (!row || !["diploma", "certificate"].includes(row.kind)) return [];

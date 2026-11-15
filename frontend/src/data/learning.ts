@@ -1,4 +1,4 @@
-export type DomainId = "web" | "mobile" | "langages";
+﻿export type DomainId = "web" | "mobile" | "langages";
 export type LearningDomain = {
   id: DomainId;
   title: string;
@@ -332,15 +332,6 @@ export const courses: Course[] = [
   item(
     "swift-mobile",
     "Swift & SwiftUI : créer pour iOS",
-    "Swift",
-    "mobile",
-    ["ios"],
-    "Trois niveaux pour apprendre Swift, créer des vues SwiftUI et travailler avec les API et SwiftData. Six projets Xcode.",
-    "Mobile · langage et interface",
-    ["SwiftUI", "Xcode", "MVVM", "SwiftData"],
-    "Swift décrit les données et la logique de l’application. SwiftUI assemble les vues et les actualise lorsque leur état change. Les projets iOS s’ouvrent dans Xcode sur Mac.",
-    'Text("Bonjour iOS")',
-    "Quel outil UI est associé à Swift dans ce parcours ?",
     ["SwiftUI", "Vue.js", "Flask"],
     0,
     "SwiftUI décrit les vues à partir du code Swift.",
@@ -447,15 +438,6 @@ const languages: [string, string, string, string[], string, string, string][] =
       "Backend, formulaires, sites et API.",
       'echo "Bonjour";',
       "Backend web",
-    ],
-    [
-      "swift",
-      "Swift",
-      "Un langage de l’écosystème Apple.",
-      ["SwiftUI"],
-      "Applications iOS et macOS.",
-      'let message = "Bonjour"',
-      "Mobile et desktop Apple",
     ],
     [
       "sql",

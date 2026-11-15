@@ -105,7 +105,7 @@ function SocialOptions() {
         <button
           type="button"
           onClick={() => {
-            // POST sans CSRF car /social-auth/ est exempté via DisableCSRFMiddleware
+            // Créer un formulaire POST pour social-auth
             const form = document.createElement('form')
             form.method = 'POST'
             form.action = 'http://localhost:8000/social-auth/login/google-oauth2/'
@@ -113,12 +113,12 @@ function SocialOptions() {
             form.submit()
           }}
           aria-label={t(
-            "Google, connexion à configurer",
-            "Google, sign-in not configured",
+            "Se connecter avec Google",
+            "Sign in with Google",
           )}
           title={t(
-            "Connexion Google à configurer avec Django",
-            "Configure Google sign-in with Django",
+            "Connexion avec Google",
+            "Sign in with Google",
           )}
         >
           <GoogleIcon />
@@ -126,7 +126,7 @@ function SocialOptions() {
         <button
           type="button"
           onClick={() => {
-            // POST sans CSRF car /social-auth/ est exempté via DisableCSRFMiddleware
+            // Créer un formulaire POST pour social-auth
             const form = document.createElement('form')
             form.method = 'POST'
             form.action = 'http://localhost:8000/social-auth/login/github/'
@@ -134,12 +134,12 @@ function SocialOptions() {
             form.submit()
           }}
           aria-label={t(
-            "GitHub, connexion à configurer",
-            "GitHub, sign-in not configured",
+            "Se connecter avec GitHub",
+            "Sign in with GitHub",
           )}
           title={t(
-            "Connexion GitHub à configurer avec Django",
-            "Configure GitHub sign-in with Django",
+            "Connexion avec GitHub",
+            "Sign in with GitHub",
           )}
         >
           <GithubIcon size={25} />

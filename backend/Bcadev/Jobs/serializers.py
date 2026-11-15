@@ -26,6 +26,18 @@ class OffreEmploiSerializer(serializers.ModelSerializer):
         if value:
             valider_fichier(value)
         return value
+    
+    def validate_duree(self, value):
+        if value is not None:
+            if value <= 0:
+                raise serializers.ValidationError(
+                    'La durée doit être supérieure à 0 mois.'
+                )
+            if value > 60:  # max 5 ans
+                raise serializers.ValidationError(
+                    'La durée ne peut pas dépasser 60 mois.'
+                )
+        return value
 
     def validate(self, data):
         # duree est obligatoire si le type de contrat est CDD ou Stage

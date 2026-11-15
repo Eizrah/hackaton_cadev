@@ -38,7 +38,6 @@ import { safePortfolio } from "../../lib/urls";
 import TechIcon, { SkillChip } from "../TechIcon";
 import { authApi } from "../../api/auth";
 import { apiError } from "../../api/client";
-import { navigateHash } from "../../lib/navigation";
 import Modal from "../Modal";
 function Avatar({
   profile,
@@ -113,11 +112,7 @@ function CredentialsActions({ profile, onNotice, onSaved }: {
         await authApi.changerMotDePasse({
           ancien_mot_de_passe: current, nouveau_mot_de_passe: password, confirmation,
         });
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        localStorage.removeItem("devafrica:profile");
-        onNotice(t("Mot de passe modifié. Reconnecte-toi.", "Password changed. Sign in again."));
-        navigateHash("login");
+        onNotice(t("Mot de passe modifié avec succès.", "Password changed successfully."));
       }
       close();
     } catch (err) {

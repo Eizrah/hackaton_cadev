@@ -133,7 +133,11 @@
 .floating-tutor header small { font-size:9px;display:block;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;color:#cee7ff; }
 .floating-tutor .quiet { background:transparent;border:0;color:inherit;padding:6px;display:grid;place-items:center;border-radius:50%;flex-shrink:0; }
 .floating-tutor .quiet:hover { background:#ffffff20; }
-.floating-tutor-scroll { flex:1;min-height:0;overflow:auto;padding:18px;overscroll-behavior:contain; }
+.floating-tutor-scroll { flex:1;min-height:0;overflow:auto;padding:18px 8px 18px 18px;overscroll-behavior:contain;scrollbar-width:none;-ms-overflow-style:none; }
+
+.floating-tutor-scroll::-webkit-scrollbar {
+  display: none;
+}
 .floating-tutor-welcome { text-align:center;padding:24px 10px;color:#7491a7; }
 .floating-tutor-welcome > svg { color:#297cbb; }
 .floating-tutor-welcome h3 { font-size:17px;color:#315f80;line-height:1.5; }
@@ -208,7 +212,8 @@
 
 .floating-tutor-message.user {
   flex-direction: row-reverse;
-  justify-content: flex-start;
+  justify-content: flex-end;
+  margin-left: auto;
 }
 
 .floating-tutor-message.user .message-content {
@@ -221,6 +226,9 @@
 .floating-tutor-message.user .message-body {
   background: #e3f2ff;
   border-color: #c5e0ff;
+  max-width: fit-content;
+  min-width: 80px;
+  border-radius: 16px;
 }
 
 .floating-tutor-message p {
@@ -252,6 +260,45 @@
   line-height: 1.6;
 }
 
+/* Wrapper pour bloc de code avec bouton copier */
+.floating-tutor-message .code-block-wrapper {
+  position: relative;
+  margin: 10px 0;
+}
+
+.floating-tutor-message .code-block-wrapper pre {
+  margin: 0;
+  padding-right: 65px;
+}
+
+.floating-tutor-message .code-copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #d0e8f5;
+  padding: 5px;
+  border-radius: 5px;
+  min-width: 28px;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 1;
+}
+
+.floating-tutor-message .code-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.floating-tutor-message .code-copy-btn:active {
+  transform: scale(0.95);
+}
+
 /* Actions sous les messages utilisateur */
 .message-actions {
   display: flex;
@@ -267,24 +314,76 @@
 
 .message-action-btn {
   background: transparent;
-  border: none;
-  color: #7b93aa;
-  padding: 4px 8px;
-  border-radius: 6px;
+  border: 1px solid #d4e3ed;
+  color: #5a7a95;
+  padding: 5px 8px;
+  border-radius: 5px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: 9px;
   transition: all 0.2s;
+}
+
+.message-action-btn.icon-only {
+  padding: 5px;
+  min-width: 28px;
+  justify-content: center;
 }
 
 .message-action-btn:hover {
   background: #e8f0f7;
   color: #2e6aa3;
+  border-color: #c5dae8;
 }
 
 .message-action-btn:active {
+  transform: scale(0.95);
+}
+
+.message-action-btn span {
+  font-size: 9px;
+}
+
+/* Wrapper pour message utilisateur */
+.floating-tutor-message .user-message-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  max-width: 92%;
+  width: 100%;
+}
+
+/* Actions pour messages utilisateur */
+
+.floating-tutor-message .user-message-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.floating-tutor-message.user:hover .user-message-actions {
+  opacity: 1;
+}
+
+.floating-tutor-message .user-message-actions .message-action-btn {
+  background: transparent;
+  border: none;
+  color: #5a7a95;
+  padding: 4px;
+  min-width: 26px;
+  border-radius: 5px;
+}
+
+.floating-tutor-message .user-message-actions .message-action-btn:hover {
+  background: transparent;
+  color: #2e6aa3;
+}
+
+.floating-tutor-message .user-message-actions .message-action-btn:active {
   transform: scale(0.95);
 }
 
