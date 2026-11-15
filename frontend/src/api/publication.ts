@@ -32,6 +32,7 @@ export interface ForumPostResponse {
   developper_email: string
   developper_pseudo: string
   developper_pays?: string
+  developper_photoprofil?: string | null
   description: string
   lien?: string | null
   fichier?: string | null

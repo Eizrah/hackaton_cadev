@@ -13,6 +13,7 @@ export type PostComment = {
 export type Post = {
   attachments?:StoredAttachment[]; links?:string[]; savedBy?:string[];
   authorId?: string;
+  authorPhoto?: string;
   id: number;
   author: string;
   country: string;

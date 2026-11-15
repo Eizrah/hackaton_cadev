@@ -85,18 +85,22 @@ def check_mots_interdits(texte: str) -> dict:
     """
     texte_lower = texte.casefold()
     # Reconnaît les mots et les expressions complets, y compris près de la ponctuation.
-    mots_trouves = [
-        mot for mot in dict.fromkeys(MOTS_INTERDITS)
-        if re.search(rf"(?<!\w){re.escape(mot)}(?!\w)", texte_lower)
-    ]
+    mots_trouves = []
+    for pattern in MOTS_INTERDITS:
+        match = re.search(pattern, texte_lower, re.IGNORECASE)
+        if match:
+            # Extrait le mot réel trouvé au lieu du pattern regex
+            mot_trouve = match.group(0)
+            if mot_trouve not in mots_trouves:
+                mots_trouves.append(mot_trouve)
 
     return {
         # True si des patterns interdits ont été trouvés
-        "contient_mots_interdits": len(patterns_trouves) > 0,
-        # liste des patterns trouvés pour expliquer le refus
-        "mots_trouves": patterns_trouves,
+        "contient_mots_interdits": len(mots_trouves) > 0,
+        # liste des mots réels trouvés (pas les regex)
+        "mots_trouves": mots_trouves,
         # nombre de patterns interdits détectés
-        "nombre": len(patterns_trouves)
+        "nombre": len(mots_trouves)
     }
 
 @tool

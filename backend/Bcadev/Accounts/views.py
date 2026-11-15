@@ -556,7 +556,7 @@ class RechercherDevsView(APIView):
         devs = Developper.objects.filter(
             pseudo__icontains=query,
             banne=False  # Exclure les devs bannis
-        ).values('pseudo', 'email')[:10]  # Limiter à 10 résultats
+        ).values('pseudo', 'email', 'photoprofil')[:10]  # Limiter à 10 résultats
         
         return Response(list(devs), status=status.HTTP_200_OK)
 
@@ -777,3 +777,20 @@ class GoogleLoginView(View):
     def post(self, request):
         from django.shortcuts import redirect
         return redirect('/social-auth/login/google-oauth2/')
+
+
+class ProfilMembreView(APIView):
+    """Retourne le profil public d'un membre par son email"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, membre):
+        try:
+            # Cherche le dev par email
+            dev = Developper.objects.get(email=membre, banne=False, is_active=True)
+            serializer = DevelopperSerializer(dev)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Developper.DoesNotExist:
+            return Response(
+                {'erreur': 'Membre introuvable.'},
+                status=status.HTTP_404_NOT_FOUND
+            )

@@ -51,7 +51,7 @@ type DjangoComment = {
   developper_photo?: string | null;
 };
 
-type ForumPost = Pick<Post, "author" | "country" | "title" | "text" | "links" | "publishedAt" |
+type ForumPost = Pick<Post, "author" | "authorPhoto" | "country" | "title" | "text" | "links" | "publishedAt" |
   "collaboration" | "starred" | "starCount"> & {
   id: string;
   authorId: string;
@@ -65,6 +65,7 @@ function mapForumPost(post: ForumPostResponse): ForumPost {
     id: post.id_publication,
     authorId: post.developper_email,
     author: post.developper_pseudo || post.developper_email,
+    authorPhoto: mediaUrl(post.developper_photoprofil),
     country: post.developper_pays || "",
     title: "",
     text: post.description,
@@ -238,7 +239,7 @@ export default function Community({
   const [pendingStars, setPendingStars] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchIds, setSearchIds] = useState<string[]>([]);
-  const [searchPeople, setSearchPeople] = useState<Array<{ pseudo: string; email: string }>>([]);
+  const [searchPeople, setSearchPeople] = useState<Array<{ pseudo: string; email: string; photoprofil?: string }>>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchFailed, setSearchFailed] = useState(false);
   const searchInput = useRef<HTMLInputElement>(null);
@@ -642,9 +643,17 @@ export default function Community({
                   }}
                 >
                   <div className="person">
-                    <span className="avatar">
-                      {person.pseudo.slice(0, 2).toUpperCase()}
-                    </span>
+                    {person.photoprofil ? (
+                      <img 
+                        src={mediaUrl(person.photoprofil)} 
+                        alt={person.pseudo}
+                        className="avatar-img"
+                      />
+                    ) : (
+                      <span className="avatar">
+                        {person.pseudo.slice(0, 2).toUpperCase()}
+                      </span>
+                    )}
                     <div>
                       <strong>{person.pseudo}</strong>
                       <small className="muted">{t("Voir le profil", "View profile")}</small>
@@ -1063,6 +1072,13 @@ export default function Community({
           color: white;
           font-weight: 600;
           font-size: 0.875rem;
+        }
+
+        .person-card .avatar-img {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          object-fit: cover;
         }
       `}</style>
 

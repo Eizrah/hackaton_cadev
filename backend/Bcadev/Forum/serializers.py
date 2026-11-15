@@ -7,6 +7,7 @@ class ForumPostSerializer(serializers.ModelSerializer):
     developper_email = serializers.EmailField(source='developper.email', read_only=True)
     developper_pseudo = serializers.CharField(source='developper.pseudo', read_only=True)
     developper_pays = serializers.CharField(source='developper.pays', read_only=True)
+    developper_photoprofil = serializers.ImageField(source='developper.photoprofil', read_only=True)
     liked_by_me = serializers.SerializerMethodField()
     # nombre de notes calculé dynamiquement
     nombre_notes = serializers.SerializerMethodField()
@@ -17,14 +18,14 @@ class ForumPostSerializer(serializers.ModelSerializer):
         fields = [
             'id_publication', 'description', 'fichier', 'lien', 'collaboration',
             'date_publication', 'feu_vert', 'point_penalite_obtenu',
-            'developper_email', 'developper_pseudo', 'developper_pays',
+            'developper_email', 'developper_pseudo', 'developper_pays', 'developper_photoprofil',
             'nombre_notes', 'nombre_commentaires', 'liked_by_me'
         ]
         # ces champs sont gérés automatiquement par le système
         read_only_fields = [
             'id_publication', 'date_publication',
             'feu_vert', 'point_penalite_obtenu',
-            'developper_email', 'developper_pseudo', 'nombre_notes'
+            'developper_email', 'developper_pseudo', 'developper_photoprofil', 'nombre_notes'
         ]
 
     def get_nombre_notes(self, obj):
@@ -45,6 +46,7 @@ class ForumPostListSerializer(serializers.ModelSerializer):
     developper_email = serializers.EmailField(source='developper.email', read_only=True)
     developper_pseudo = serializers.CharField(source='developper.pseudo', read_only=True)
     developper_pays = serializers.CharField(source='developper.pays', read_only=True)
+    developper_photoprofil = serializers.ImageField(source='developper.photoprofil', read_only=True)
     nombre_notes = serializers.SerializerMethodField()
     nombre_commentaires = serializers.IntegerField(source='commentaire_set.count', read_only=True)
     liked_by_me = serializers.SerializerMethodField()
@@ -54,7 +56,7 @@ class ForumPostListSerializer(serializers.ModelSerializer):
         fields = [
             'id_publication', 'description', 'date_publication',
             'feu_vert', 'lien', 'fichier', 'collaboration',
-            'developper_email', 'developper_pseudo', 'developper_pays',
+            'developper_email', 'developper_pseudo', 'developper_pays', 'developper_photoprofil',
             'nombre_notes', 'nombre_commentaires', 'liked_by_me'
         ]
 
