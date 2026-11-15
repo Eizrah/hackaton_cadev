@@ -20,6 +20,7 @@ import {
   Share2,
   Sparkles,
   UserRound,
+  Trash2,
 } from "lucide-react";
 import { type Profile } from "../../data/models";
 import { useLocalData } from "../../lib/storage";
@@ -135,11 +136,20 @@ function CredentialsActions({ profile, onNotice, onSaved }: {
     </button>
 
     {popup && <Modal
-      title={popup === "credentials"
+      title={popup === "delete"
+        ? t("Supprimer mon compte", "Delete my account")
+        : popup === "credentials"
         ? t("Modifier l’e-mail ou le pseudo", "Edit email or username")
         : t("Changer le mot de passe", "Change password")}
       onClose={close} busy={busy}>
       <form className="job-form" onSubmit={submit}>
+        {popup === "delete" && (
+          <div style={{ marginBottom: "1rem", padding: "1rem", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "8px" }}>
+            <p style={{ margin: 0, color: "#991b1b", fontWeight: 500 }}>
+              {t("?? Cette action est irr�versible. Toutes vos donn�es seront d�finitivement supprim�es.", "?? This action is irreversible. All your data will be permanently deleted.")}
+            </p>
+          </div>
+        )}
         {popup === "credentials" && <label>
           {t("Adresse e-mail", "Email address")}
           <input name="email" type="email" autoComplete="email" defaultValue={profile.email} required />
@@ -151,7 +161,7 @@ function CredentialsActions({ profile, onNotice, onSaved }: {
         {popup === "credentials" ? <label>
           {t("Pseudo", "Username")}
           <input name="pseudo" autoComplete="username" defaultValue={profile.pseudo} required maxLength={50} />
-        </label> : <>
+        </label> : popup === "password" ? <>
           <label>
             {t("Nouveau mot de passe", "New password")}
             <input name="password" type="password" autoComplete="new-password" minLength={8} required />
@@ -160,7 +170,7 @@ function CredentialsActions({ profile, onNotice, onSaved }: {
             {t("Confirmer le nouveau mot de passe", "Confirm new password")}
             <input name="confirmation" type="password" autoComplete="new-password" minLength={8} required />
           </label>
-        </>}
+        </> : null}
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="modal-actions">
           <button type="button" className="btn-secondary" onClick={close} disabled={busy}>{t("Annuler", "Cancel")}</button>
@@ -546,6 +556,39 @@ export function ProfileEditor({
   const [error, setError] = useState("");
   const [uploadCount, setUploadCount] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDeleteAccount() {
+    if (!deletePassword.trim()) {
+      setDeleteError(t("Le mot de passe est requis.", "Password is required."));
+      return;
+    }
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const refreshToken = localStorage.getItem("refresh_token");
+      await authApi.supprimerCompte({
+        password: deletePassword,
+        refresh: refreshToken || undefined,
+      });
+      
+      // Déconnexion et redirection
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("devafrica:profile");
+      
+      onNotice(t("Votre compte a été supprimé.", "Your account has been deleted."));
+      window.location.hash = "#login";
+    } catch (err) {
+      setDeleteError(apiError(err, t("Impossible de supprimer le compte.", "Could not delete your account.")));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (uploadCount || saving) return;
@@ -769,6 +812,26 @@ export function ProfileEditor({
               {t(error)}
             </p>
           )}
+          <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "1.5rem", marginTop: "1.5rem" }}>
+            <button
+              type="button"
+              style={{ 
+                backgroundColor: "#dc2626", 
+                color: "white", 
+                border: "none", 
+                padding: "0.75rem 1.5rem", 
+                borderRadius: "0.375rem", 
+                cursor: "pointer", 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "0.5rem",
+                fontSize: "0.95rem",
+                fontWeight: 500
+              }}
+              onClick={() => setShowDeleteConfirm(true)}>
+              <Trash2 size={16} /> {t("Supprimer mon compte", "Delete my account")}
+            </button>
+          </div>
           <div className="editor-actions">
             <button
               type="button"
@@ -796,6 +859,44 @@ export function ProfileEditor({
           </section>
         </aside>
       </div>
+      {showDeleteConfirm && <Modal
+        title={t("Supprimer mon compte", "Delete my account")}
+        onClose={() => { setShowDeleteConfirm(false); setDeletePassword(""); setDeleteError(""); }}
+        busy={deleting}>
+        <div className="job-form">
+          <div style={{ marginBottom: "1rem", padding: "1rem", background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "8px" }}>
+            <p style={{ margin: 0, color: "#991b1b", fontWeight: 500 }}>
+              {t("⚠️ Cette action est irréversible. Toutes vos données seront définitivement supprimées.", "⚠️ This action is irreversible. All your data will be permanently deleted.")}
+            </p>
+          </div>
+          <label>
+            {t("Confirmer avec votre mot de passe", "Confirm with your password")}
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              autoComplete="current-password"
+              disabled={deleting}
+              required
+            />
+          </label>
+          {deleteError && <p className="form-error" role="alert">{deleteError}</p>}
+          <div className="modal-actions">
+            <button type="button" className="btn-secondary" onClick={() => { setShowDeleteConfirm(false); setDeletePassword(""); setDeleteError(""); }} disabled={deleting}>
+              {t("Annuler", "Cancel")}
+            </button>
+            <button
+              type="button"
+              style={{ backgroundColor: "#dc2626", color: "white", border: "none", padding: "0.5rem 1rem", borderRadius: "0.375rem", cursor: "pointer" }}
+              onClick={handleDeleteAccount}
+              disabled={deleting}>
+              {t("Supprimer définitivement", "Delete permanently")}
+            </button>
+          </div>
+        </div>
+      </Modal>}
     </section>
   );
 }
+
+

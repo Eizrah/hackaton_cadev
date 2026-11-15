@@ -101,7 +101,7 @@ class DetailOffreEmploiView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        serializer = OffreEmploiSerializer(offre)
+        serializer = OffreEmploiSerializer(offre, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     def put(self, request, id_publication):

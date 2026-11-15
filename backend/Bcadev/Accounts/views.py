@@ -12,7 +12,7 @@ from django.utils.encoding import force_bytes, force_str
 from .serializers import (
     InscriptionSerializer, ConnexionSerializer, DevelopperSerializer,
     ProfilPersonnelSerializer,
-    NotifSerializer, ExperienceSerializer, PossessionSerializer
+    NotifSerializer, ExperienceSerializer, PossessionSerializer, ProfilInfosSerializer
 )
 from Groups.models import Group
 from .models import Developper, Blocage, Sourdine, Notif, Experience, Possession

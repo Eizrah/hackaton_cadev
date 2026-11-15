@@ -6,6 +6,7 @@ from fonction_utils.gestion_fichier import valider_fichier
 class OffreEmploiSerializer(serializers.ModelSerializer):
     developper_email = serializers.EmailField(source='developper.email', read_only=True)
     developper_pseudo = serializers.CharField(source='developper.pseudo', read_only=True)
+    ma_candidature = serializers.SerializerMethodField()
 
     class Meta:
         model = Offre_Emploi
@@ -14,13 +15,32 @@ class OffreEmploiSerializer(serializers.ModelSerializer):
             'date_publication', 'feu_vert', 'point_penalite_obtenu',
             'developper_email', 'developper_pseudo', 'localisation',
             'type_contrat', 'duree', 'nom_poste', 'competence_requise',
-            'type_travail', 'deadline', 'email'
+            'type_travail', 'deadline', 'email', 'ma_candidature'
         ]
         read_only_fields = [
             'id_publication', 'date_publication',
             'feu_vert', 'point_penalite_obtenu',
-            'developper_email', 'developper_pseudo',
+            'developper_email', 'developper_pseudo', 'ma_candidature',
         ]
+
+    def get_ma_candidature(self, obj):
+        """Retourne l'état de la candidature de l'utilisateur actuel, si elle existe"""
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return None
+        
+        candidature = Candidature.objects.filter(
+            offre_emploi=obj,
+            developpeur=request.user
+        ).first()
+        
+        if candidature:
+            return {
+                'id': candidature.id,
+                'etat': candidature.etat,
+                'date_postule': candidature.date_postule
+            }
+        return None
 
     def validate_fichier(self, value):
         if value:

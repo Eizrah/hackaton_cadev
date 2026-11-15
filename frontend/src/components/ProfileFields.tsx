@@ -81,7 +81,7 @@ export function PersonalFields({
             inputMode="numeric"
             min={1}
             max={120}
-            step={1}
+            step={0.5}
             value={value.age}
             onChange={(e) => update("age", e.target.value)}
             placeholder={t("Votre âge", "Your age")}
@@ -253,14 +253,13 @@ export function ExperienceFields({
                 type="number"
                 inputMode="numeric"
                 min={0}
-                max={Math.max(50, Number(row.nbr_annee_exp) || 0)}
-                step={1}
+                max={50}
+                step={0.5}
                 value={row.nbr_annee_exp}
-                required={!row.year}
+                required
                 onChange={e => update(row.id, { nbr_annee_exp: e.target.value })}
-                placeholder="3"
+                placeholder="1.5"
               />
-              {row.year && <small className="field-help">{t("Année enregistrée", "Saved year")} {row.year}</small>}
             </label>
             {([
               ["diploma", "diplomaFile", "diplomaUrl", t("Diplôme", "Diploma"), 200],
