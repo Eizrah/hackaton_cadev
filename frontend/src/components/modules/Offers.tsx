@@ -499,7 +499,7 @@ export default function Offers({ profile, onNotice, onNavigate, route }: { profi
           </h3>
           <SkillSearch
             selected={skills}
-            onSelect={option => { setSkills(current => [...current, option.name]); setError(""); }} />
+            onSelect={(name) => { setSkills(current => [...current, name]); setError(""); }} />
           <div className="selected-skills">
             {skills.map(name => <span key={name}>
               <SkillChip name={name} />

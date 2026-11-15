@@ -51,7 +51,7 @@ export const authApi = {
     client.get<DjangoProfile>('/api/auth/profil/'),
 
   getProfilMembre: (membre: string, signal?: AbortSignal) =>
-    client.get<DjangoProfile>('/api/auth/profil/membre/', { params: { membre }, signal }),
+    client.get<DjangoProfile>(`/api/auth/profil/membre/${encodeURIComponent(membre)}/`, { signal }),
 
   // modification des infos de base (nom, prénom, age, photo, bio...)
   updateProfil: (data: object | FormData) =>

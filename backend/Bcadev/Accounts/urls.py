@@ -13,8 +13,8 @@ urlpatterns = [
     path('profil/infos/', ModifierInfosView.as_view(), name='modifier-infos'),
     path('profil/email-pseudo/', ModifierEmailPseudoView.as_view(), name='modifier-email-pseudo'),
     path('profil/mot-de-passe/', ChangerMotDePasseView.as_view(), name='changer-mot-de-passe'),
-    path('profil/', ProfilView.as_view(), name='profil'),
     path('profil/membre/<str:membre>/', ProfilMembreView.as_view(), name='profil-membre'),
+    path('profil/', ProfilView.as_view(), name='profil'),
 
     path('supprimer-compte/', SupprimerCompteView.as_view(), name='supprimer-compte'),
     path('mot-de-passe-oublie/', MotDePasseOublieView.as_view(), name='mot-de-passe-oublie'),

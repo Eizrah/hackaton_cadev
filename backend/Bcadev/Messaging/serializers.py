@@ -54,6 +54,15 @@ class MessageSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         if instance.supprime:
             data['fichier_audio'] = data['duree'] = None
+        else:
+            # Construire l'URL absolue du fichier audio si présent
+            try:
+                if hasattr(instance, 'audio') and instance.audio.fichier_audio:
+                    request = self.context.get('request')
+                    if request:
+                        data['fichier_audio'] = request.build_absolute_uri(instance.audio.fichier_audio.url)
+            except Audio.DoesNotExist:
+                pass
         return data
 
 
@@ -95,6 +104,15 @@ class AudioSerializer(serializers.ModelSerializer):
             'message_parent_contenu'
         ]
 
+    def to_representation(self, instance):
+        """Modifie la représentation pour inclure l'URL absolue du fichier audio."""
+        data = super().to_representation(instance)
+        if instance.fichier_audio:
+            request = self.context.get('request')
+            if request:
+                data['fichier_audio'] = request.build_absolute_uri(instance.fichier_audio.url)
+        return data
+
     def get_message_parent_contenu(self, obj):
         if obj.message_parent:
             return {
@@ -105,24 +123,43 @@ class AudioSerializer(serializers.ModelSerializer):
         return None
 
     def validate(self, attrs):
-        fichier = attrs['fichier_audio']
+        fichier = attrs.get('fichier_audio')
+        if not fichier:
+            raise serializers.ValidationError({'fichier_audio': 'Le fichier audio est obligatoire.'})
         valider_audio(fichier)
+        
+        # Tentative d'extraction de la durée
+        secondes = 0
         try:
+            fichier.seek(0)
             if fichier.read(4) == bytes.fromhex('1a45dfa3'):
-                secondes = duree_webm(fichier)
+                # Fichier WebM - nécessite ffprobe
+                try:
+                    secondes = duree_webm(fichier)
+                except (subprocess.SubprocessError, FileNotFoundError):
+                    # ffprobe non disponible - on accepte quand même le fichier
+                    # et on met une durée par défaut
+                    print("[WARN] ffprobe non disponible, durée par défaut de 60s")
+                    secondes = 60  # durée par défaut
             else:
                 fichier.seek(0)
                 audio = MutagenFile(fichier)
                 secondes = audio.info.length if audio else 0
-        except (OSError, ValueError, MutagenError, subprocess.SubprocessError):
-            secondes = 0
+        except (OSError, ValueError, MutagenError):
+            # Si on ne peut pas lire la durée, on accepte quand même avec une durée par défaut
+            print("[WARN] Impossible de lire la durée audio, durée par défaut de 60s")
+            secondes = 60
         finally:
             fichier.seek(0)
 
-        if not math.isfinite(secondes) or secondes <= 0:
-            raise serializers.ValidationError({'fichier_audio': 'Impossible de lire ce fichier audio.'})
-        if secondes > settings.MAX_AUDIO_DURATION:
-            raise serializers.ValidationError({'fichier_audio': 'La durée maximale du vocal est de 2 min 30.'})
+        # Validation de la durée seulement si on a pu la lire
+        if secondes > 0 and math.isfinite(secondes):
+            if secondes > settings.MAX_AUDIO_DURATION:
+                raise serializers.ValidationError({'fichier_audio': 'La durée maximale du vocal est de 2 min 30.'})
+        else:
+            # Durée invalide ou nulle - on met une durée par défaut
+            secondes = 60
+            
         # Le client ne fournit pas la durée. Le serveur la valide et l'enregistre.
         attrs['duree'] = timedelta(seconds=secondes)
         return attrs
