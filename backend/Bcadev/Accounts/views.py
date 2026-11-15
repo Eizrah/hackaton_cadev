@@ -137,12 +137,19 @@ DevAfrica Connect - Plateforme de développement Africaine
 Cet email a été envoyé automatiquement, merci de ne pas y répondre.
             """
 
-            send_mail(
-                subject='🔐 Réinitialisation de votre mot de passe - DevAfrica Connect',
-                message=message_texte.strip(),
-                from_email='noreply@cadev.com',
-                recipient_list=[email],
+            # send_mail(
+            #     subject='🔐 Réinitialisation de votre mot de passe - DevAfrica Connect',
+            #     message=message_texte.strip(),
+            #     from_email='noreply@cadev.com',
+            #     recipient_list=[email],
+            # )
+            from fonction_utils.emails import envoyer_reset_password
+            envoyer_reset_password(
+                destinataire=email,
+                nom=dev.prenom or dev.pseudo,
+                lien=reset_link
             )
+
         except Developper.DoesNotExist:
             pass  # on ne révèle pas si l'email existe ou non
         return Response({'message': 'Si cet email existe, un lien a été envoyé.'}, status=status.HTTP_200_OK)
