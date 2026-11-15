@@ -249,6 +249,14 @@
   font-weight: 650;
   border-bottom: 5px solid #a9c9f0;
   flex-shrink: 0;
+  overflow: hidden;
+}
+/* L’image reprend la forme de l’avatar affiché dans l’apprentissage. */
+.web-learner-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
 }
 .web-learner > div {
   min-width: 0;

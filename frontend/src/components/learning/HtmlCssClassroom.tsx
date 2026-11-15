@@ -45,6 +45,28 @@ import "./learning-enhancements.css";
 
 type WebProgress = { lessons: string[]; projects: string[] };
 const emptyProgress: WebProgress = { lessons: [], projects: [] };
+// Ces parcours mobile et backend n’utilisent pas le bouton d’essai du cours web.
+const pathsWithoutExampleTry = new Set(["backend", "android", "ios", "multiplateforme"]);
+// Dans ces cours de programmation, le niveau avancé n’ouvre pas l’atelier web.
+const advancedCoursesWithoutExampleTry = new Set<DetailedCourseId>([
+  "lang-cpp",
+  "lang-python",
+  "lang-java",
+  "lang-javascript",
+  "lang-typescript",
+  "lang-php",
+]);
+// Ces runtimes ouvrent une fenêtre de bureau et s’exécutent dans un environnement local.
+const graphicalRuntimes = new Set(["gtk", "qt", "javafx", "customtkinter", "electron", "nodegui", "php-desktop", "fltk"]);
+function canTryExample(courseId: DetailedCourseId, path: string | undefined, level: WebLevel, lesson: WebLesson) {
+  if (pathsWithoutExampleTry.has(path ?? "")) return false;
+  if (level.id === "avance" && advancedCoursesWithoutExampleTry.has(courseId)) return false;
+  const runtime = lesson.files.local?.runtime;
+  if (level.id === "avance" && runtime && graphicalRuntimes.has(runtime)) return false;
+  // Les exemples GTK du niveau intermédiaire de C se lancent avec l’environnement local.
+  if (courseId === "lang-c" && level.id === "intermediaire" && runtime === "gtk") return false;
+  return true;
+}
 function migrateWebProgress(saved: unknown, levels: WebLevel[]): WebProgress {
   const value =
     saved && typeof saved === "object"
@@ -368,9 +390,14 @@ export default function WebClassroom({
           <aside className={`web-toc ${tocOpen ? "web-toc-open" : ""}`}>
             <div className="web-learner">
               <span className="web-learner-avatar">
-                {profile.firstName.slice(0, 1) ||
+                {/* Reprendre la photo du profil partagé ; garder l’initiale en solution de secours. */}
+                {profile.photo ? (
+                  <img src={profile.photo} alt="" />
+                ) : (
+                  profile.firstName.slice(0, 1) ||
                   profile.name.slice(0, 1) ||
-                  "D"}
+                  "D"
+                )}
               </span>
               <div>
                 <strong>{profile.firstName || profile.name}</strong>
@@ -573,6 +600,7 @@ export default function WebClassroom({
                   lesson={lesson}
                   courseId={courseId}
                   beginner={level.id === "debutant"}
+                  showTry={canTryExample(courseId, curriculum.path, level, lesson)}
                   vocabulary={vocabulary}
                   onReviewDefinition={(origin) => openLesson(levels.find((item) => item.id === origin.levelId)!, origin.lessonId)}
                   onAskCode={askAboutCode}
@@ -754,6 +782,7 @@ function LessonReader({
   lesson,
   courseId,
   beginner,
+  showTry,
   vocabulary,
   onReviewDefinition,
   onAskCode,
@@ -765,6 +794,7 @@ function LessonReader({
   lesson: WebLesson;
   courseId: DetailedCourseId;
   beginner: boolean;
+  showTry: boolean;
   vocabulary: LessonVocabularyPlan;
   onReviewDefinition: (origin: VocabularyOrigin) => void;
   onAskCode: (file: string, code: string, anchor?: HTMLElement) => void;
@@ -847,12 +877,12 @@ function LessonReader({
             <code>{readEditorFile(lesson.files, codeFile)}</code>
           </pre>
           </div>
-          <div className="web-example-actions"><button className="web-primary-button" onClick={onTry}>
+          {showTry && <div className="web-example-actions"><button className="web-primary-button" onClick={onTry}>
             <Play size={16} />
             {t("Essayer dans l’atelier", "Try in the studio")}
             <ArrowRight size={16} />
           </button>
-          </div>
+          </div>}
         </section>
         <div className="web-practice">
           <span>

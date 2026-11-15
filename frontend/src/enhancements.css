@@ -413,6 +413,14 @@
 .floating-tutor-mode { text-align:center;font-size:8px;color:#819aac;padding:6px 8px 10px;background:#fbfdff; }
 .floating-tutor-history { overflow:auto;padding:16px; }
 .floating-tutor-history > button { width:100%;display:flex;gap:9px;align-items:center;background:#f1f7fd;border:1px solid #e0ebf5;border-radius:12px;text-align:left;padding:13px;margin-bottom:10px;font-size:12px;color:#3d6c8f; }
+/* Historique du tuteur : la corbeille rouge supprime une seule session. */
+.floating-tutor-history-item { display:flex;gap:8px;align-items:stretch;margin-bottom:10px;min-width:0; }
+.floating-tutor-history-item > button { display:flex;align-items:center;gap:9px;border:1px solid #e0ebf5;border-radius:12px;font-size:12px; }
+.floating-tutor-history-open { flex:1;min-width:0;width:auto;padding:13px;background:#f1f7fd;color:#3d6c8f;text-align:left; }
+.floating-tutor-history-open > svg { flex-shrink:0; }
+.floating-tutor-history-open > span { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.floating-tutor-history-delete { flex:0 0 42px;justify-content:center;padding:0;background:#fff4f4;border-color:#f0c7c9!important;color:#c93640; }
+.floating-tutor-history-delete:hover { background:#ffe7e8;border-color:#e7a6aa!important;color:#ab1f29; }
 .floating-tutor-history > p { font-size:12px;color:#7b96aa; }
 .floating-tutor .form-error { margin:5px 12px;font-size:11px; }
 .tutor-loading { display:flex;align-items:center;gap:8px;color:#507d9b;font-size:11px; }
@@ -454,3 +462,16 @@
 .workspace-wide .workspace-page { width:100%;margin:0;box-sizing:border-box; }
 .registration-stepper ol { grid-template-columns:repeat(2,minmax(0,1fr)); }
 @media(max-width:700px) { body:has(.workspace-wide) .floating-help { bottom:115px; } }
+.floating-tutor > .floating-tutor-drag-handle { cursor: grab; touch-action: none; user-select: none; }
+.floating-tutor > .floating-tutor-drag-handle:active { cursor: grabbing; }
+.floating-tutor > .floating-tutor-drag-handle button { cursor: pointer; touch-action: manipulation; }
+@media(max-width:700px) {
+  .floating-tutor.is-drag-positioned {
+    left: var(--floating-tutor-left) !important;
+    right: auto !important;
+    top: var(--floating-tutor-top) !important;
+    bottom: auto !important;
+    width: var(--floating-tutor-width) !important;
+    height: var(--floating-tutor-height) !important;
+  }
+}
