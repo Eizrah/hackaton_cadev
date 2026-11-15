@@ -313,13 +313,15 @@ export default function Messages({ route, profile, onNavigate, onNotice }: { rou
           const file = new File([blob], attachment.name, { type });
           const data = new FormData();
           if (currentEmail) data.append("destinataire", currentEmail);
-          if (index === 0 && text.trim()) data.append("contenu", text.trim());
 
           if (type.startsWith("audio/")) {
             data.append("fichier_audio", file);
+            // Pour l'audio, on envoie le texte si c'est le premier fichier, sinon contenu vide
+            data.append("contenu", (index === 0 && text.trim()) ? text.trim() : "");
             if (currentGroup) await groupsApi.envoyerAudioGroupe(currentGroup.id_group, data);
             else await messagingApi.envoyerAudio(data);
           } else {
+            if (index === 0 && text.trim()) data.append("contenu", text.trim());
             data.append("fichier", file);
             if (currentGroup) await groupsApi.envoyerFichierGroupe(currentGroup.id_group, data);
             else await messagingApi.envoyerFichier(data);

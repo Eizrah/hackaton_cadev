@@ -323,7 +323,7 @@ class MessagesGroupeView(APIView):
             )
             return Response({
                 'message': 'Message envoyé.',
-                'data': MessageSerializer(message).data
+                'data': MessageSerializer(message, context={'request': request}).data
             }, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -383,7 +383,7 @@ class EnvoyerFichierGroupeView(APIView):
             )
             return Response({
                 'message': 'Fichier envoyé.',
-                'data': MessageSerializer(message).data
+                'data': MessageSerializer(message, context={'request': request}).data
             }, status=status.HTTP_201_CREATED)
 
         message.delete()
@@ -448,7 +448,7 @@ class AccepterInvitationView(APIView):
 
         return Response({
             'message': f'Vous avez rejoint le groupe {invitation.groupe.nom}.',
-            'groupe': GroupSerializer(invitation.groupe).data
+            'groupe': GroupSerializer(invitation.groupe, context={'request': request}).data
         }, status=status.HTTP_200_OK)
 
 

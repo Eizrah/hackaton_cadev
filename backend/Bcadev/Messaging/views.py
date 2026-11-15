@@ -63,6 +63,19 @@ class EnvoyerAudioView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        # Debug: afficher les données reçues
+        print(f"\n[DEBUG Audio] ===== ENVOI AUDIO =====")
+        print(f"[DEBUG Audio] request.data keys: {list(request.data.keys())}")
+        print(f"[DEBUG Audio] request.FILES keys: {list(request.FILES.keys())}")
+        print(f"[DEBUG Audio] request.data: {dict(request.data)}")
+        if 'fichier_audio' in request.FILES:
+            fichier = request.FILES['fichier_audio']
+            print(f"[DEBUG Audio] Fichier audio reçu:")
+            print(f"  - Name: {fichier.name}")
+            print(f"  - Size: {fichier.size}")
+            print(f"  - Content-Type: {fichier.content_type}")
+        print(f"[DEBUG Audio] =========================\n")
+        
         email_destinataire = request.data.get('destinataire')
         if not email_destinataire:
             return Response(
@@ -103,6 +116,8 @@ class EnvoyerAudioView(APIView):
                 'data': AudioSerializer(audio, context={'request': request}).data
             }, status=status.HTTP_201_CREATED)
 
+        # Debug: afficher les erreurs de validation
+        print(f"[DEBUG Audio] Validation errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class EnvoyerFichierView(APIView):
@@ -155,7 +170,7 @@ class EnvoyerFichierView(APIView):
             )
             return Response({
                 'message': 'Fichier envoyé.',
-                'data': MessageSerializer(message).data
+                'data': MessageSerializer(message, context={'request': request}).data
             }, status=status.HTTP_201_CREATED)
 
         # si le fichier est invalide on supprime le message créé
@@ -276,7 +291,7 @@ class ListeConversationsView(APIView):
                             'pseudo': autre_dev.pseudo,
                             'photoprofil': request.build_absolute_uri(autre_dev.photoprofil.url) if autre_dev.photoprofil else None
                         },
-                        'dernier_message': MessageSerializer(dernier).data,
+                        'dernier_message': MessageSerializer(dernier, context={'request': request}).data,
                         'non_lus': non_lus
                     })
                 except Developper.DoesNotExist:

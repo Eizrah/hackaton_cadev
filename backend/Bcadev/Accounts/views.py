@@ -428,21 +428,34 @@ class ModifierInfosView(APIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request):
-        # modifier nom, prénom, age, photo — sans mot de passe
-        serializer = DevelopperSerializer(
+        # Debug: afficher les données reçues
+        print(f"\n[DEBUG ModifierInfos] ===== MODIFICATION PROFIL =====")
+        print(f"[DEBUG ModifierInfos] request.data keys: {list(request.data.keys())}")
+        print(f"[DEBUG ModifierInfos] request.FILES keys: {list(request.FILES.keys())}")
+        
+        # modifier nom, prénom, age, photo, expériences, compétences
+        serializer = ProfilInfosSerializer(
             request.user,
             data=request.data,
-            partial=True
+            partial=True,
+            context={'request': request}
         )
         if serializer.is_valid():
             # empêche la modification d'email et pseudo via cet endpoint
             for champ_sensible in ['email', 'pseudo']:
                 serializer.validated_data.pop(champ_sensible, None)
             serializer.save()
+            
+            # Renvoie aussi les IDs des expériences enregistrées
+            experiences_enregistrees = getattr(serializer, 'experiences_enregistrees', [])
+            
             return Response({
                 'message': 'Profil mis à jour.',
-                'profil': serializer.data
+                'profil': DevelopperSerializer(request.user, context={'request': request}).data,
+                'experiences_enregistrees': experiences_enregistrees
             }, status=status.HTTP_200_OK)
+        
+        print(f"[DEBUG ModifierInfos] Validation errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ModifierEmailPseudoView(APIView):
@@ -556,9 +569,18 @@ class RechercherDevsView(APIView):
         devs = Developper.objects.filter(
             pseudo__icontains=query,
             banne=False  # Exclure les devs bannis
-        ).values('pseudo', 'email', 'photoprofil')[:10]  # Limiter à 10 résultats
+        )[:10]  # Limiter à 10 résultats
         
-        return Response(list(devs), status=status.HTTP_200_OK)
+        # Utilise un serializer minimal pour avoir le bon chemin de la photo
+        result = []
+        for dev in devs:
+            result.append({
+                'pseudo': dev.pseudo,
+                'email': dev.email,
+                'photoprofil': request.build_absolute_uri(dev.photoprofil.url) if dev.photoprofil else None
+            })
+        
+        return Response(result, status=status.HTTP_200_OK)
 
 
 class MesNotifsView(APIView):

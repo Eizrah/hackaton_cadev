@@ -515,7 +515,15 @@ export default function Community({
         <form className="panel composer" onSubmit={publish} noValidate>
           <div className="row">
             <div className="person">
-              <span className="avatar">{profile.name.slice(0, 2).toUpperCase()}</span>
+              {profile.photo ? (
+                <img 
+                  src={profile.photo} 
+                  alt={profile.name}
+                  className="avatar-img"
+                />
+              ) : (
+                <span className="avatar">{profile.name.slice(0, 2).toUpperCase()}</span>
+              )}
               <div>
                 <strong>{t("Qu'est-ce qu'on construit aujourd'hui ?", "What are we building today?")}</strong>
                 <small>{t("Une idée peut devenir un projet commun.", "An idea can become a shared project.")}</small>
@@ -693,9 +701,17 @@ export default function Community({
             >
               <header className="row">
                 <div className="person">
-                  <span className={`avatar avatar-${post.id.charCodeAt(0) % 3}`}>
-                    {post.author.split(" ").map((n) => n[0]).slice(0, 2).join("")}
-                  </span>
+                  {post.authorPhoto ? (
+                    <img 
+                      src={post.authorPhoto} 
+                      alt={post.author}
+                      className="avatar-img"
+                    />
+                  ) : (
+                    <span className={`avatar avatar-${post.id.charCodeAt(0) % 3}`}>
+                      {post.author.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                    </span>
+                  )}
                   <div>
                     <strong>{post.author}</strong>
                     <div className="post-meta">
@@ -1075,6 +1091,21 @@ export default function Community({
         }
 
         .person-card .avatar-img {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          object-fit: cover;
+        }
+
+        /* Avatar images globally for posts and composer */
+        .person .avatar-img {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          object-fit: cover;
+        }
+
+        .composer .person .avatar-img {
           width: 40px;
           height: 40px;
           border-radius: 50%;
