@@ -1,0 +1,303 @@
+/* Styles pour les boutons du détail d'offre */
+
+/* Bandeau de statut candidature */
+.application-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background-color: #d1fae5;
+  color: #065f46;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Conteneur des boutons Enregistrer et Signaler */
+.offer-action-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+/* Bouton Enregistrer (état initial) */
+.btn-save {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: white;
+  color: #374151;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-save:hover:not(:disabled) {
+  background-color: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.btn-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Bouton Enregistrée (état enregistré) */
+.btn-saved {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: white;
+  color: #2563eb;
+  border: 1.5px solid #2563eb;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-saved:hover:not(:disabled) {
+  background-color: #eff6ff;
+}
+
+/* Bouton Signaler (état initial) */
+.btn-report {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: white;
+  color: #dc2626;
+  border: 1.5px solid #dc2626;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-report:hover:not(:disabled) {
+  background-color: #fef2f2;
+}
+
+.btn-report:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Bouton Signalée (après signalement) */
+.btn-reported {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #dc2626;
+  color: white;
+  border: 1.5px solid #dc2626;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: not-allowed;
+  opacity: 0.9;
+}
+
+/* Message de succès signalement */
+.report-success-message {
+  padding: 0.75rem 1rem;
+  background-color: #fce7f3;
+  color: #9f1239;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Champ motif de signalement */
+.report-reason-field {
+  margin-bottom: 1rem;
+}
+
+.report-reason-field label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.report-reason-field textarea {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.report-reason-field textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.report-reason-field textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Bouton Postuler */
+.btn-apply {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-apply:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+/* Bouton Candidature envoyée (désactivé) */
+.btn-applied {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background-color: #e5e7eb;
+  color: #6b7280;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: not-allowed;
+}
+
+/* Actions pour l'auteur */
+.offer-actions-author {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.offer-actions-author .btn-primary {
+  flex: 1;
+}
+
+.btn-danger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: white;
+  color: #dc2626;
+  border: 1.5px solid #dc2626;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #dc2626;
+  color: white;
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+/* Badges de statut de candidature */
+.application-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: default;
+}
+
+/* Pending - Orange */
+.application-status-badge.pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+/* Submitted - Bleu */
+.application-status-badge.submitted {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+/* Success - Vert */
+.application-status-badge.success {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+/* Failed - Rouge */
+.application-status-badge.failed {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* Expired - Gris */
+.application-status-badge.expired {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+
+/* Bouton Postuler désactivé (quand expiré ou déjà postulé) */
+.btn-apply:disabled {
+  background-color: #e5e7eb;
+  color: #6b7280;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.btn-apply:disabled:hover {
+  background-color: #e5e7eb;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Badges dans la liste des offres */
+.job-card-footer .application-status-badge {
+  margin-top: 0.5rem;
+  width: 100%;
+  justify-content: center;
+}

@@ -90,6 +90,7 @@ export default function Workspace({
     initialProfile,
     migrateProfile,
   );
+  const [profileVersion, setProfileVersion] = useState(0);
   const [, setPeople] = usePeople();
   useEffect(() => { setPeople(current => { const previous = current.find(p => p.id === profile.id); return JSON.stringify(previous) === JSON.stringify(profile) ? current : [...current.filter(p=>p.id!==profile.id),profile]; }); }, [profile, setPeople]);
   const [collapsed, setCollapsed] = useLocalData("sidebar-collapsed", false);
@@ -364,6 +365,7 @@ export default function Workspace({
                     age: Number(next.age) || 0,
                     niveau: next.level === "Débutant" ? "D" : next.level === "Intermédiaire" ? "I" : "A",
                     pays: next.country,
+                    sexe: next.sexe || "M",
                     presentation: next.bio,
                     lien_portfolio: next.portfolio,
                     noms_competences: next.skillDetails.map(skill => skill.name.trim()),
@@ -378,16 +380,39 @@ export default function Workspace({
                   const form = await profileForm(fields, "experiences_a_enregistrer", edited);
                   const { data } = await authApi.updateProfil(form);
                   const written = new Map(edited.map((row, i) => [row.id, data.experiences_enregistrees[i]]));
-                  const merged = withLocalProfile(mapDjangoProfile(data.profil), next, next.experiences.map(row =>
+                  const saved = mapDjangoProfile(data.profil);
+                  const merged = withLocalProfile(saved, next, next.experiences.map(row =>
                     written.get(row.id) ?? row.serverId,
                   ));
-                  
-                  // Mise à jour du profil et attente avant navigation
-                  setProfile(merged);
+                  const experiences = merged.experiences.length
+                    ? merged.experiences
+                    : next.experiences.map(row => ({
+                        ...row,
+                        serverId: written.get(row.id) ?? row.serverId,
+                      }));
+
+                  // Les champs saisis priment : la fiche affichée suit l'enregistrement, pas l'ancienne copie.
+                  setProfile({
+                    ...merged,
+                    name: next.name,
+                    firstName: next.firstName,
+                    lastName: next.lastName,
+                    age: next.age,
+                    level: next.level,
+                    country: next.country,
+                    sexe: next.sexe,
+                    bio: next.bio,
+                    portfolio: next.portfolio,
+                    role: next.role,
+                    skills: next.skills,
+                    skillDetails: next.skillDetails,
+                    photo: saved.photo || next.photo,
+                    experiences,
+                  });
+                  setProfileVersion(v => v + 1); // Force le re-render de ProfileView
                   setNotice(t("Profil mis à jour.", "Profile updated."));
                   
-                  // Petit délai pour s'assurer que React a mis à jour l'état
-                  await new Promise(resolve => setTimeout(resolve, 100));
+                  // Navigation vers la vue du profil
                   navigate("profil");
                 }}
                 onCancel={() => navigate("profil")}
@@ -395,6 +420,7 @@ export default function Workspace({
               />
             ) : viewedProfile ? (
               <ProfileView
+                key={`profile-v${profileVersion}-${viewedProfile.email}`}
                 profile={viewedProfile}
                 isOwn={!memberRoute || ownMember || viewedProfile.email === profile.email}
                 onNavigate={navigate}

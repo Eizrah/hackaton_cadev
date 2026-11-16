@@ -462,6 +462,7 @@ if (route.startsWith("oauth-callback")) {
           level: data.niveau === 'D' ? 'Débutant' : data.niveau === 'I' ? 'Intermédiaire' : 'Avancé',
           country: data.pays || '',
           age: String(data.age || ''),
+          sexe: data.sexe,
           bio: data.presentation || '',
           portfolio: data.lien_portfolio || '',
           photo: data.photoprofil ? `http://localhost:8000${data.photoprofil}` : '',
@@ -487,6 +488,7 @@ if (route.startsWith("oauth-callback")) {
           })),
           documents: [],
           accountStatus: data.banne ? 'banned' : 'active',
+          publications: data.nombre_publications || 0,
         }
         localStorage.setItem('devafrica:profile', JSON.stringify(profile))
 

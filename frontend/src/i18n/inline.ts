@@ -716,5 +716,96 @@ export const inlineEnglish: Record<string,string> = {
   "Autre compétence…": "Other skill…",
   "Votre autre compétence": "Your other skill",
   "Ajouter": "Add",
-  "Fermer la confirmation": "Close confirmation"
+  "Fermer la confirmation": "Close confirmation",
+  
+  // MyOffers translations
+  "Chargement...": "Loading...",
+  "Vous n'avez publié aucune offre d'emploi": "You haven't published any job offers",
+  "Mes offres d'emploi": "My job offers",
+  "mois": "months",
+  "Voir les candidatures": "View applications",
+  "Supprimer l'offre": "Delete offer",
+  "Compétences requises:": "Required skills:",
+  "Contact": "Contact",
+  "Lien": "Link",
+  "Fichier": "File",
+  "Supprimer cette offre ?": "Delete this offer?",
+  "Offre supprimée.": "Offer deleted.",
+  
+  // MyApplications translations
+  "Offre supprimée": "Deleted offer",
+  "Postulé le": "Applied on",
+  "Ma lettre de motivation:": "My cover letter:",
+  "Voir mon CV": "View my CV",
+  "Aucune candidature": "No applications",
+  "Vous n'avez pas encore postulé à des offres": "You haven't applied to any offers yet",
+  
+  // Learning translations  
+  "Choisis ton terrain de jeu": "Choose your playground",
+  "Aucune expérience nécessaire pour commencer à découvrir.": "No experience needed to start exploring.",
+  "Aucune fiche trouvée.": "No course found.",
+  "Effacer ma recherche": "Clear my search",
+  
+  // App.tsx feature descriptions
+  "Posez des questions, partagez vos projets, obtenez de l'aide": "Ask questions, share your projects, get help",
+  "Un espace pour publier, commenter et échanger avec les développeurs de toute l'Afrique.": "A space to post, comment and exchange with developers across Africa.",
+  "Cours, tutoriels, exercices et projets pratiques": "Courses, tutorials, exercises and practical projects",
+  "Développez vos compétences en programmation grâce aux ressources partagées par la communauté.": "Develop your programming skills with resources shared by the community.",
+  "Trouvez des stages, freelance et emplois dans la tech": "Find internships, freelance and tech jobs",
+  "Découvrez des opportunités et collaborez sur des projets à travers le continent.": "Discover opportunities and collaborate on projects across the continent.",
+  "Messagerie": "Messages",
+  "Conversations privées et groupes par technologie ou centres d'intérêt": "Private conversations and groups by technology or interests",
+  "Créez des groupes thématiques et apprenez avec des développeurs qui partagent vos intérêts.": "Create themed groups and learn with developers who share your interests.",
+  "Assistant IA": "AI Assistant",
+  "Obtenez de l'aide, expliquez du code, résolvez des problèmes": "Get help, explain code, solve problems",
+  "Un futur assistant pour vous accompagner lorsque vous rencontrez des difficultés.": "A future assistant to help you when you encounter difficulties.",
+  
+  // Offers component translations
+  "Vous ne pouvez pas postuler à votre propre offre": "You cannot apply to your own offer",
+  "Expirée": "Expired",
+  "Signalée": "Reported",
+  "Signaler une offre": "Report a job offer",
+  
+  // Report categories
+  "Contenu illégal": "Illegal content",
+  
+  // Messages component
+  "Photo du groupe mise à jour.": "Group photo updated.",
+  "Vous avez quitté le groupe.": "You left the group.",
+  
+  // Notifications
+  "Aucune notification pour le moment.": "No notifications yet.",
+  
+  // Status badges for candidatures/offers
+  "Soumise": "Submitted",
+  "Réussie": "Success",
+  "Échouée": "Failed",
+  
+  // Error messages
+  "Erreur lors du chargement": "Error loading",
+  "Erreur lors du chargement.": "Error loading.",
+  "Erreur lors de l'envoi du signalement.": "Error sending report.",
+  "Erreur lors du blocage.": "Error blocking.",
+  "Erreur lors de la mise en sourdine.": "Error muting.",
+  "Erreur lors du retrait du membre.": "Error removing member.",
+  "Erreur lors de la suppression du groupe.": "Error deleting group.",
+  "Erreur lors de la modification de la photo.": "Error updating photo.",
+  "Erreur lors de la sortie du groupe.": "Error leaving group.",
+  
+  // Connection screen
+  "Connexion en cours…": "Signing in…",
+  
+  // Gender field
+  "Sexe": "Gender",
+  "Homme": "Male",
+  "Femme": "Female",
+  
+  // Notification dates
+  "À l'instant": "Just now",
+  "Il y a": "",
+  "min": "m",
+  "h": "h",
+  "j": "d",
+  "Fermer": "Close",
+  "Notifications": "Notifications",
 };

@@ -174,3 +174,34 @@ class Possession(models.Model):
         db_table = 'possession'
         # un dev ne peut pas avoir deux fois la même compétence
         unique_together = ('developper', 'competence')
+
+
+class SessionConnexion(models.Model):
+    """
+    Enregistre les informations sur chaque connexion pour détecter
+    les connexions depuis un nouvel appareil
+    """
+    developper = models.ForeignKey(
+        Developper,
+        on_delete=models.CASCADE,
+        related_name='sessions_connexion'
+    )
+    date_connexion = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.TextField()  # Navigateur et OS
+    device_type = models.CharField(max_length=50, blank=True, null=True)  # Mobile, Desktop, Tablet
+    browser = models.CharField(max_length=50, blank=True, null=True)
+    os = models.CharField(max_length=50, blank=True, null=True)
+    pays = models.CharField(max_length=100, blank=True, null=True)
+    ville = models.CharField(max_length=100, blank=True, null=True)
+    email_envoye = models.BooleanField(default=False)  # Pour éviter de spam
+
+    class Meta:
+        db_table = 'session_connexion'
+        ordering = ['-date_connexion']
+        indexes = [
+            models.Index(fields=['developper', '-date_connexion']),
+        ]
+    
+    def __str__(self):
+        return f"{self.developper.email} - {self.device_type} - {self.date_connexion}"

@@ -200,14 +200,13 @@ export default function ProfileView({
 }) {
   const { t } = useI18n();
 
-  const [posts] = useLocalData<{ author: string }[]>("posts", []);
   const [progress] = useLocalData<string[]>("progress", []);
   const skills = profile.skills
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
   const portfolio = safePortfolio(profile.portfolio);
-  const contributions = posts.filter((p) => p.author === profile.name).length;
+  const contributions = profile.publications ?? 0;
   async function shareProfile() {
     try {
       const url = new URL(window.location.href);
@@ -273,14 +272,7 @@ export default function ProfileView({
                 {t("Compétences")}
               </span>
             </div>
-            <div>
-              <strong>
-                {isOwn ? progress.length : "—"}
-              </strong>
-              <span>
-                {t("Fiches validées")}
-              </span>
-            </div>
+       
             <div>
               <strong>
                 {contributions}
@@ -420,7 +412,7 @@ export default function ProfileView({
                 <GraduationCap size={20} />
               </span>
               <h2>
-                {t("Mon parcours")}
+                {isOwn ? t("Mon parcours") : t("Parcours", "Experience")}
               </h2>
             </div>
             {profile.experiences.length ? (
@@ -449,10 +441,10 @@ export default function ProfileView({
                             {entry.certificate}
                           </span>
                         )}
-                        {isOwn && ([
+                        {([
                           [safePortfolio(entry.diplomaUrl || ""), entry.diplomaFile, t("Ouvrir le diplôme", "Open diploma")],
                           [safePortfolio(entry.certificateUrl || ""), entry.certificateFile, t("Ouvrir le certificat", "Open certificate")],
-                        ] as const).map(([url, file, label]) => file
+                        ] as const).map(([url, file, label]) => isOwn && file
                           ? <AttachmentCard key={label} file={file} preview={false} />
                           : url && <a key={label} href={url} target="_blank" rel="noopener noreferrer">{label}</a>
                         )}
@@ -464,10 +456,12 @@ export default function ProfileView({
             ) : (
               <p className="preserve-lines">
                 {profile.experience ||
-                  t(
-                    "Votre parcours commence ici. Ajoutez une expérience quand vous le souhaitez.",
-                    "Your journey starts here. Add experience whenever you like.",
-                  )}
+                  (isOwn
+                    ? t(
+                        "Votre parcours commence ici. Ajoutez une expérience quand vous le souhaitez.",
+                        "Your journey starts here. Add experience whenever you like.",
+                      )
+                    : t("Aucun parcours renseigné.", "No experience listed yet."))}
               </p>
             )}
           </section>

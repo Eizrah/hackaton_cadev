@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { publicationApi, type Candidature } from '../../api/publication'
 import { MapPin, Calendar, FileText, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { useI18n } from '../../i18n/context'
 
 type FilterState = 'tous' | 'en_attente' | 'accepte' | 'refuse'
 
 export default function MyApplications() {
+  const { t } = useI18n()
   const [candidatures, setCandidatures] = useState<Candidature[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -38,21 +40,21 @@ export default function MyApplications() {
         return (
           <span className="flex items-center gap-1 px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-sm">
             <Clock className="w-4 h-4" />
-            En attente
+            {t("En attente", "Pending")}
           </span>
         )
       case 'accepte':
         return (
           <span className="flex items-center gap-1 px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm">
             <CheckCircle className="w-4 h-4" />
-            Accepté
+            {t("Accepté", "Accepted")}
           </span>
         )
       case 'refuse':
         return (
           <span className="flex items-center gap-1 px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-sm">
             <XCircle className="w-4 h-4" />
-            Refusé
+            {t("Refusé", "Rejected")}
           </span>
         )
       default:
@@ -78,7 +80,7 @@ export default function MyApplications() {
   return (
     <div className="panel">
       <div className="section-title mb-6">
-        <h2 className="text-xl font-semibold text-white">Mes candidatures</h2>
+        <h2 className="text-xl font-semibold text-white">{t("Mes candidatures", "My applications")}</h2>
       </div>
 
       {/* Filter Tabs */}
@@ -91,7 +93,7 @@ export default function MyApplications() {
               : 'bg-[#0f0f1e] text-gray-400 hover:text-white hover:bg-gray-800'
           }`}
         >
-          Tous ({stats.total})
+          {t("Tous", "All")} ({stats.total})
         </button>
         <button
           onClick={() => setFilter('en_attente')}
@@ -101,7 +103,7 @@ export default function MyApplications() {
               : 'bg-[#0f0f1e] text-gray-400 hover:text-white hover:bg-gray-800'
           }`}
         >
-          En attente ({stats.en_attente})
+          {t("En attente", "Pending")} ({stats.en_attente})
         </button>
         <button
           onClick={() => setFilter('accepte')}
@@ -111,7 +113,7 @@ export default function MyApplications() {
               : 'bg-[#0f0f1e] text-gray-400 hover:text-white hover:bg-gray-800'
           }`}
         >
-          Accepté ({stats.accepte})
+          {t("Accepté", "Accepted")} ({stats.accepte})
         </button>
         <button
           onClick={() => setFilter('refuse')}
@@ -121,7 +123,7 @@ export default function MyApplications() {
               : 'bg-[#0f0f1e] text-gray-400 hover:text-white hover:bg-gray-800'
           }`}
         >
-          Refusé ({stats.refuse})
+          {t("Refusé", "Rejected")} ({stats.refuse})
         </button>
       </div>
 
@@ -129,7 +131,7 @@ export default function MyApplications() {
       {loading && (
         <div className="text-center py-8 text-gray-400">
           <div className="w-8 h-8 border-2 border-gray-700 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
-          Chargement...
+          {t("Chargement...", "Loading...")}
         </div>
       )}
 
@@ -144,11 +146,11 @@ export default function MyApplications() {
       {!loading && !error && candidatures.length === 0 && (
         <div className="text-center py-12 text-gray-400">
           <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <p className="text-lg mb-2">Aucune candidature</p>
+          <p className="text-lg mb-2">{t("Aucune candidature", "No applications")}</p>
           <p className="text-sm">
             {filter === 'tous'
-              ? "Vous n'avez pas encore postulé à des offres"
-              : `Aucune candidature avec le statut "${filter.replace('_', ' ')}"`}
+              ? t("Vous n'avez pas encore postulé à des offres", "You haven't applied to any offers yet")
+              : t(`Aucune candidature avec le statut "${filter.replace('_', ' ')}"`, `No applications with status "${filter.replace('_', ' ')}"`)}
           </p>
         </div>
       )}
@@ -165,7 +167,7 @@ export default function MyApplications() {
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-white mb-1">
-                    {candidature.nom_offre || 'Offre supprimée'}
+                    {candidature.nom_offre || t("Offre supprimée", "Deleted offer")}
                   </h3>
                   <div className="flex flex-wrap items-center gap-3 text-sm text-gray-400">
                     {candidature.offre_localisation && (
@@ -176,7 +178,7 @@ export default function MyApplications() {
                     )}
                     <span className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      Postulé le {formatDate(candidature.date_postule)}
+                      {t("Postulé le", "Applied on")} {formatDate(candidature.date_postule)}
                     </span>
                   </div>
                 </div>
@@ -185,7 +187,7 @@ export default function MyApplications() {
 
               {/* Lettre de motivation */}
               <div className="mb-3">
-                <p className="text-xs text-gray-400 uppercase mb-1">Ma lettre de motivation:</p>
+                <p className="text-xs text-gray-400 uppercase mb-1">{t("Ma lettre de motivation:", "My cover letter:")}</p>
                 <p className="text-sm text-gray-300 line-clamp-3">
                   {candidature.lettre_motivation}
                 </p>
@@ -201,7 +203,7 @@ export default function MyApplications() {
                     className="inline-flex items-center gap-2 text-blue-400 hover:underline text-sm"
                   >
                     <FileText className="w-4 h-4" />
-                    Voir mon CV
+                    {t("Voir mon CV", "View my CV")}
                   </a>
                 </div>
               )}

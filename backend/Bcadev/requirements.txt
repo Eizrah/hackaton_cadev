@@ -30,3 +30,6 @@ tiktoken
 
 
 django-cors-headers
+
+user-agents==2.2.0
+requests==2.31.0

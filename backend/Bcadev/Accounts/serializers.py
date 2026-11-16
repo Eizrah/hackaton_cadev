@@ -13,20 +13,22 @@ from .models import Developper, Experience, Possession, Notif
 
 
 class ExperiencePubliqueSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Experience
-        fields = ['id', 'nom_poste', 'description', 'nbr_annee_exp', 'diplome', 'certificat']
-
-
-class ExperienceSerializer(ExperiencePubliqueSerializer):
     fichier_diplome_url = serializers.FileField(source='fichier_diplome', read_only=True)
     fichier_certificat_url = serializers.FileField(source='fichier_certificat', read_only=True)
 
+    class Meta:
+        model = Experience
+        fields = [
+            'id', 'nom_poste', 'description', 'nbr_annee_exp', 'diplome', 'certificat',
+            'fichier_diplome_url', 'fichier_certificat_url',
+        ]
+
+
+class ExperienceSerializer(ExperiencePubliqueSerializer):
     class Meta(ExperiencePubliqueSerializer.Meta):
         fields = [
             *ExperiencePubliqueSerializer.Meta.fields,
             'fichier_diplome', 'fichier_certificat',
-            'fichier_diplome_url', 'fichier_certificat_url',
         ]
 
     def validate_fichier_diplome(self, value):
@@ -172,6 +174,7 @@ class ConnexionSerializer(serializers.Serializer):
 
 class DevelopperSerializer(serializers.ModelSerializer):
     possessions = PossessionSerializer(many=True, read_only=True)
+    nombre_publications = serializers.SerializerMethodField()
 
     class Meta:
         model = Developper
@@ -179,11 +182,22 @@ class DevelopperSerializer(serializers.ModelSerializer):
             'identifiant', 'email', 'nom', 'prenom', 'pseudo', 'age',
             'niveau', 'pays', 'sexe', 'photoprofil',
             'lien_portfolio', 'lien_github', 'point_penalite', 'presentation',
-            'possessions', 'competences_personnalisees',
+            'possessions', 'competences_personnalisees', 'nombre_publications',
         ]
         read_only_fields = [
-            'identifiant', 'email', 'pseudo', 'point_penalite', 'possessions', 'competences_personnalisees',
+            'identifiant', 'email', 'pseudo', 'point_penalite', 'possessions', 
+            'competences_personnalisees', 'nombre_publications',
         ]
+    
+    def get_nombre_publications(self, obj):
+        """Retourne le nombre total de publications (posts forum + offres d'emploi)"""
+        from Forum.models import Forum_post
+        from Jobs.models import Offre_Emploi
+        
+        nombre_posts = Forum_post.objects.filter(developper=obj, feu_vert=True).count()
+        nombre_offres = Offre_Emploi.objects.filter(developper=obj, feu_vert=True).count()
+        
+        return nombre_posts + nombre_offres
 
 
 class ProfilPersonnelSerializer(DevelopperSerializer):
@@ -252,7 +266,7 @@ class ProfilInfosSerializer(ProfilPersonnelSerializer):
 
 
 class ProfilMembreSerializer(DevelopperSerializer):
-    # La fiche publique expose le parcours sans les liens des justificatifs.
+    # La fiche publique expose le parcours, les intitulés de diplômes et leurs fichiers.
     experiences = ExperiencePubliqueSerializer(many=True, read_only=True)
 
     class Meta(DevelopperSerializer.Meta):
@@ -260,7 +274,7 @@ class ProfilMembreSerializer(DevelopperSerializer):
         fields = [
             'identifiant', 'email', 'nom', 'prenom', 'pseudo', 'niveau', 'pays',
             'photoprofil', 'lien_portfolio', 'lien_github', 'presentation',
-            'possessions', 'competences_personnalisees', 'experiences',
+            'possessions', 'competences_personnalisees', 'experiences', 'nombre_publications',
         ]
 
 

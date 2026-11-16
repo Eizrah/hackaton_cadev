@@ -181,6 +181,7 @@
 .application-form .modal-actions { margin-top: 0; }
 .application-cv-field { position: relative; margin-top: 8px; }
 .application-cv-field input { width: 100%; padding-inline-end: 50px !important; }
+.application-cv-field input:read-only { padding-inline-end: 90px !important; } /* Plus d'espace quand on a le X + trombone */
 .application-cv-field .quiet {
   position: absolute;
   inset-inline-end: 8px;
@@ -191,6 +192,10 @@
   block-size: 36px;
   transform: translateY(-50%);
   color: #286b92;
+}
+.application-cv-field .application-cv-clear {
+  inset-inline-end: 48px; /* Positionné avant le bouton trombone */
+  color: #dc2626; /* Rouge pour le X */
 }
 .application-cv-file,
 .application-card-actions,

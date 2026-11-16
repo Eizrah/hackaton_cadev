@@ -107,10 +107,10 @@ export default function NotificationCenter({ onNavigate }: { onNavigate: (path: 
     const hours = Math.floor(diff / 3600000)
     const days = Math.floor(diff / 86400000)
 
-    if (minutes < 1) return t('À l\'instant', 'Just now')
-    if (minutes < 60) return t(`Il y a ${minutes} min`, `${minutes}m ago`)
-    if (hours < 24) return t(`Il y a ${hours}h`, `${hours}h ago`)
-    if (days < 7) return t(`Il y a ${days}j`, `${days}d ago`)
+    if (minutes < 1) return t("À l'instant", "Just now")
+    if (minutes < 60) return `${t("Il y a", "")  } ${minutes} ${t("min", "m")}${t("", " ago")}`
+    if (hours < 24) return `${t("Il y a", "")} ${hours}${t("h", "h")}${t("", " ago")}`
+    if (days < 7) return `${t("Il y a", "")} ${days}${t("j", "d")}${t("", " ago")}`
     
     return new Intl.DateTimeFormat(locale, {
       dateStyle: "short",

@@ -14,6 +14,7 @@ export default function ApplicationForm({ offreId, onClose, onSuccess }: {
   const { t } = useI18n();
   const fileInput = useRef<HTMLInputElement>(null);
   const [cv, setCv] = useState<File>();
+  const [cvLink, setCvLink] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
@@ -30,6 +31,7 @@ export default function ApplicationForm({ offreId, onClose, onSuccess }: {
       return;
     }
     setCv(new File([file], file.name, { type: "application/pdf" }));
+    setCvLink(file.name); // Afficher le nom du fichier dans le champ
     setError("");
   }
 
@@ -38,21 +40,30 @@ export default function ApplicationForm({ offreId, onClose, onSuccess }: {
     if (uploading) return;
     const form = new FormData(event.currentTarget);
     const motivation = String(form.get("motivation") || "").trim();
-    const link = String(form.get("cvLink") || "").trim();
-    const url = link ? safePortfolio(link) : null;
-    if (!motivation || (link && !url) || (!cv && !url)) {
-      setError(!motivation ? t("Ajoute ta lettre de motivation.", "Enter your cover letter.")
-        : link && !url ? t("Indique un lien de CV HTTP ou HTTPS.", "Enter an HTTP or HTTPS CV link.")
-          : t("Ajoute un lien vers ton CV ou joins un PDF.", "Enter a CV link or attach a PDF."));
+    const link = cvLink.trim();
+    // Si on a un fichier, on n'utilise pas le lien
+    // Si on a un lien et pas de fichier, on valide le lien
+    const url = link && !cv ? safePortfolio(link) : null;
+    
+    if (!motivation) {
+      setError(t("Ajoute ta lettre de motivation.", "Enter your cover letter."));
       return;
     }
+    
+    if (!cv && !url) {
+      setError(link && !cv && !url 
+        ? t("Indique un lien de CV HTTP ou HTTPS.", "Enter an HTTP or HTTPS CV link.")
+        : t("Ajoute un lien vers ton CV ou joins un PDF.", "Enter a CV link or attach a PDF."));
+      return;
+    }
+    
     setUploading(true);
     setError("");
     try {
       await publicationApi.postuler(offreId, { lettre_motivation: motivation, lien_cv: url || undefined, pj: cv });
       onSuccess();
     } catch (err) {
-      setError(apiError(err, t("Impossible d’envoyer la candidature.", "Could not send the application.")));
+      setError(apiError(err, t("Impossible d'envoyer la candidature.", "Could not send the application.")));
     } finally {
       setUploading(false);
     }
@@ -63,24 +74,37 @@ export default function ApplicationForm({ offreId, onClose, onSuccess }: {
       <label>
         {t("Lettre de motivation", "Cover letter")}
         <textarea name="motivation" rows={7} maxLength={2000} required disabled={uploading}
-          placeholder={t("Présente ton parcours et ce qui te motive pour cette offre…", "Tell us about your experience and why you’re applying…")} />
+          placeholder={t("Présente ton parcours et ce qui te motive pour cette offre…", "Tell us about your experience and why you're applying…")} />
       </label>
       <div>
         <label htmlFor="application-cv-link">
           <span>{t("Lien du CV", "CV link")} <small>({t("PDF uniquement", "PDF only")})</small></span>
         </label>
         <div className="application-cv-field">
-          <input id="application-cv-link" name="cvLink" type="url" placeholder="https://…" maxLength={500} disabled={uploading} />
+          <input 
+            id="application-cv-link" 
+            name="cvLink" 
+            type={cv ? "text" : "url"}
+            value={cvLink}
+            onChange={(e) => setCvLink(e.target.value)}
+            placeholder="https://…" 
+            maxLength={500} 
+            disabled={uploading || !!cv}
+            readOnly={!!cv}
+          />
+          {cv && <button 
+            type="button" 
+            className="quiet application-cv-clear" 
+            onClick={() => { setCv(undefined); setCvLink(""); }} 
+            disabled={uploading}
+            aria-label={t("Retirer le PDF", "Remove PDF")}>
+            <X size={16} />
+          </button>}
           <button type="button" className="quiet" onClick={() => fileInput.current?.click()} disabled={uploading}
             aria-label={t("Joindre un PDF", "Attach a PDF")} title={t("Joindre un PDF", "Attach a PDF")}><Paperclip size={20} /></button>
         </div>
         <input ref={fileInput} type="file" accept=".pdf,application/pdf" hidden disabled={uploading}
           onChange={event => void selectFile(event)} />
-        {cv && <div className="application-cv-file">
-          <span>{cv.name}</span>
-          <button type="button" className="quiet" onClick={() => setCv(undefined)} disabled={uploading}
-            aria-label={t("Retirer le PDF", "Remove PDF")}><X size={16} /></button>
-        </div>}
       </div>
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="modal-actions">

@@ -307,7 +307,7 @@ export default function Authentication({
           pays: personal.country,
           noms_competences: skills.map(skill => skill.name.trim()),
           competences: skills.flatMap(skill => skill.competenceId ? [skill.competenceId] : []),
-          sexe: "M",
+          sexe: personal.sexe || "M",
           password,
           password_confirm: confirmation,
         }, "experiences", experiences);

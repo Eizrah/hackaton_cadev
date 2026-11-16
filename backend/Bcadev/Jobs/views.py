@@ -83,7 +83,7 @@ class ListeOffreEmploiView(APIView):
         ).exclude(
             developper__in=devs_bloques
         ).order_by('deadline')
-        serializer = OffreEmploiListSerializer(offres, many=True)
+        serializer = OffreEmploiSerializer(offres, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class DetailOffreEmploiView(APIView):
@@ -374,13 +374,37 @@ class GererCandidaturesView(APIView):
                     f'Votre candidature pour "{offre.nom_poste}" a été {"acceptée" if accepte else "refusée"}.',
                     offre_id=offre.pk,
                 )
-                # Un échec SMTP laisse le verdict et la notification disponibles.
-                transaction.on_commit(lambda: send_mail(
-                    subject=f'Réponse à votre candidature — {offre.nom_poste}',
-                    message=message,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[candidature.developpeur.email],
-                ), robust=True)
+                # Envoi d'email HTML personnalisé
+                from django.template.loader import render_to_string
+                from django.core.mail import EmailMultiAlternatives
+                
+                template_name = 'emails/candidature_acceptee.html' if accepte else 'emails/candidature_refusee.html'
+                subject = f'✓ Candidature acceptée — {offre.nom_poste}' if accepte else f'Réponse à votre candidature — {offre.nom_poste}'
+                
+                context = {
+                    'site_name': 'DevAfrica Connect',
+                    'prenom': candidature.developpeur.prenom or candidature.developpeur.pseudo,
+                    'nom_poste': offre.nom_poste,
+                    'entreprise': offre.developper.pseudo or f"{offre.developper.prenom} {offre.developper.nom}".strip(),
+                    'date_candidature': candidature.date_postule.strftime('%d/%m/%Y'),
+                }
+                
+                html_content = render_to_string(template_name, context)
+                
+                def send_email():
+                    try:
+                        email = EmailMultiAlternatives(
+                            subject=subject,
+                            body=message,  # Version texte de secours
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            to=[candidature.developpeur.email]
+                        )
+                        email.attach_alternative(html_content, "text/html")
+                        email.send()
+                    except Exception as e:
+                        print(f"Erreur envoi email: {e}")
+                
+                transaction.on_commit(send_email)
 
         return Response({
             'message': f'Candidature {nouvel_etat} avec succès.'

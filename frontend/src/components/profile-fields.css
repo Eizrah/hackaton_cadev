@@ -387,3 +387,35 @@
     gap: 15px 12px;
   }
 }
+
+/* Radio button group styles */
+.radio-group {
+  display: flex;
+  gap: 15px;
+  padding: 12px 0;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 400 !important;
+}
+
+.radio-option input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #638de1;
+}
+
+.radio-option span {
+  color: #34517d;
+  font-size: 12px;
+}
+
+.radio-option input[type="radio"]:checked + span {
+  color: #172b58;
+  font-weight: 500;
+}

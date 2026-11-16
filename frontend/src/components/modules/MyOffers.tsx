@@ -77,7 +77,7 @@ export default function MyOffers({ onNavigate, onNotice, focusJob }: MyOffersPro
   }
 
   if (loading) {
-    return <div id="recrutement" className="text-center py-8 text-gray-400">Chargement...</div>
+    return <div id="recrutement" className="text-center py-8 text-gray-400">{t("Chargement...", "Loading...")}</div>
   }
 
   if (error) {
@@ -87,14 +87,14 @@ export default function MyOffers({ onNavigate, onNotice, focusJob }: MyOffersPro
   if (offres.length === 0) {
     return (
       <div className="text-center py-8 text-gray-400">
-        Vous n'avez publié aucune offre d'emploi
+        {t("Vous n'avez publié aucune offre d'emploi", "You haven't published any job offers")}
       </div>
     )
   }
 
   return (
     <section id="recrutement" className="panel my-offers space-y-4">
-      <h2 className="text-xl font-semibold text-white mb-4">Mes offres d'emploi</h2>
+      <h2 className="text-xl font-semibold text-white mb-4">{t("Mes offres d'emploi", "My job offers")}</h2>
       
       {offres.map((offre) => (
         <div
@@ -123,7 +123,7 @@ export default function MyOffers({ onNavigate, onNotice, focusJob }: MyOffersPro
             <div className="flex items-center gap-2">
               {!offre.feu_vert && (
                 <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded">
-                  En attente
+                  {t("En attente", "Pending")}
                 </span>
               )}
               <button
@@ -155,7 +155,7 @@ export default function MyOffers({ onNavigate, onNotice, focusJob }: MyOffersPro
 
           {/* Compétences */}
           <div className="mb-3">
-            <span className="text-xs text-gray-400 uppercase">Compétences requises:</span>
+            <span className="text-xs text-gray-400 uppercase">{t("Compétences requises:", "Required skills:")}</span>
             <p className="text-sm text-gray-300 mt-1">{offre.competence_requise}</p>
           </div>
 
@@ -164,7 +164,7 @@ export default function MyOffers({ onNavigate, onNotice, focusJob }: MyOffersPro
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                Publié le {formatDate(offre.date_publication)}
+                {t("Publié le", "Published on")} {formatDate(offre.date_publication)}
               </span>
               <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
@@ -181,7 +181,7 @@ export default function MyOffers({ onNavigate, onNotice, focusJob }: MyOffersPro
                   rel="noopener noreferrer"
                 >
                   <Mail className="w-4 h-4" />
-                  Contact
+                  {t("Contact", "Contact")}
                 </a>
               )}
               {offre.lien && (
@@ -192,7 +192,7 @@ export default function MyOffers({ onNavigate, onNotice, focusJob }: MyOffersPro
                   className="flex items-center gap-1 text-blue-400 hover:underline"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  Lien
+                  {t("Lien", "Link")}
                 </a>
               )}
               {offre.fichier && (
@@ -202,7 +202,7 @@ export default function MyOffers({ onNavigate, onNotice, focusJob }: MyOffersPro
                   rel="noopener noreferrer"
                   className="text-blue-400 hover:underline"
                 >
-                  📎 Fichier
+                  📎 {t("Fichier", "File")}
                 </a>
               )}
             </div>

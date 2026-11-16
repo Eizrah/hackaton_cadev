@@ -116,6 +116,33 @@ export function PersonalFields({
           value={value.country}
           onChange={text => update("country", text)} />
       </label>
+      
+      <label>
+        {t("Sexe", "Gender")}
+        <div className="radio-group">
+          <label className="radio-option">
+            <input
+              type="radio"
+              name="sexe"
+              value="M"
+              checked={value.sexe === "M"}
+              onChange={(e) => update("sexe", e.target.value)}
+            />
+            <span>{t("Homme", "Male")}</span>
+          </label>
+          <label className="radio-option">
+            <input
+              type="radio"
+              name="sexe"
+              value="F"
+              checked={value.sexe === "F"}
+              onChange={(e) => update("sexe", e.target.value)}
+            />
+            <span>{t("Femme", "Female")}</span>
+          </label>
+        </div>
+      </label>
+      
       {showPseudo && <label>
         {t("Pseudo", "Username")}
         <span className="onboard-input">

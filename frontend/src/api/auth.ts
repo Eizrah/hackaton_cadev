@@ -20,9 +20,11 @@ export interface DjangoProfile {
   age?: number
   niveau: 'D' | 'I' | 'A'
   pays: string
+  sexe?: 'M' | 'F'
   presentation: string | null
   lien_portfolio: string | null
   photoprofil: string | null
+  nombre_publications?: number
   experiences: DjangoExperience[]
   possessions: Array<{
     competence: string

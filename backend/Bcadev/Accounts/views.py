@@ -11,13 +11,14 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from .serializers import (
     InscriptionSerializer, ConnexionSerializer, DevelopperSerializer,
-    ProfilPersonnelSerializer,
+    ProfilPersonnelSerializer, ProfilMembreSerializer,
     NotifSerializer, ExperienceSerializer, PossessionSerializer, ProfilInfosSerializer
 )
 from Groups.models import Group
 from .models import Developper, Blocage, Sourdine, Notif, Experience, Possession
 import os
 from django.db.models import Q
+import uuid
 from django.views import View
 from django.shortcuts import redirect as django_redirect
 from django.middleware.csrf import get_token
@@ -72,6 +73,15 @@ class ConnexionView(APIView):
             # password = serializer.validated_data['mot_de_passe']
             dev=serializer.validated_data['dev']
             refresh = RefreshToken.for_user(dev)
+            
+            # Enregistrer la connexion et vérifier si c'est un nouvel appareil
+            from .connexion_utils import enregistrer_connexion
+            try:
+                enregistrer_connexion(dev, request)
+            except Exception as e:
+                # Ne pas bloquer la connexion si l'enregistrement échoue
+                print(f"Erreur enregistrement connexion: {e}")
+            
             return Response({
                 'message': 'Connexion reussie.',
                 'email':dev.email,                   
@@ -448,14 +458,16 @@ class ModifierInfosView(APIView):
             # empêche la modification d'email et pseudo via cet endpoint
             for champ_sensible in ['email', 'pseudo']:
                 serializer.validated_data.pop(champ_sensible, None)
-            serializer.save()
-            
+            # update() recharge une autre instance : request.user garde les valeurs d'avant l'enregistrement.
+            developper = serializer.save()
+            developper.refresh_from_db()
+
             # Renvoie aussi les IDs des expériences enregistrées
             experiences_enregistrees = getattr(serializer, 'experiences_enregistrees', [])
-            
+
             return Response({
                 'message': 'Profil mis à jour.',
-                'profil': DevelopperSerializer(request.user, context={'request': request}).data,
+                'profil': ProfilPersonnelSerializer(developper, context={'request': request}).data,
                 'experiences_enregistrees': experiences_enregistrees
             }, status=status.HTTP_200_OK)
         
@@ -806,17 +818,24 @@ class GoogleLoginView(View):
 
 
 class ProfilMembreView(APIView):
-    """Retourne le profil public d'un membre par son email"""
+    """Retourne le profil public d'un membre, avec son parcours."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request, membre):
+        recherche = Q(email__iexact=membre) | Q(pseudo__iexact=membre)
         try:
-            # Cherche le dev par email
-            dev = Developper.objects.get(email=membre, banne=False, is_active=True)
-            serializer = DevelopperSerializer(dev)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Developper.DoesNotExist:
+            recherche |= Q(identifiant=uuid.UUID(str(membre)))
+        except (ValueError, AttributeError):
+            pass
+        dev = (
+            Developper.objects.filter(recherche, banne=False, is_active=True)
+            .prefetch_related('experiences')
+            .first()
+        )
+        if dev is None:
             return Response(
                 {'erreur': 'Membre introuvable.'},
                 status=status.HTTP_404_NOT_FOUND
             )
+        serializer = ProfilMembreSerializer(dev, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)

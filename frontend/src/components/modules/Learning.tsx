@@ -302,9 +302,9 @@ export default function Learning({
         <>
           <div className="catalog-section-title">
             <div>
-              <h2>{t("Choisis ton terrain de jeu")}</h2>
+              <h2>{t("Choisis ton terrain de jeu", "Choose your playground")}</h2>
               <p>
-                {t("Aucune expérience nécessaire pour commencer à découvrir.")}
+                {t("Aucune expérience nécessaire pour commencer à découvrir.", "No experience needed to start exploring.")}
               </p>
             </div>
             <span>
@@ -511,7 +511,7 @@ export default function Learning({
         !visibleCourses.length && (
           <div className="panel empty-state">
             <Search size={32} />
-            <h2>{t("Aucune fiche trouvée.")}</h2>
+            <h2>{t("Aucune fiche trouvée.", "No course found.")}</h2>
             <p>
               {t(
                 "Essaie un mot plus simple, comme Python, Web ou Mobile.",
@@ -519,7 +519,7 @@ export default function Learning({
               )}
             </p>
             <button className="text-link" onClick={() => setQuery("")}>
-              {t("Effacer ma recherche")}
+              {t("Effacer ma recherche", "Clear my search")}
             </button>
           </div>
         )}

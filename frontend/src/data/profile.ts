@@ -30,6 +30,7 @@ export type PersonalInformation = {
   level: string;
   country: string;
   pseudo: string;
+  sexe?: "M" | "F";
 };
 export type Profile = PersonalInformation & {
   id: string;
@@ -46,6 +47,7 @@ export type Profile = PersonalInformation & {
   photo: string;
   documents: CredentialAttachment[];
   accountStatus?: "active" | "banned";
+  publications?: number;
 };
 export const currentYear = new Date().getFullYear();
 export const skillDomains = [
@@ -63,6 +65,7 @@ export const emptyPersonal: PersonalInformation = {
   level: "",
   country: "",
   pseudo: "",
+  sexe: undefined,
 };
 export const initialProfile: Profile = {
   id: "dev-juliana",
@@ -74,6 +77,7 @@ export const initialProfile: Profile = {
   pseudo: "",
   level: "Débutant",
   country: "Madagascar",
+  sexe: undefined,
   skills: "React, TypeScript, Figma, Blender",
   skillDetails: [],
   experience:
@@ -178,6 +182,7 @@ export function migrateProfile(saved: unknown): Profile {
     pseudo: text("pseudo", text("username")),
     level: ["Intermédiaire","intermediate"].includes(text("level")) ? "Intermédiaire" : ["Senior", "Avancé", "advanced"].includes(text("level")) ? "Avancé" : "Débutant",
     country: text("country", initialProfile.country),
+    sexe: (text("sexe") === "M" || text("sexe") === "F") ? text("sexe") as "M" | "F" : undefined,
     skills: skillDetails.length
       ? skillDetails.map((s) => s.name).join(", ")
       : text("skills"),
@@ -194,6 +199,7 @@ export function migrateProfile(saved: unknown): Profile {
       return file ? [{id: typeof row.id === "string" ? row.id : file.id, kind: row.kind, file}] : [];
     }) : [],
     accountStatus: value.accountStatus === "banned" || value.status === "banned" || value.banned === true ? "banned" : "active",
+    publications: typeof value.nombre_publications === "number" ? value.nombre_publications : typeof value.publications === "number" ? value.publications : 0,
   };
 }
 export function completeProfile(

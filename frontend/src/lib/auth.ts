@@ -31,10 +31,12 @@ export function mapDjangoProfile(data: DjangoProfile): Profile {
     level: { D: "Débutant", I: "Intermédiaire", A: "Avancé" }[data.niveau],
     country: data.pays || "",
     age: data.age ? String(data.age) : "",
+    sexe: data.sexe as "M" | "F" | undefined,
     bio: data.presentation || "",
     portfolio: data.lien_portfolio || "",
     photo: mediaUrl(data.photoprofil) || "",
     skillDetails,
+    nombre_publications: data.nombre_publications,
     experiences: (data.experiences ?? []).map(experience => ({
       id: `experience-${experience.id}`,
       serverId: experience.id,

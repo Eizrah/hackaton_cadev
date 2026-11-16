@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from "react";
-import { ArrowRight, Bookmark, BriefcaseBusiness, Building2, CalendarDays, ExternalLink, Flag, Mail, Plus, Search, Send, Trash2, X } from "lucide-react";
+import { ArrowRight, Bookmark, BriefcaseBusiness, Building2, CalendarDays, Check, Clock, ExternalLink, Flag, Mail, Plus, Search, Send, Trash2, X } from "lucide-react";
+import "./offers-detail.css";
 import { type Profile } from "../../data/models";
 import { useI18n } from "../../i18n/context";
 import { CountryFlag } from "../CountryFlag";
@@ -7,6 +8,7 @@ import { SkillChip } from "../TechIcon";
 import CountrySelect from "../shared/CountrySelect";
 import SkillSearch from "../shared/SkillSearch";
 import Modal from "../Modal";
+import ConfirmDialog from "../shared/ConfirmDialog";
 import { publicationApi } from "../../api/publication";
 import { apiError } from "../../api/client";
 import { useSavedPublications } from "../../hooks/useSavedPublications";
@@ -52,9 +54,12 @@ export default function Offers({ profile, onNotice, onNavigate, route }: { profi
   const [error, setError] = useState("")
   const [contract, setContract] = useState("CDI")
   const [publishing, setPublishing] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const [removing, setRemoving] = useState<Offre | null>(null)
   const [reporting, setReporting] = useState(false)
   const [reportReason, setReportReason] = useState("")
+  const [reportSuccess, setReportSuccess] = useState(false)
+  const [reportCategory, setReportCategory] = useState("")
+  const [showReportModal, setShowReportModal] = useState(false)
   
   const savedPublications = useSavedPublications();
   const focusOffer = route[0] === "offre" ? route[1] : undefined;
@@ -154,41 +159,13 @@ export default function Offers({ profile, onNotice, onNavigate, route }: { profi
     setApplying(offre)
   }
 
-  async function deleteOffre(offre: Offre) {
-    if (!confirm(t("Êtes-vous sûr de vouloir supprimer cette offre ?", "Are you sure you want to delete this offer?"))) {
-      return
-    }
-    
-    setDeleting(true)
-    try {
-      await publicationApi.supprimerOffre(offre.id_publication)
-      setDetail(null)
-      onNotice(t("Offre supprimée avec succès", "Offer deleted successfully"))
-      loadOffres()
-    } catch (err) {
-      onNotice(apiError(err, t("Impossible de supprimer l'offre", "Could not delete the offer")))
-    } finally {
-      setDeleting(false)
-    }
+  function deleteOffre(offre: Offre) {
+    setDetail(null) // Fermer le modal de détail avant d'ouvrir la confirmation
+    setRemoving(offre)
   }
 
-  async function reportOffre(offre: Offre) {
-    if (!reportReason.trim()) {
-      onNotice(t("Veuillez indiquer un motif", "Please provide a reason"))
-      return
-    }
-    
-    setReporting(true)
-    try {
-      await publicationApi.signalerOffre(offre.id_publication, reportReason)
-      setReportReason("")
-      setDetail(null)
-      onNotice(t("Offre signalée avec succès", "Offer reported successfully"))
-    } catch (err) {
-      onNotice(apiError(err, t("Impossible de signaler l'offre", "Could not report the offer")))
-    } finally {
-      setReporting(false)
-    }
+  function isOfferExpired(deadline: string): boolean {
+    return new Date(deadline) < new Date()
   }
 
   async function publish(e: FormEvent<HTMLFormElement>) {
@@ -347,16 +324,42 @@ export default function Offers({ profile, onNotice, onNavigate, route }: { profi
           </small>
         </button>
         <div className="job-card-footer">
-          {offre.developper_email === profile.email ? <button
-            className="btn-outline"
-            onClick={() => onNavigate(`profil/recrutement/${offre.id_publication}`)}>
-            {t("Mes candidatures", "My applications")}
-          </button> : <button
-            className="btn-primary"
-            onClick={() => startApply(offre)}>
-            <Send size={16} />
-            {t("Postuler", "Apply")}
-          </button>}
+          {offre.developper_email === profile.email ? (
+            <button
+              className="btn-outline"
+              onClick={() => onNavigate(`profil/recrutement/${offre.id_publication}`)}>
+              {t("Mes candidatures", "My applications")}
+            </button>
+          ) : isOfferExpired(offre.deadline) ? (
+            <div className="application-status-badge expired">
+              <Clock size={16} />
+              {t("Expirée", "Expired")}
+            </div>
+          ) : offre.ma_candidature ? (
+            offre.ma_candidature.etat === 'refuse' ? (
+              <div className="application-status-badge failed">
+                <X size={16} />
+                {t("Refusée", "Failed")}
+              </div>
+            ) : offre.ma_candidature.etat === 'accepte' ? (
+              <div className="application-status-badge success">
+                <Check size={16} />
+                {t("Acceptée", "Success")}
+              </div>
+            ) : (
+              <div className="application-status-badge submitted">
+                <Check size={16} />
+                {t("Postulée", "Submitted")}
+              </div>
+            )
+          ) : (
+            <button
+              className="btn-primary"
+              onClick={() => startApply(offre)}>
+              <Send size={16} />
+              {t("Postuler", "Apply")}
+            </button>
+          )}
         </div>
       </article>)}
     </div>
@@ -430,87 +433,183 @@ export default function Offers({ profile, onNotice, onNavigate, route }: { profi
           <ExternalLink size={17} />
           Lien externe
         </a>}
-        <button type="button" className="btn-outline"
-          disabled={savedPublications.loading || savedPublications.busy}
-          aria-pressed={!!savedPublications.saved("offre_emploi", detail.id_publication)}
-          onClick={() => void toggleSaved(detail)}>
-          <Bookmark size={16} />
-          {savedPublications.error ? t("Recharger les enregistrements", "Reload saved items")
-            : savedPublications.saved("offre_emploi", detail.id_publication)
-              ? t("Retirer des enregistrements", "Remove from saved items")
-              : t("Enregistrer l’offre", "Save offer")}
-        </button>
         
+        {/* Actions pour l'auteur de l'offre */}
         {detail.developper_email === profile.email ? (
-          <div className="flex gap-2">
+          <div className="offer-actions-author">
             <button
-              className="btn-outline flex-1"
+              className="btn-primary"
               onClick={() => { setDetail(null); onNavigate(`profil/recrutement/${detail.id_publication}`); }}>
               {t("Voir les candidats", "View applicants")}
             </button>
             <button
-              className="btn-outline"
-              disabled={deleting}
+              className="btn-danger"
               onClick={() => deleteOffre(detail)}>
               <Trash2 size={16} />
-              {deleting ? t("Suppression…", "Deleting…") : t("Supprimer", "Delete")}
+              {t("Supprimer", "Delete")}
             </button>
           </div>
         ) : (
+          /* Actions pour les autres utilisateurs */
           <>
-            {!detail.ma_candidature && (
+            {/* Bandeau si déjà postulé */}
+            {detail.ma_candidature && (
+              <div className="application-status-banner">
+                <Check size={16} />
+                <span>
+                  {t("Vous avez déjà postulé le", "You already applied on")} {formatDate(detail.ma_candidature.date_postule)}
+                </span>
+              </div>
+            )}
+
+            {/* Boutons Enregistrer et Signaler */}
+            <div className="offer-action-buttons">
               <button
-                className="btn-primary"
+                type="button"
+                className={savedPublications.saved("offre_emploi", detail.id_publication) ? "btn-saved" : "btn-save"}
+                disabled={savedPublications.loading || savedPublications.busy}
+                onClick={() => void toggleSaved(detail)}>
+                <Bookmark size={16} fill={savedPublications.saved("offre_emploi", detail.id_publication) ? "currentColor" : "none"} />
+                {savedPublications.saved("offre_emploi", detail.id_publication)
+                  ? t("Enregistrée", "Saved")
+                  : t("Enregistrer", "Save")}
+              </button>
+
+              <button
+                type="button"
+                className={reportSuccess ? "btn-reported" : "btn-report"}
+                disabled={reporting || reportSuccess}
+                onClick={() => setShowReportModal(true)}>
+                <Flag size={16} />
+                {reportSuccess ? t("Signalée", "Reported") : t("Signaler", "Report")}
+              </button>
+            </div>
+
+            {/* Message de succès signalement */}
+            {reportSuccess && (
+              <div className="report-success-message">
+                {t("Merci, votre signalement a été envoyé à notre équipe.", "Thank you, your report has been sent to our team.")}
+              </div>
+            )}
+
+            {/* Badge de statut de candidature ou bouton Postuler */}
+            {isOfferExpired(detail.deadline) ? (
+              <div className="application-status-badge expired">
+                <Clock size={16} />
+                {t("Expirée", "Expired")}
+              </div>
+            ) : detail.ma_candidature ? (
+              detail.ma_candidature.etat === 'refuse' ? (
+                <div className="application-status-badge failed">
+                  <X size={16} />
+                  {t("Refusée", "Failed")}
+                </div>
+              ) : detail.ma_candidature.etat === 'accepte' ? (
+                <div className="application-status-badge success">
+                  <Check size={16} />
+                  {t("Acceptée", "Success")}
+                </div>
+              ) : (
+                <div className="application-status-badge submitted">
+                  <Check size={16} />
+                  {t("Candidature envoyée", "Submitted")}
+                </div>
+              )
+            ) : (
+              <button
+                className="btn-apply"
                 onClick={() => startApply(detail)}>
                 <Send size={16} />
                 {t("Postuler à cette offre", "Apply for this job")}
               </button>
             )}
-            
-            {detail.ma_candidature && (
-              <div className="p-3 bg-gray-800 rounded-lg text-sm">
-                {detail.ma_candidature.etat === 'en_attente' && (
-                  <p className="text-blue-400">
-                    {t("Candidature envoyée le", "Application sent on")} {formatDate(detail.ma_candidature.date_postule)}
-                  </p>
-                )}
-                {detail.ma_candidature.etat === 'accepte' && (
-                  <p className="text-green-400">
-                    {t("✅ Candidature acceptée", "✅ Application accepted")}
-                  </p>
-                )}
-                {detail.ma_candidature.etat === 'refuse' && (
-                  <p className="text-red-400">
-                    {t("❌ Candidature non retenue", "❌ Application not accepted")}
-                  </p>
-                )}
-              </div>
-            )}
-            
-            <div className="border-t border-gray-700 pt-3 mt-3">
-              <label className="block text-sm mb-2">
-                {t("Signaler cette offre", "Report this offer")}
-              </label>
-              <textarea
-                className="w-full p-2 bg-gray-800 border border-gray-700 rounded text-sm mb-2"
-                rows={2}
-                placeholder={t("Motif du signalement…", "Reason for reporting…")}
-                value={reportReason}
-                onChange={e => setReportReason(e.target.value)}
-                disabled={reporting}
-              />
-              <button
-                className="btn-outline w-full"
-                disabled={reporting || !reportReason.trim()}
-                onClick={() => reportOffre(detail)}>
-                <Flag size={16} />
-                {reporting ? t("Signalement…", "Reporting…") : t("Signaler", "Report")}
-              </button>
-            </div>
           </>
         )}
       </div>
     </Modal>}
+
+    {/* ─── Modal signalement ─── */}
+    {showReportModal && detail && (
+      <Modal
+        title={t("Signaler une offre", "Report a job offer")}
+        onClose={() => {
+          setShowReportModal(false);
+          setReportCategory("");
+          setReportReason("");
+        }}
+      >
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const detail_text = String(new FormData(e.currentTarget).get("reason") || "").trim();
+            if (!reportCategory || (reportCategory === "Autres" && !detail_text)) return;
+            const reason = `${reportCategory}${detail_text ? ` : ${detail_text}` : ""}`;
+            
+            setReporting(true);
+            try {
+              await publicationApi.signalerOffre(detail.id_publication, reason);
+              onNotice(t("Signalement envoyé. Merci de contribuer à une communauté bienveillante.", "Report sent. Thank you for helping keep the community welcoming."));
+              setShowReportModal(false);
+              setReportCategory("");
+              setReportReason("");
+              setReportSuccess(true);
+            } catch (err: any) {
+              if (err.response?.data?.erreur) {
+                onNotice(err.response.data.erreur);
+              } else {
+                onNotice(t("Erreur lors de l'envoi du signalement.", "Error sending report."));
+              }
+            } finally {
+              setReporting(false);
+            }
+          }}
+        >
+          <p>{t("Explique la raison de ton signalement.", "Explain why you are reporting this offer.")}</p>
+          <label>
+            {t("Motif du signalement", "Report category")}
+            <select
+              className="rounded-select report-category"
+              required
+              value={reportCategory}
+              onChange={(e) => setReportCategory(e.target.value)}
+            >
+              <option value="" disabled>{t("Choisir un motif", "Choose a reason")}</option>
+              {[
+                ["Harcèlement", "Harassment"],
+                ["Propos inappropriés ou haineux", "Inappropriate or hateful language"],
+                ["Fausses informations", "False information"],
+                ["Arnaque ou fraude", "Scam or fraud"],
+                ["Spam ou publicité abusive", "Spam or abusive advertising"],
+                ["Atteinte à la vie privée", "Privacy violation"],
+                ["Autres", "Other"],
+              ].map(([fr, en]) => (
+                <option key={fr} value={fr}>{t(fr, en)}</option>
+              ))}
+            </select>
+          </label>
+          {reportCategory && (
+            <label>
+              {reportCategory === "Autres"
+                ? t("Explique la raison de ton signalement.", "Explain why you are reporting this offer.")
+                : t("Précisions (facultatif)", "Details (optional)")}
+              <textarea
+                name="reason"
+                required={reportCategory === "Autres"}
+                maxLength={1000}
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                placeholder={t("Décris les faits pour aider la modération…", "Describe what happened to help moderation…")}
+              />
+            </label>
+          )}
+          <button className="btn-primary" disabled={reporting}>
+            <Flag size={16} />
+            {reporting ? t("Envoi...", "Sending...") : t("Envoyer le signalement", "Send report")}
+          </button>
+        </form>
+      </Modal>
+    )}
+
 
     {applying && (
       <ApplicationForm
@@ -524,6 +623,13 @@ export default function Offers({ profile, onNotice, onNavigate, route }: { profi
             try {
               const { data } = await publicationApi.getOffre(applying.id_publication)
               setDetail(data)
+              
+              // Mettre à jour aussi l'offre dans la liste pour afficher le badge immédiatement
+              setOffres(prevOffres => 
+                prevOffres.map(offre => 
+                  offre.id_publication === applying.id_publication ? data : offre
+                )
+              )
             } catch (err) {
               console.error('Erreur rechargement offre:', err)
             }
@@ -660,5 +766,16 @@ export default function Offers({ profile, onNotice, onNavigate, route }: { profi
         </button>
       </form>
     </Modal>}
+
+    {removing && <ConfirmDialog
+      title={t("Supprimer cette offre ?", "Delete this offer?")}
+      description={removing.nom_poste}
+      onClose={() => setRemoving(null)}
+      onConfirm={async () => {
+        await publicationApi.supprimerOffre(removing.id_publication)
+        setOffres(current => current.filter(offre => offre.id_publication !== removing.id_publication))
+        onNotice(t("Offre supprimée avec succès", "Offer deleted successfully"))
+      }}
+    />}
   </div>;
 }
