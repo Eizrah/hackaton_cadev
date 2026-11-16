@@ -1,93 +1,96 @@
 #!/bin/bash
 
-# Script de déploiement automatique pour Cadev
-# Usage: ./deploy.sh [dev|prod]
+# ========================================
+# Script de déploiement Cadev sur Systalink
+# ========================================
 
 set -e  # Arrêter en cas d'erreur
 
-ENV=${1:-dev}
+echo "🚀 Début du déploiement Cadev..."
 
-echo "🚀 Déploiement Cadev en mode: $ENV"
-
-# Couleurs pour les messages
-RED='\033[0;31m'
+# Couleurs
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-if [ "$ENV" = "prod" ]; then
-    echo -e "${YELLOW}⚠️  Mode PRODUCTION${NC}"
-    
-    # Vérifier que .env existe
-    if [ ! -f "backend/Bcadev/.env" ]; then
-        echo -e "${RED}❌ Erreur: backend/Bcadev/.env n'existe pas${NC}"
-        echo "Créez-le à partir de .env.example"
-        exit 1
-    fi
-    
-    # Vérifier que DEBUG=False
-    if grep -q "DEBUG=True" backend/Bcadev/.env; then
-        echo -e "${RED}❌ Erreur: DEBUG=True dans .env${NC}"
-        echo "Changez DEBUG=False pour la production"
-        exit 1
-    fi
-    
-    COMPOSE_FILE="docker-compose.prod.yml"
-else
-    echo -e "${GREEN}🔧 Mode DÉVELOPPEMENT${NC}"
-    COMPOSE_FILE="docker-compose.yml"
+# 1. Vérifier les prérequis
+echo -e "${YELLOW}📋 Vérification des prérequis...${NC}"
+command -v docker >/dev/null 2>&1 || { echo -e "${RED}❌ Docker n'est pas installé${NC}"; exit 1; }
+command -v docker compose >/dev/null 2>&1 || { echo -e "${RED}❌ Docker Compose n'est pas installé${NC}"; exit 1; }
+command -v git >/dev/null 2>&1 || { echo -e "${RED}❌ Git n'est pas installé${NC}"; exit 1; }
+echo -e "${GREEN}✅ Prérequis OK${NC}"
+
+# 2. Mettre à jour le code depuis GitHub
+echo -e "${YELLOW}📥 Récupération du code depuis GitHub...${NC}"
+git pull origin main
+echo -e "${GREEN}✅ Code mis à jour${NC}"
+
+# 3. Build du frontend
+echo -e "${YELLOW}🏗️  Build du frontend React...${NC}"
+cd frontend
+npm install
+npm run build
+echo -e "${GREEN}✅ Frontend buildé${NC}"
+
+# 4. Copier le build frontend vers nginx
+echo -e "${YELLOW}📦 Copie du build vers le dossier nginx...${NC}"
+cd ..
+mkdir -p backend/Bcadev/frontend-build
+cp -r frontend/dist/* backend/Bcadev/frontend-build/
+echo -e "${GREEN}✅ Build copié${NC}"
+
+# 5. Vérifier le fichier .env.production
+cd backend/Bcadev
+if [ ! -f .env.production ]; then
+    echo -e "${RED}❌ Fichier .env.production manquant !${NC}"
+    echo "Créez-le à partir de .env.production.example"
+    exit 1
 fi
+echo -e "${GREEN}✅ Fichier .env.production trouvé${NC}"
 
-# Arrêter les conteneurs existants
-echo "⏹️  Arrêt des conteneurs existants..."
-docker-compose -f $COMPOSE_FILE down
+# 6. Arrêter les anciens conteneurs
+echo -e "${YELLOW}🛑 Arrêt des anciens conteneurs...${NC}"
+docker compose -f docker-compose.production.yml down
 
-# Nettoyer les images non utilisées
-echo "🧹 Nettoyage des images Docker..."
-docker system prune -f
+# 7. Construire les nouvelles images
+echo -e "${YELLOW}🔨 Construction des images Docker...${NC}"
+docker compose -f docker-compose.production.yml build --no-cache
 
-# Build les nouvelles images
-echo "🔨 Construction des images Docker..."
-docker-compose -f $COMPOSE_FILE build --no-cache
+# 8. Démarrer les services
+echo -e "${YELLOW}🚀 Démarrage des services...${NC}"
+docker compose -f docker-compose.production.yml up -d
 
-# Démarrer les conteneurs
-echo "▶️  Démarrage des conteneurs..."
-docker-compose -f $COMPOSE_FILE up -d
-
-# Attendre que la DB soit prête
-echo "⏳ Attente de la base de données..."
+# 9. Attendre que la DB soit prête
+echo -e "${YELLOW}⏳ Attente de la base de données...${NC}"
 sleep 10
 
-# Migrations Django
-echo "📊 Application des migrations..."
-docker exec cadev_backend python manage.py migrate --noinput
+# 10. Appliquer les migrations
+echo -e "${YELLOW}🗃️  Application des migrations...${NC}"
+docker compose -f docker-compose.production.yml exec -T web python manage.py migrate
 
-# Collecte des fichiers statiques
-if [ "$ENV" = "prod" ]; then
-    echo "📦 Collecte des fichiers statiques..."
-    docker exec cadev_backend python manage.py collectstatic --noinput
-fi
+# 11. Collecter les fichiers statiques
+echo -e "${YELLOW}📁 Collecte des fichiers statiques...${NC}"
+docker compose -f docker-compose.production.yml exec -T web python manage.py collectstatic --noinput
 
-# Afficher le statut
-echo ""
-echo "✅ Déploiement terminé!"
-echo ""
-echo "📊 Statut des conteneurs:"
-docker-compose -f $COMPOSE_FILE ps
+# 12. Télécharger les images Docker pour le compilateur
+echo -e "${YELLOW}📦 Téléchargement des images pour le compilateur...${NC}"
+docker compose -f docker-compose.production.yml exec -T web python manage.py pull_docker_images
+
+# 13. Vérifier l'état des services
+echo -e "${YELLOW}🔍 Vérification de l'état des services...${NC}"
+docker compose -f docker-compose.production.yml ps
 
 echo ""
-echo "📝 Pour voir les logs:"
-echo "   docker-compose -f $COMPOSE_FILE logs -f"
+echo -e "${GREEN}✨ Déploiement terminé avec succès !${NC}"
 echo ""
-echo "🌐 Application accessible sur:"
-echo "   Frontend: http://localhost"
-echo "   Backend:  http://localhost:8000"
-
-if [ "$ENV" = "prod" ]; then
-    echo ""
-    echo -e "${YELLOW}⚠️  N'oubliez pas de:${NC}"
-    echo "   1. Créer un superuser: docker exec -it cadev_backend python manage.py createsuperuser"
-    echo "   2. Configurer le firewall"
-    echo "   3. Configurer SSL/HTTPS"
-    echo "   4. Configurer les backups automatiques"
-fi
+echo "📊 Services déployés :"
+echo "  - Frontend : https://votre-domaine.com"
+echo "  - API : https://votre-domaine.com/api/"
+echo "  - Admin : https://votre-domaine.com/admin/"
+echo ""
+echo "🔧 Commandes utiles :"
+echo "  Logs backend : docker compose -f docker-compose.production.yml logs -f web"
+echo "  Logs nginx : docker compose -f docker-compose.production.yml logs -f nginx"
+echo "  Redémarrer : docker compose -f docker-compose.production.yml restart"
+echo ""

@@ -1,0 +1,29 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Installer les dépendances système
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    gcc \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copier les requirements et installer
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt gunicorn
+
+# Copier le code de l'application
+COPY . .
+
+# Créer les dossiers nécessaires
+RUN mkdir -p /app/media /app/staticfiles
+
+# Collecter les fichiers statiques
+RUN python manage.py collectstatic --noinput || true
+
+# Exposer le port
+EXPOSE 8000
+
+# Utiliser Gunicorn pour la production
+CMD ["gunicorn", "Bcadev.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-"]

@@ -28,7 +28,8 @@ SECRET_KEY = os.environ.get('CLE_SECRET')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG','True') == 'True'
 
-ALLOWED_HOSTS = []
+# Hosts autorisés (production)
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',') if os.environ.get('ALLOWED_HOSTS') else []
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -240,24 +241,40 @@ CACHES = {
     }
 }
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",   # Vite dev server
-    "http://localhost:5174",   # Vite dev server (port alternatif)
-    "http://localhost:3001",   # Vite dev server (port non réservé Windows)
-
-    "http://localhost:5175",   # Vite dev server (port alternatif)
-    "http://localhost:5176",   # Vite dev server (port alternatif)
-    "http://localhost:3000",   # au cas où
+# CORS - Configuration dynamique selon l'environnement
+DEFAULT_CORS_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:3001",
+    "http://localhost:5175",
+    "http://localhost:5176",
+    "http://localhost:3000",
     'http://127.0.0.1:5173',
 ]
+
+# En production, lire depuis .env
+PROD_CORS_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+if PROD_CORS_ORIGINS:
+    CORS_ALLOWED_ORIGINS = PROD_CORS_ORIGINS.split(',')
+else:
+    CORS_ALLOWED_ORIGINS = DEFAULT_CORS_ORIGINS
+
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = [
+# CSRF - Configuration dynamique
+DEFAULT_CSRF_ORIGINS = [
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:5175',
     'http://localhost:5176',
-    'http://localhost:3001',  # Port non réservé Windows
+    'http://localhost:3001',
+]
+
+PROD_CSRF_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+if PROD_CSRF_ORIGINS:
+    CSRF_TRUSTED_ORIGINS = PROD_CSRF_ORIGINS.split(',')
+else:
+    CSRF_TRUSTED_ORIGINS = DEFAULT_CSRF_ORIGINS
     'http://localhost:8000',
     'http://127.0.0.1:5173',
 ]

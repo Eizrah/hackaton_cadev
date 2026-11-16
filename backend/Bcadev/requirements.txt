@@ -13,6 +13,9 @@ mutagen
 # Importé par CodeExecution au chargement des routes Django.
 docker
 
+# Production WSGI server
+gunicorn
+
 # LangChain & orchestration agents
 langchain
 langchain-core
