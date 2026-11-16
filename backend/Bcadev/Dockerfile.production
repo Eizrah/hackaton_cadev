@@ -25,5 +25,5 @@ RUN python manage.py collectstatic --noinput || true
 # Exposer le port
 EXPOSE 8000
 
-# Utiliser Gunicorn pour la production
-CMD ["gunicorn", "Bcadev.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-"]
+# Utiliser Gunicorn pour la production (optimisé pour 1 vCPU / 2GB RAM)
+CMD ["gunicorn", "Bcadev.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--threads", "2", "--timeout", "120", "--max-requests", "1000", "--max-requests-jitter", "50", "--access-logfile", "-", "--error-logfile", "-"]
