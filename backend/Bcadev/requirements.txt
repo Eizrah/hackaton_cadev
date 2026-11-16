@@ -36,7 +36,7 @@ langchain-chroma==0.1.4
 # On utilisera un modèle plus léger via huggingface_hub
 langchain-huggingface==0.1.2
 huggingface-hub==0.26.5
-tokenizers==0.21.0
+tokenizers==0.20.3
 tiktoken==0.8.0
 
 # ChromaDB (sans dépendances lourdes optionnelles)
